@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "NexoFit Admin",
+    "slug": "nexofit-admin",
+    "version": "0.1.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F8F6EF",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#06354E"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#F8F6EF",
+      "bundler": "metro"
+    }
+  }
+}
