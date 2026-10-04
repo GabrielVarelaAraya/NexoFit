@@ -124,15 +124,17 @@ pnpm --filter @nexofit/mobile start
 
 ## Implementation Status
 
-| Stage | Description                                            | Status     |
-| ----- | ------------------------------------------------------ | ---------- |
-| 0     | Foundation (monorepo, tooling, tokens)                 | ✅ Done    |
-| 1     | Data platform & auth (Supabase, RLS, migrations)       | ✅ Done    |
-| 2     | Core booking engine (schedule, book, cancel, waitlist) | ✅ Done    |
-| 3     | Core app shell + onboarding                            | 🔲 Next    |
-| 4     | Member workout experience                              | 🔲 Pending |
-| 5     | Payments & scheduling intelligence                     | 🔲 Pending |
-| 6     | Admin web dashboard, analytics, notifications          | 🔲 Pending |
+**Overall: ≈60%** — 4 of 7 stages complete; stages 4 and 6 started.
+
+| Stage | Description                                            | Status                                                            |
+| ----- | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| 0     | Foundation (monorepo, tooling, tokens)                 | ✅ Done                                                           |
+| 1     | Data platform & auth (Supabase, RLS, migrations)       | ✅ Done                                                           |
+| 2     | Core booking engine (schedule, book, cancel, waitlist) | ✅ Done                                                           |
+| 3     | Core app shell + onboarding                            | ✅ Done                                                           |
+| 4     | Member workout experience                              | 🔶 In progress — body metrics done; workout logs UI still pending |
+| 5     | Payments & scheduling intelligence                     | 🔲 Pending                                                        |
+| 6     | Admin web dashboard, analytics, notifications          | 🔶 In progress — admin shell exists, screens still use mock data  |
 
 ## Project Context
 
