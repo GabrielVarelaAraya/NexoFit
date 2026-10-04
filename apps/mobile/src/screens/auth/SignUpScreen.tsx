@@ -1,185 +1,260 @@
 import { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
+  Keyboard,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
   Alert,
-  ScrollView,
 } from 'react-native';
+import { useTheme } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { colors, fonts } from '@nexofit/core';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../navigation/types';
 
 interface Props {
-  onSwitchToLogin: () => void;
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'SignUp'>;
 }
 
-export function SignUpScreen({ onSwitchToLogin }: Props) {
+export function SignUpScreen({ navigation }: Props) {
+  const theme = useTheme();
   const { signUp } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
     if (!fullName.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
+      Alert.alert('Error', 'Por favor completa todos los campos.');
       return;
     }
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters.');
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres.');
       return;
     }
+    Keyboard.dismiss();
     setLoading(true);
     const { error } = await signUp(email.trim(), password, fullName.trim());
     setLoading(false);
     if (error) {
-      Alert.alert('Sign up failed', error);
+      Alert.alert('Error de registro', error);
     } else {
-      Alert.alert('Check your email', 'We sent you a confirmation link.', [
-        { text: 'OK', onPress: onSwitchToLogin },
-      ]);
+      navigation.navigate('VerificationCode', { email: email.trim() });
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.crema }]}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join NexoFit and start your journey</Text>
+      <Text style={[styles.title, { color: theme.azulNexo }]}>Crea tu cuenta</Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+        Regístrate para comenzar.
+      </Text>
 
-        <View style={styles.form}>
+      <View style={styles.form}>
+        <View style={styles.inputContainer}>
+          <Text style={[styles.label, { color: theme.azulNexo }]}>Nombre completo</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Full name"
-            placeholderTextColor={colors.crema + '80'}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.white,
+                borderColor: theme.azulNexo + '20',
+                color: theme.azulNexo,
+              },
+            ]}
+            placeholder="Sofia Lizano"
+            placeholderTextColor={theme.textSecondary}
             value={fullName}
             onChangeText={setFullName}
             autoComplete="name"
           />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={[styles.label, { color: theme.azulNexo }]}>Correo</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor={colors.crema + '80'}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.white,
+                borderColor: theme.azulNexo + '20',
+                color: theme.azulNexo,
+              },
+            ]}
+            placeholder="sofia@email.com"
+            placeholderTextColor={theme.textSecondary}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
           />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={[styles.label, { color: theme.azulNexo }]}>Contraseña</Text>
           <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={colors.crema + '80'}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.white,
+                borderColor: theme.azulNexo + '20',
+                color: theme.azulNexo,
+              },
+            ]}
+            placeholder="••••••••"
+            placeholderTextColor={theme.textSecondary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="new-password"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm password"
-            placeholderTextColor={colors.crema + '80'}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            autoComplete="new-password"
-          />
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSignUp}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.linkButton} onPress={onSwitchToLogin}>
-            <Text style={styles.linkText}>
-              Already have an account? <Text style={styles.linkBold}>Sign In</Text>
-            </Text>
-          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        <TouchableOpacity
+          style={[
+            styles.signupButton,
+            { backgroundColor: theme.turquesa },
+            loading && { opacity: 0.6 },
+          ]}
+          onPress={handleSignUp}
+          disabled={loading}
+        >
+          <Text style={[styles.signupButtonText, { color: theme.white }]}>
+            {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.dividerContainer}>
+          <View style={[styles.divider, { backgroundColor: theme.azulNexo + '20' }]} />
+          <Text style={[styles.dividerText, { color: theme.textSecondary }]}>o</Text>
+          <View style={[styles.divider, { backgroundColor: theme.azulNexo + '20' }]} />
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.socialButton,
+            { backgroundColor: theme.white, borderColor: theme.azulNexo + '20' },
+          ]}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.socialButtonText, { color: theme.azulNexo }]}>
+            Continuar con Google
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.socialButton, { backgroundColor: theme.azulNexo }]}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.socialButtonText, { color: theme.white }]}>Continuar con Apple</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.footer}>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+            ¿Ya tienes cuenta?{' '}
+            <Text style={[styles.footerLink, { color: theme.turquesa }]}>Iniciar sesión</Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.azulNexo,
   },
-  scroll: {
+  content: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 48,
+    paddingTop: 80,
+    paddingBottom: 40,
   },
   title: {
-    fontFamily: fonts.brand,
+    fontFamily: 'Nunito_800ExtraBold',
     fontSize: 28,
-    color: colors.crema,
-    textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
-    fontFamily: fonts.uiRegular,
-    fontSize: 14,
-    color: colors.mentaActiva,
-    textAlign: 'center',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 16,
     marginBottom: 32,
   },
   form: {
-    gap: 12,
+    gap: 16,
+  },
+  inputContainer: {
+    gap: 8,
+  },
+  label: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
   },
   input: {
-    backgroundColor: colors.azulNexo + 'CC',
-    borderWidth: 1,
-    borderColor: colors.turquesa + '40',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontFamily: fonts.uiRegular,
+    fontFamily: 'Inter_400Regular',
     fontSize: 16,
-    color: colors.crema,
+    borderWidth: 1,
   },
-  button: {
-    backgroundColor: colors.turquesa,
+  signupButton: {
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    fontFamily: fonts.uiSemiBold,
+  signupButtonText: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
-    color: colors.crema,
   },
-  linkButton: {
+  dividerContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
+    marginVertical: 8,
   },
-  linkText: {
-    fontFamily: fonts.uiRegular,
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontFamily: 'Inter_400Regular',
     fontSize: 14,
-    color: colors.crema,
+    marginHorizontal: 16,
   },
-  linkBold: {
-    fontFamily: fonts.uiSemiBold,
-    color: colors.limaProgreso,
+  socialButton: {
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  socialButtonText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+  },
+  footerLink: {
+    fontFamily: 'Inter_600SemiBold',
   },
 });
+
+export const styles = baseStyles;

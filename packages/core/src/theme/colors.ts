@@ -5,7 +5,8 @@ export const colors = {
   limaProgreso: '#A9F56F',
   crema: '#F8F6EF',
   white: '#FFFFFF',
-} as const;
+  textSecondary: '#6B7280',
+};
 
 export const brandProportions = {
   cremaOrWhite: 0.55,

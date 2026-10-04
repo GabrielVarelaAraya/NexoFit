@@ -28,22 +28,26 @@ In the Supabase dashboard, go to **SQL Editor** and run each file in order.
 Open each file, copy its contents, paste into the SQL Editor, and click **Run**:
 
 ```
-packages/db/migrations/000001_create_all_tables.sql
-packages/db/migrations/000002_create_rls_policies.sql
-packages/db/migrations/000003_create_booking_functions.sql
-packages/db/migrations/000004_create_triggers.sql
+packages/db/migrations/000001_create_schema.sql
+packages/db/migrations/000002_create_functions.sql
+packages/db/migrations/000003_create_rls_policies.sql
 ```
 
 Wait for each to complete before running the next. You should see "Success" after each.
 
+> **Idempotent:** the three files only create what's missing
+> (`IF NOT EXISTS`, `CREATE OR REPLACE`, and they recreate only their own
+> policies), so it is safe to re-run them. A project already set up with the
+> previous 8-file layout does **not** need to re-run anything — the final
+> state is identical.
+
 ### What each migration does
 
-| Migration | Purpose                                                          |
-| --------- | ---------------------------------------------------------------- |
-| `000001`  | Creates all 21 tables, enums, and indexes                        |
-| `000002`  | Enables RLS on every table with per-org policies                 |
-| `000003`  | Creates `book_session()` and `cancel_booking()` atomic functions |
-| `000004`  | Creates triggers for auto-updating timestamps and booking counts |
+| Migration | Purpose                                                                                |
+| --------- | -------------------------------------------------------------------------------------- |
+| `000001`  | Creates all 27 tables, 7 enums, 20 indexes, and the timestamp/user triggers            |
+| `000002`  | Creates RPCs: `book_session`, `cancel_booking`, `create_organization`, and RLS helpers |
+| `000003`  | Enables RLS on every table and creates the 94 final policies                           |
 
 ## 3. Disable Email Confirmation (optional, for faster testing)
 
@@ -105,65 +109,206 @@ You'll see a QR code in the terminal.
 4. If email confirmation is on, check your inbox and click the link
 5. You'll be redirected to login
 
+### Join or create a gym (real flow)
+
+After logging in you land on **Inicio**. If your account has no gym yet you
+get two real options (no mocks):
+
+- **Buscar un gimnasio** → directory of real organizations → _Unirme a este
+  gimnasio_ enrolls you instantly as a `member`.
+- **Registrar mi gimnasio** → creates the organization via the
+  `create_organization()` RPC and makes you its `admin`.
+
+Either action refreshes your membership immediately — no app restart needed.
+
 ### Create test data (via SQL)
 
-After signing up, find your profile ID and seed some test data:
+After signing up, run this seed in the Supabase **SQL Editor**. It is
+**idempotent** (safe to re-run) and does not require editing any IDs — it
+picks the most recent profile automatically.
 
 ```sql
--- Find your profile
-SELECT id, email FROM profiles;
+-- ============================================================
+-- NexoFit · seed de prueba (idempotente: puedes re-ejecutarlo)
+-- ============================================================
 
--- Replace YOUR_PROFILE_ID below with your actual ID
+-- 1) Tu perfil. Ojo: profiles NO tiene columna email
+--    (los correos viven en auth.users).
+SELECT u.id, u.email, p.full_name
+FROM auth.users u
+JOIN public.profiles p ON p.id = u.id;
 
--- Create an organization
+-- Si tienes varios usuarios y quieres fijar uno, sustituye
+--   (SELECT id FROM profiles ORDER BY created_at DESC LIMIT 1)
+-- por tu id exacto en los pasos 2, 7 y 8.
+
+-- 2) Gimnasio + tu membresía como admin
 INSERT INTO organizations (id, name, slug)
-VALUES ('11111111-1111-1111-1111-111111111111', 'Test Gym', 'test-gym');
+VALUES ('11111111-1111-1111-1111-111111111111', 'Test Gym', 'test-gym')
+ON CONFLICT (id) DO NOTHING;
 
--- Add yourself as admin
 INSERT INTO memberships (organization_id, profile_id, role)
-VALUES ('11111111-1111-1111-1111-111111111111', 'YOUR_PROFILE_ID', 'admin');
+SELECT '11111111-1111-1111-1111-111111111111', id, 'admin'
+FROM profiles
+ORDER BY created_at DESC
+LIMIT 1
+ON CONFLICT (organization_id, profile_id) DO NOTHING;
 
--- Create a venue
+-- 3) Sede y espacio (cupo 20)
 INSERT INTO venues (id, organization_id, name)
-VALUES ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'Main Box');
+VALUES ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'Main Box')
+ON CONFLICT (id) DO NOTHING;
 
--- Create a space with capacity
 INSERT INTO spaces (id, venue_id, name, capacity)
-VALUES ('33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 'Floor A', 20);
+VALUES ('33333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 'Floor A', 20)
+ON CONFLICT (id) DO NOTHING;
 
--- Create a class type
-INSERT INTO class_types (id, organization_id, name, color, emoji)
-VALUES ('44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'CrossFit WOD', '#0B9B91', '🏋️');
+-- 4) Tipo de clase (class_types NO tiene columna emoji)
+INSERT INTO class_types (id, organization_id, name, color, description)
+VALUES ('44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111', 'CrossFit WOD', '#0B9B91', 'WOD funcional')
+ON CONFLICT (id) DO NOTHING;
 
--- Create a session for tomorrow at 7am
-INSERT INTO sessions (id, organization_id, class_type_id, venue_id, space_id, coach_id, start_at, end_at)
+-- 5) Coach (sessions.coach_id apunta a coaches.id, no a profiles.id;
+--    coaches.membership_id enlaza con tu membresía)
+INSERT INTO coaches (id, membership_id, specialization)
+SELECT
+  '88888888-8888-8888-8888-888888888888',
+  m.id,
+  'Fuerza y acondicionamiento'
+FROM memberships m
+WHERE m.organization_id = '11111111-1111-1111-1111-111111111111'
+ORDER BY m.created_at
+LIMIT 1
+ON CONFLICT (id) DO NOTHING;
+
+-- 6) Sesiones (sessions NO tiene organization_id/venue_id;
+--    los horarios son starts_at/ends_at)
+--    · Hoy en +2h → Inicio ("Clases de hoy") y Horario muestran algo ya
+INSERT INTO sessions (id, class_type_id, space_id, coach_id, starts_at, ends_at)
+VALUES (
+  '66666666-6666-6666-6666-666666666666',
+  '44444444-4444-4444-4444-444444444444',
+  '33333333-3333-3333-3333-333333333333',
+  (SELECT id FROM coaches WHERE id = '88888888-8888-8888-8888-888888888888'),
+  NOW() + INTERVAL '2 hours',
+  NOW() + INTERVAL '3 hours'
+)
+ON CONFLICT (id) DO NOTHING;
+
+--    · Mañana (la que usa el flujo "Book a session")
+INSERT INTO sessions (id, class_type_id, space_id, coach_id, starts_at, ends_at)
 VALUES (
   '55555555-5555-5555-5555-555555555555',
-  '11111111-1111-1111-1111-111111111111',
   '44444444-4444-4444-4444-444444444444',
-  '22222222-2222-2222-2222-222222222222',
   '33333333-3333-3333-3333-333333333333',
-  'YOUR_PROFILE_ID',
-  (NOW() + INTERVAL '1 day' + INTERVAL '7 hours')::timestamptz,
-  (NOW() + INTERVAL '1 day' + INTERVAL '8 hours')::timestamptz
-);
+  (SELECT id FROM coaches WHERE id = '88888888-8888-8888-8888-888888888888'),
+  NOW() + INTERVAL '1 day' + INTERVAL '7 hours',
+  NOW() + INTERVAL '1 day' + INTERVAL '8 hours'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- 7) Profesional + servicio (para la pestaña Citas). Como solo hay un
+--    usuario de prueba, el profesional y el cliente son la misma persona.
+INSERT INTO professionals (id, membership_id, specialization)
+SELECT
+  '99999999-9999-9999-9999-999999999999',
+  m.id,
+  'Fisioterapia deportiva'
+FROM memberships m
+WHERE m.organization_id = '11111111-1111-1111-1111-111111111111'
+ORDER BY m.created_at
+LIMIT 1
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO services (id, organization_id, professional_id, name, description, duration_minutes)
+SELECT
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '11111111-1111-1111-1111-111111111111',
+  '99999999-9999-9999-9999-999999999999',
+  'Valoración inicial',
+  'Sesión 1-a-1 de valoración',
+  45
+ON CONFLICT (id) DO NOTHING;
+
+-- 8) Citas: una próxima (mañana) y una pasada ("Finalizada")
+INSERT INTO appointments (id, organization_id, service_id, professional_id, profile_id, starts_at, ends_at, status)
+SELECT
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  '11111111-1111-1111-1111-111111111111',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '99999999-9999-9999-9999-999999999999',
+  p.id,
+  NOW() + INTERVAL '1 day' + INTERVAL '3 hours',
+  NOW() + INTERVAL '1 day' + INTERVAL '3 hours 45 minutes',
+  'confirmed'
+FROM profiles p
+ORDER BY p.created_at DESC
+LIMIT 1
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO appointments (id, organization_id, service_id, professional_id, profile_id, starts_at, ends_at, status)
+SELECT
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  '11111111-1111-1111-1111-111111111111',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '99999999-9999-9999-9999-999999999999',
+  p.id,
+  NOW() - INTERVAL '3 days',
+  NOW() - INTERVAL '3 days' + INTERVAL '45 minutes',
+  'confirmed'
+FROM profiles p
+ORDER BY p.created_at DESC
+LIMIT 1
+ON CONFLICT (id) DO NOTHING;
 ```
 
 ### Book a session
 
-1. Go to the **Schedule** tab
-2. Select tomorrow's date in the horizontal date picker
-3. You should see "CrossFit WOD" with "20 spots"
-4. Tap **Book Now** → confirm
-5. Go to **My Bookings** → see your confirmed booking
-6. Tap **Cancel** → booking is removed, spots freed
+1. **Inicio** tab → "Clases de hoy" should show the session seeded at now +2h
+2. Go to the **Clases** tab
+3. Select tomorrow's date in the horizontal date picker
+4. You should see "CrossFit WOD" with "20 cupos" and the coach name
+5. Tap **Reservar** → confirm; back in **Clases** the button now reads
+   **"Ya reservada"** and the badge shows 19 cupos
+6. Go to **Mis reservas** (Inicio → "Ver todas") → see your confirmed booking
+7. Tap **Cancelar** → the booking is removed and the class shows
+   **20 cupos** again (spots are returned immediately)
 
-### Test waitlist
+### Test waitlist (needs a second account)
 
-1. Create a session with capacity 2
-2. Book it twice (2 confirmations)
-3. Book a third time → you'll be placed on the waitlist (#1)
-4. Cancel one confirmed booking → waitlist auto-promotes
+A single profile can't queue behind itself — a confirmed booking returns
+"Ya reservada". Use two signups:
+
+1. Seed a full class (capacity 1):
+
+   ```sql
+   INSERT INTO sessions (id, class_type_id, space_id, starts_at, ends_at, capacity_override)
+   VALUES (
+     '77777777-7777-7777-7777-777777777777',
+     '44444444-4444-4444-4444-444444444444',
+     '33333333-3333-3333-3333-333333333333',
+     NOW() + INTERVAL '1 day',
+     NOW() + INTERVAL '1 day' + INTERVAL '1 hour',
+     1
+   )
+   ON CONFLICT (id) DO NOTHING;
+   ```
+
+2. Sign up a second account (email confirmation OFF makes this fast) and add
+   it to Test Gym:
+
+   ```sql
+   SELECT id, email FROM auth.users;  -- copia el id de la 2da cuenta
+
+   INSERT INTO memberships (organization_id, profile_id, role)
+   VALUES ('11111111-1111-1111-1111-111111111111', '<ID_SEGUNDA_CUENTA>', 'member')
+   ON CONFLICT (organization_id, profile_id) DO NOTHING;
+   ```
+
+3. From the second account book `77777777-…` → confirmed (1/1, "Completo")
+4. From the first account open the same class → **Unirse a lista de espera**
+   → waitlist #1 (re-tapping returns your position, not an error)
+5. Cancel the confirmed booking → the waitlist auto-promotes to confirmed
 
 ## Troubleshooting
 

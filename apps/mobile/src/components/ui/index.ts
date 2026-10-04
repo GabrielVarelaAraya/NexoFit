@@ -1,4 +1,5 @@
 export { Button } from './Button';
+export { LoadingView } from './LoadingView';
 export { Card } from './Card';
 export { Input } from './Input';
 export { Header } from './Header';

@@ -13,12 +13,14 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@expo/vector-icons": "^14.0.0",
     "@nexofit/core": "workspace:*",
     "@react-navigation/bottom-tabs": "^7.5.3",
     "@react-navigation/native": "^7.1.6",
     "@react-navigation/native-stack": "^7.5.3",
     "@supabase/supabase-js": "^2.45.4",
     "expo": "~57.0.13",
+    "expo-constants": "^57.0.20",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -29,6 +31,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "dotenv": "^18.0.5",
     "eslint": "^9.9.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.3.0",

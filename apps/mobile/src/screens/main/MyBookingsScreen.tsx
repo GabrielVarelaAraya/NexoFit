@@ -41,7 +41,7 @@ export function MyBookingsScreen() {
         text: 'Yes, cancel',
         style: 'destructive',
         onPress: async () => {
-          const result = await cancelBooking(bookingId);
+          const result = await cancelBooking(bookingId, user?.id ?? '');
           if (result.success) {
             refresh();
           } else {
@@ -59,8 +59,8 @@ export function MyBookingsScreen() {
 
     return (
       <Card
-        title={`${classType?.emoji ?? ''} ${classType?.name ?? 'Class'}`}
-        subtitle={`${formatDate(session?.start_at ?? '')} · ${formatTime(session?.start_at ?? '')} – ${formatTime(session?.end_at ?? '')}`}
+        title={classType?.name ?? 'Class'}
+        subtitle={`${formatDate(session?.starts_at ?? '')} · ${formatTime(session?.starts_at ?? '')} – ${formatTime(session?.ends_at ?? '')}`}
         badge={isWaitlisted ? `Waitlist #${item.position ?? ''}` : 'Confirmed'}
         badgeColor={isWaitlisted ? '#F59E0B' : colors.turquesa}
       >

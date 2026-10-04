@@ -19,8 +19,10 @@ export function SessionDetailScreen({ route, navigation }: Props) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const spotsLeft = (sessionData.capacity_override ?? 30) - (sessionData.booking_count ?? 0);
+  const capacity = sessionData.capacity_override ?? sessionData.spaces?.capacity ?? 30;
+  const spotsLeft = capacity - (sessionData.booking_count ?? 0);
   const isFull = spotsLeft <= 0;
+  const coachName = sessionData.coaches?.memberships?.profiles?.full_name;
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
@@ -64,34 +66,27 @@ export function SessionDetailScreen({ route, navigation }: Props) {
       />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.emojiBanner}>
-          <Text style={styles.emoji}>{sessionData.class_types?.emoji ?? '🏋️'}</Text>
+          <Text style={styles.emoji}>🏋️</Text>
         </View>
 
         <Text style={styles.className}>{sessionData.class_types?.name ?? 'Class'}</Text>
-        <Text style={styles.dateTime}>{formatDate(sessionData.start_at)}</Text>
+        <Text style={styles.dateTime}>{formatDate(sessionData.starts_at)}</Text>
         <Text style={styles.timeRange}>
-          {formatTime(sessionData.start_at)} – {formatTime(sessionData.end_at)}
+          {formatTime(sessionData.starts_at)} – {formatTime(sessionData.ends_at)}
         </Text>
 
         <Card style={styles.infoCard}>
           <InfoRow
             label="Location"
-            value={`${sessionData.venues?.name ?? ''} · ${sessionData.spaces?.name ?? ''}`}
+            value={`${sessionData.spaces?.venues?.name ?? ''} · ${sessionData.spaces?.name ?? ''}`}
           />
-          {sessionData.profiles && <InfoRow label="Coach" value={sessionData.profiles.full_name} />}
+          {coachName && <InfoRow label="Coach" value={coachName} />}
           <InfoRow
             label="Capacity"
             value={isFull ? 'Full' : `${spotsLeft} spots available`}
             valueColor={isFull ? '#EF4444' : colors.turquesa}
           />
         </Card>
-
-        {sessionData.notes && (
-          <Card style={styles.notesCard}>
-            <Text style={styles.notesLabel}>Notes</Text>
-            <Text style={styles.notes}>{sessionData.notes}</Text>
-          </Card>
-        )}
 
         <Button
           title={isFull ? 'Join Waitlist' : 'Book This Session'}

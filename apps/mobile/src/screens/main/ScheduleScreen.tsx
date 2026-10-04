@@ -45,18 +45,20 @@ export function ScheduleScreen({ navigation }: Props) {
   };
 
   const renderSession = ({ item }: { item: SessionWithType }) => {
-    const spotsLeft = (item.capacity_override ?? 30) - (item.booking_count ?? 0);
+    const capacity = item.capacity_override ?? item.spaces?.capacity ?? 30;
+    const spotsLeft = capacity - (item.booking_count ?? 0);
     const isFull = spotsLeft <= 0;
+    const coachName = item.coaches?.memberships?.profiles?.full_name;
 
     return (
       <Card
         style={styles.sessionCard}
-        title={`${item.class_types?.emoji ?? ''} ${item.class_types?.name ?? 'Class'}`}
-        subtitle={`${formatTime(item.start_at)} – ${formatTime(item.end_at)}  ·  ${item.venues?.name ?? ''} · ${item.spaces?.name ?? ''}`}
+        title={item.class_types?.name ?? 'Class'}
+        subtitle={`${formatTime(item.starts_at)} – ${formatTime(item.ends_at)}  ·  ${item.spaces?.venues?.name ?? ''} · ${item.spaces?.name ?? ''}`}
         badge={isFull ? 'Full' : `${spotsLeft} spots`}
         badgeColor={isFull ? '#EF4444' : colors.turquesa}
       >
-        {item.profiles && <Text style={styles.coach}>Coach: {item.profiles.full_name}</Text>}
+        {coachName && <Text style={styles.coach}>Coach: {coachName}</Text>}
         <Button
           title={isFull ? 'Join Waitlist' : 'Book Now'}
           variant={isFull ? 'ghost' : 'primary'}

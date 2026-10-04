@@ -1,142 +1,155 @@
 import { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
+  Keyboard,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  View,
   Alert,
-  ScrollView,
 } from 'react-native';
+import { useTheme } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { colors, fonts } from '@nexofit/core';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../navigation/types';
 
 interface Props {
-  onBack: () => void;
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
 }
 
-export function ForgotPasswordScreen({ onBack }: Props) {
+export function ForgotPasswordScreen({ navigation }: Props) {
+  const theme = useTheme();
   const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleReset = async () => {
+  const handleSendCode = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email address.');
+      Alert.alert('Error', 'Por favor ingresa tu correo electrónico.');
       return;
     }
+    Keyboard.dismiss();
     setLoading(true);
     const { error } = await resetPassword(email.trim());
     setLoading(false);
     if (error) {
       Alert.alert('Error', error);
     } else {
-      Alert.alert('Check your email', 'We sent you a password reset link.', [
-        { text: 'OK', onPress: onBack },
-      ]);
+      navigation.navigate('VerificationCode', {
+        email: email.trim(),
+        type: 'recovery',
+      });
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.crema }]}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Reset Password</Text>
-        <Text style={styles.subtitle}>Enter your email and we'll send you a reset link</Text>
+      <Text style={[styles.title, { color: theme.azulNexo }]}>Recupera tu acceso</Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+        Te enviaremos un código de 6 dígitos.
+      </Text>
 
+      <View style={styles.inputContainer}>
+        <Text style={[styles.label, { color: theme.azulNexo }]}>Correo electrónico</Text>
         <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor={colors.crema + '80'}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.white,
+              borderColor: theme.azulNexo + '20',
+              color: theme.azulNexo,
+            },
+          ]}
+          placeholder="sofia@email.com"
+          placeholderTextColor={theme.textSecondary}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
         />
+      </View>
 
+      <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleReset}
+          style={[styles.button, { backgroundColor: theme.turquesa }, loading && { opacity: 0.6 }]}
+          onPress={handleSendCode}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>{loading ? 'Sending...' : 'Send Reset Link'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.linkButton} onPress={onBack}>
-          <Text style={styles.linkText}>
-            <Text style={styles.linkBold}>Back to Sign In</Text>
+          <Text style={[styles.buttonText, { color: theme.white }]}>
+            {loading ? 'Enviando...' : 'Enviar código'}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Login')}>
+          <Text style={[styles.backText, { color: theme.turquesa }]}>Volver a iniciar sesión</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.azulNexo,
   },
-  scroll: {
+  content: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 48,
+    paddingTop: 80,
+    paddingBottom: 40,
   },
   title: {
-    fontFamily: fonts.brand,
+    fontFamily: 'Nunito_800ExtraBold',
     fontSize: 28,
-    color: colors.crema,
-    textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
-    fontFamily: fonts.uiRegular,
-    fontSize: 14,
-    color: colors.mentaActiva,
-    textAlign: 'center',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 16,
     marginBottom: 32,
   },
+  inputContainer: {
+    gap: 8,
+  },
+  label: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+  },
   input: {
-    backgroundColor: colors.azulNexo + 'CC',
-    borderWidth: 1,
-    borderColor: colors.turquesa + '40',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontFamily: fonts.uiRegular,
+    fontFamily: 'Inter_400Regular',
     fontSize: 16,
-    color: colors.crema,
+    borderWidth: 1,
+  },
+  footer: {
+    gap: 16,
   },
   button: {
-    backgroundColor: colors.turquesa,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
   },
   buttonText: {
-    fontFamily: fonts.uiSemiBold,
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
-    color: colors.crema,
   },
-  linkButton: {
+  backButton: {
     alignItems: 'center',
-    marginTop: 16,
+    paddingVertical: 12,
   },
-  linkText: {
-    fontFamily: fonts.uiRegular,
+  backText: {
+    fontFamily: 'Inter_400Regular',
     fontSize: 14,
-    color: colors.crema,
-  },
-  linkBold: {
-    fontFamily: fonts.uiSemiBold,
-    color: colors.limaProgreso,
   },
 });
+
+export const styles = baseStyles;

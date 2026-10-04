@@ -73,20 +73,20 @@ NexoFit/
 
 ## Database Schema
 
-21 tables across 4 migration files:
+27 tables across 3 idempotent SQL files (run in order via the Supabase SQL Editor):
 
 - **Organizations** — multi-tenant root
 - **Venues & Spaces** — locations with capacity
 - **Profiles & Memberships** — users with roles (admin, coach, professional, member)
-- **Class Types** — configurable per org (name, color, emoji)
+- **Class Types** — configurable per org (name, color, description)
 - **Sessions** — scheduled classes with coach, time, space
-- **Bookings** — confirmed or waitlisted, atomic capacity enforcement
+- **Bookings & Waitlist** — atomic capacity enforcement, waitlist positions, attendance
 - **Workout Programs** — per-session workout content
-- **Progress** — member workout logs (sets, reps, weight)
+- **Workout Tracking** — logs, exercises, sets, personal records, templates
 - **Body Metrics** — measurements over time
-- **Appointments** — 1-on-1 with professionals
-- **Services** — offered by professionals
-- **Notifications** — in-app alerts
+- **Appointments & Services** — 1-on-1 with professionals
+- **Availability** — professional schedules
+- **Access Permissions & Notifications** — member access and in-app alerts
 
 ## Getting Started
 
