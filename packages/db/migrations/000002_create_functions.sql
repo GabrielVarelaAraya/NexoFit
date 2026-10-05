@@ -236,6 +236,20 @@ BEGIN
     SET position = position - 1
     WHERE session_id = v_session_id AND position > v_next_waitlist.position;
 
+    -- Stage 5 (scheduling intelligence): avisar al miembro promovido.
+    -- Aparece en su Perfil -> Notificaciones al instante.
+    INSERT INTO public.notifications (profile_id, organization_id, title, body, type)
+    SELECT
+      v_next_waitlist.profile_id,
+      ct.organization_id,
+      '¡Cupo confirmado!',
+      'Fuiste promovido de la lista de espera a ' || ct.name || ' el '
+        || to_char(se.starts_at, 'DD/MM/YYYY HH24:MI') || '.',
+      'booking'
+    FROM public.sessions se
+    JOIN public.class_types ct ON ct.id = se.class_type_id
+    WHERE se.id = v_session_id;
+
     v_promoted := true;
   END IF;
 

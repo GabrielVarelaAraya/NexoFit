@@ -124,17 +124,17 @@ pnpm --filter @nexofit/mobile start
 
 ## Implementation Status
 
-**Overall: ≈60%** — 4 of 7 stages complete; stages 4 and 6 started.
+**Overall: ≈86%** — 6 of 7 stages complete; stage 6 in progress.
 
-| Stage | Description                                            | Status                                                            |
-| ----- | ------------------------------------------------------ | ----------------------------------------------------------------- |
-| 0     | Foundation (monorepo, tooling, tokens)                 | ✅ Done                                                           |
-| 1     | Data platform & auth (Supabase, RLS, migrations)       | ✅ Done                                                           |
-| 2     | Core booking engine (schedule, book, cancel, waitlist) | ✅ Done                                                           |
-| 3     | Core app shell + onboarding                            | ✅ Done                                                           |
-| 4     | Member workout experience                              | 🔶 In progress — body metrics done; workout logs UI still pending |
-| 5     | Payments & scheduling intelligence                     | 🔲 Pending                                                        |
-| 6     | Admin web dashboard, analytics, notifications          | 🔶 In progress — admin shell exists, screens still use mock data  |
+| Stage | Description                                            | Status                                                                                                                                  |
+| ----- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | Foundation (monorepo, tooling, tokens)                 | ✅ Done                                                                                                                                 |
+| 1     | Data platform & auth (Supabase, RLS, migrations)       | ✅ Done                                                                                                                                 |
+| 2     | Core booking engine (schedule, book, cancel, waitlist) | ✅ Done                                                                                                                                 |
+| 3     | Core app shell + onboarding                            | ✅ Done                                                                                                                                 |
+| 4     | Member workout experience                              | ✅ Done — log de entrenamientos, histórico, récords y programa de la sesión                                                             |
+| 5     | Payments & scheduling intelligence                     | ✅ Done — planes y pagos (ledger con RLS), recomendaciones, badge «¡Casi lleno!», aviso de promoción de lista y detección de conflictos |
+| 6     | Admin web dashboard, analytics, notifications          | 🔶 In progress — pantallas admin (dashboard, agenda, clientes, espacios y tipos de clase) con datos reales; dashboard web pendiente     |
 
 ## Project Context
 

@@ -6,15 +6,18 @@ import {
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
-  Alert,
+  ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts } from '@nexofit/core';
+import { colors, fonts, type SessionPublic } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSchedule } from '../../hooks/useBooking';
 import { Header, Card } from '../../components/ui';
+import { toLocalDateStr } from '../../utils/date';
+import type { NavigationProp } from '../../types/screens';
 
-interface Session {
+interface AgendaSession {
   id: string;
   class_name: string;
   start_at: string;
@@ -24,29 +27,38 @@ interface Session {
   space_name: string;
   capacity: number;
   booked: number;
-  status: string;
 }
 
-export function AgendaScreen() {
+/** Proyecta SessionPublic (useSchedule) a lo que pinta la tarjeta de agenda. */
+function toAgendaSession(s: SessionPublic): AgendaSession {
+  return {
+    id: s.id,
+    class_name: s.class_types?.name ?? 'Clase',
+    start_at: s.starts_at,
+    end_at: s.ends_at,
+    coach_name: s.coaches?.memberships?.profiles?.full_name ?? 'Sin coach',
+    venue_name: s.spaces?.venues?.name ?? '',
+    space_name: s.spaces?.name ?? '—',
+    capacity: s.capacity_override ?? s.spaces?.capacity ?? 0,
+    booked: s.booking_count ?? 0,
+  };
+}
+
+export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
   const { membership } = useAuth();
   const orgId = membership?.organization_id ?? '';
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(toLocalDateStr());
 
-  const fetchSessions = useCallback(async () => {
-    setLoading(true);
-    // TODO: Replace with actual Supabase query
-    await new Promise((r) => setTimeout(r, 500));
-    setSessions(mockSessions);
-    setLoading(false);
-  }, []);
+  // Mismo motor que la agenda del miembro: sesiones reales + cupos por RPC.
+  const { sessions: rawSessions, loading, error, refresh } = useSchedule(orgId, selectedDate);
 
   useFocusEffect(
     useCallback(() => {
-      fetchSessions();
-    }, [fetchSessions])
+      refresh();
+    }, [refresh])
   );
+
+  const sessions = rawSessions.map(toAgendaSession);
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
@@ -60,15 +72,18 @@ export function AgendaScreen() {
     return { day, num };
   };
 
+  // Fechas en zona LOCAL: toISOString().split('T')[0] (UTC) cambiaba de día
+  // por la tarde en horos negativos.
   const dates = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    return d.toISOString().split('T')[0];
+    return toLocalDateStr(d);
   });
 
-  const renderSession = ({ item }: { item: Session }) => {
-    const occupancy = `${item.booked}/${item.capacity}`;
-    const pct = Math.round((item.booked / item.capacity) * 100);
+  const renderSession = ({ item }: { item: AgendaSession }) => {
+    const capacity = Math.max(item.capacity, 0);
+    const pct = capacity > 0 ? Math.round((item.booked / capacity) * 100) : 0;
+    const location = item.venue_name ? `${item.venue_name} · ${item.space_name}` : item.space_name;
 
     return (
       <Card style={styles.sessionCard}>
@@ -81,9 +96,7 @@ export function AgendaScreen() {
           </View>
           <View style={styles.sessionMeta}>
             <Text style={styles.sessionCoach}>Coach: {item.coach_name}</Text>
-            <Text style={styles.sessionLocation}>
-              {item.venue_name} · {item.space_name}
-            </Text>
+            <Text style={styles.sessionLocation}>{location}</Text>
           </View>
         </View>
         <View style={styles.sessionFooter}>
@@ -96,7 +109,7 @@ export function AgendaScreen() {
             />
           </View>
           <Text style={styles.occupancyText}>
-            {occupancy} ({pct}%)
+            {item.booked}/{capacity} ({pct}%)
           </Text>
         </View>
       </Card>
@@ -146,54 +159,37 @@ export function AgendaScreen() {
         keyExtractor={(s) => s.id}
         renderItem={renderSession}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchSessions} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
         ListEmptyComponent={
-          !loading ? (
+          loading ? (
+            <View style={styles.center}>
+              <ActivityIndicator color={colors.turquesa} />
+              <Text style={styles.emptyHint}>Cargando clases…</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.center}>
+              <Text style={styles.emptyTitle}>No se pudo cargar</Text>
+              <Text style={styles.emptyHint}>{error}</Text>
+            </View>
+          ) : (
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>Sin clases programadas</Text>
-              <Text style={styles.emptyHint}>Crea una nueva clase para este día.</Text>
+              <Text style={styles.emptyHint}>Toca «+» para crear una clase este día.</Text>
             </View>
-          ) : null
+          )
         }
       />
 
       {/* FAB for new class */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => Alert.alert('Crear clase', 'Funcionalidad próximamente')}
+        onPress={() => navigation.navigate('CreateSession', { defaultDate: selectedDate })}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
-
-const mockSessions: Session[] = [
-  {
-    id: '1',
-    class_name: 'CrossFit WOD',
-    start_at: new Date().toISOString(),
-    end_at: new Date(Date.now() + 3600000).toISOString(),
-    coach_name: 'Carlos Ruiz',
-    venue_name: 'Nexo Training',
-    space_name: 'Sala Principal',
-    capacity: 20,
-    booked: 15,
-    status: 'scheduled',
-  },
-  {
-    id: '2',
-    class_name: 'Yoga Vinyasa',
-    start_at: new Date(Date.now() + 7200000).toISOString(),
-    end_at: new Date(Date.now() + 10800000).toISOString(),
-    coach_name: 'Laura Martín',
-    venue_name: 'Nexo Training',
-    space_name: 'Sala Zen',
-    capacity: 15,
-    booked: 8,
-    status: 'scheduled',
-  },
-];
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },

@@ -986,3 +986,39 @@ CREATE POLICY "workout_template_exercises_insert" ON public.workout_template_exe
         )
     )
   );
+
+-- ============================================================
+-- MEMBERSHIP PLANS & PAYMENTS (Stage 5)
+-- ============================================================
+
+ALTER TABLE public.membership_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+-- Los planes (precios) los ve cualquier miembro del org; solo el admin los gestiona.
+CREATE POLICY "membership_plans_select" ON public.membership_plans
+  FOR SELECT USING (public.is_org_member(organization_id));
+
+CREATE POLICY "membership_plans_insert" ON public.membership_plans
+  FOR INSERT WITH CHECK (public.is_org_admin(organization_id));
+
+CREATE POLICY "membership_plans_update" ON public.membership_plans
+  FOR UPDATE USING (public.is_org_admin(organization_id));
+
+CREATE POLICY "membership_plans_delete" ON public.membership_plans
+  FOR DELETE USING (public.is_org_admin(organization_id));
+
+-- Cada quien ve sus pagos; el admin del org ve los del gimnasio entero.
+CREATE POLICY "payments_select" ON public.payments
+  FOR SELECT USING (
+    profile_id = auth.uid()
+    OR public.is_org_admin(organization_id)
+  );
+
+CREATE POLICY "payments_insert" ON public.payments
+  FOR INSERT WITH CHECK (public.is_org_admin(organization_id));
+
+CREATE POLICY "payments_update" ON public.payments
+  FOR UPDATE USING (public.is_org_admin(organization_id));
+
+-- Sin política de DELETE a propósito: el libro de pagos no se borra,
+-- los cambios se registran como status 'refunded'.

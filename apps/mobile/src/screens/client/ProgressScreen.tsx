@@ -16,7 +16,9 @@ import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { useBodyMetrics, type MeasurementWithValues } from '../../hooks/useProgress';
+import { useWorkouts } from '../../hooks/useWorkout';
 import { toLocalDateStr } from '../../utils/date';
+import type { NavigationProp, WorkoutLogItem } from '../../types/screens';
 
 const METRIC_DEFINITIONS = [
   { name: 'Peso', unit: 'kg', placeholder: '70.0' },
@@ -41,7 +43,7 @@ function toMetricList(measurement?: MeasurementWithValues) {
   }));
 }
 
-export function ProgressScreen() {
+export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
   const { user, membership } = useAuth();
   const {
     measurements,
@@ -52,22 +54,33 @@ export function ProgressScreen() {
     deleteMeasurement,
     getLatestMetrics,
   } = useBodyMetrics(user?.id ?? '', membership?.organization_id);
+  const {
+    logs,
+    records,
+    loading: workoutsLoading,
+    error: workoutsError,
+    refresh: refreshWorkouts,
+  } = useWorkouts(user?.id ?? '');
   const [modalVisible, setModalVisible] = useState(false);
   const [metricInputs, setMetricInputs] = useState<Record<string, string>>({});
   const [selectedDate, setSelectedDate] = useState(toLocalDateStr());
   const [saving, setSaving] = useState(false);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       refresh();
-    }, [refresh])
+      refreshWorkouts();
+    }, [refresh, refreshWorkouts])
   );
 
   const latestMetrics = getLatestMetrics();
   const previousMetrics = toMetricList(measurements[1]);
   // Transición inicial: sin datos aún, mostrar el spinner a pantalla completa
   // en lugar de una pantalla vacía.
-  const initialLoading = loading && measurements.length === 0 && !error;
+  const initialLoading =
+    (loading && measurements.length === 0 && !error) ||
+    (workoutsLoading && logs.length === 0 && records.length === 0 && !workoutsError);
 
   const findLatest = (name: string) => latestMetrics.find((m) => m.name === name)?.value;
 
@@ -246,6 +259,72 @@ export function ProgressScreen() {
             />
           </Card>
 
+          {/* Personal Records */}
+          <Card style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Récords personales</Text>
+            {workoutsLoading ? (
+              <ActivityIndicator style={styles.loading} color={colors.turquesa} />
+            ) : records.length > 0 ? (
+              <View style={styles.recordsList}>
+                {records.map((record) => (
+                  <View key={record.id} style={styles.recordRow}>
+                    <Text style={styles.recordName}>
+                      {record.exercise_library?.name ?? 'Ejercicio'}
+                    </Text>
+                    <Text style={styles.recordValue}>
+                      {Number(record.value_numeric)} {record.unit}
+                    </Text>
+                    <Text style={styles.recordDate}>
+                      {new Date(record.achieved_at).toLocaleDateString('es-ES', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noHistory}>
+                Sin récords aún — registra entrenamientos con peso y aquí aparecerá tu mejor marca.
+              </Text>
+            )}
+            {workoutsError && <Text style={styles.workoutsError}>{workoutsError}</Text>}
+          </Card>
+
+          {/* Workout History */}
+          <Card style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Mis entrenamientos</Text>
+              <TouchableOpacity
+                style={styles.addChip}
+                onPress={() => navigation.navigate('WorkoutLog', {})}
+              >
+                <Text style={styles.addChipText}>+ Entrenamiento</Text>
+              </TouchableOpacity>
+            </View>
+            {workoutsLoading ? (
+              <ActivityIndicator style={styles.loading} color={colors.turquesa} />
+            ) : logs.length > 0 ? (
+              <View style={styles.historyList}>
+                {logs.map((log) => (
+                  <WorkoutLogRow
+                    key={log.id}
+                    log={log}
+                    expanded={expandedLogId === log.id}
+                    onToggle={() => setExpandedLogId((prev) => (prev === log.id ? null : log.id))}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View style={styles.noMetrics}>
+                <Text style={styles.noMetricsText}>Sin entrenamientos registrados</Text>
+                <Text style={styles.noMetricsSubtext}>
+                  Toca «+ Entrenamiento» para registrar tu primera sesión.
+                </Text>
+              </View>
+            )}
+          </Card>
+
           {/* Measurements History */}
           <Card style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Historial de medidas</Text>
@@ -324,6 +403,71 @@ export function ProgressScreen() {
         </View>
       </Modal>
     </View>
+  );
+}
+
+/** Fila del historial: resumen del entrenamiento; al tocarla muestra ejercicios y series. */
+function WorkoutLogRow({
+  log,
+  expanded,
+  onToggle,
+}: {
+  log: WorkoutLogItem;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const exercises = [...(log.workout_exercises ?? [])].sort(
+    (a, b) => a.order_index - b.order_index
+  );
+  const totalSets = exercises.reduce((sum, ex) => sum + (ex.exercise_sets?.length ?? 0), 0);
+  const date = new Date(log.started_at);
+
+  return (
+    <TouchableOpacity style={styles.workoutItem} onPress={onToggle} activeOpacity={0.7}>
+      <View style={styles.workoutItemHeader}>
+        <View style={styles.workoutItemInfo}>
+          <Text style={styles.workoutItemDate}>
+            {date.toLocaleDateString('es-ES', {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+            })}
+          </Text>
+          <Text style={styles.workoutItemMeta}>
+            {exercises.length} ejercicio{exercises.length === 1 ? '' : 's'} · {totalSets} serie
+            {totalSets === 1 ? '' : 's'}
+          </Text>
+        </View>
+        <Text style={styles.workoutItemChevron}>{expanded ? '▾' : '▸'}</Text>
+      </View>
+
+      {log.notes ? <Text style={styles.workoutItemNotes}>{log.notes}</Text> : null}
+
+      {expanded && (
+        <View style={styles.workoutDetail}>
+          {exercises.map((ex) => {
+            const sets = [...(ex.exercise_sets ?? [])].sort((a, b) => a.set_number - b.set_number);
+            return (
+              <View key={ex.id} style={styles.workoutExercise}>
+                <Text style={styles.workoutExerciseName}>
+                  {ex.exercise_library?.name ?? ex.custom_name ?? 'Ejercicio'}
+                </Text>
+                <Text style={styles.workoutExerciseSets}>
+                  {sets
+                    .map((s) => {
+                      const parts: string[] = [];
+                      if (s.reps != null) parts.push(`${s.reps} reps`);
+                      if (s.weight_kg != null) parts.push(`${Number(s.weight_kg)} kg`);
+                      return parts.join(' · ') || '—';
+                    })
+                    .join('   |   ')}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -576,6 +720,90 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.textSecondary,
     paddingVertical: 24,
+  },
+  // Récords personales
+  recordsList: { gap: 8 },
+  recordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  recordName: {
+    flex: 1,
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 13,
+    color: colors.azulNexo,
+  },
+  recordValue: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 14,
+    color: colors.turquesa,
+  },
+  recordDate: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 11,
+    color: '#9CA3AF',
+    width: 52,
+    textAlign: 'right',
+  },
+  workoutsError: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 12,
+    color: '#EF4444',
+  },
+  // Historial de entrenamientos
+  workoutItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    paddingVertical: 10,
+    gap: 6,
+  },
+  workoutItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  workoutItemInfo: { flex: 1, gap: 2 },
+  workoutItemDate: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 14,
+    color: colors.azulNexo,
+  },
+  workoutItemMeta: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  workoutItemChevron: { fontSize: 14, color: '#9CA3AF' },
+  workoutItemNotes: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  workoutDetail: {
+    gap: 8,
+    marginTop: 4,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    padding: 10,
+  },
+  workoutExercise: { gap: 2 },
+  workoutExerciseName: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 13,
+    color: colors.azulNexo,
+  },
+  workoutExerciseSets: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 17,
   },
   // Modal styles
   modalOverlay: {

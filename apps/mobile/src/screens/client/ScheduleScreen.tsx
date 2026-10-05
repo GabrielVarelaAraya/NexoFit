@@ -56,6 +56,8 @@ export function ScheduleScreen({ navigation }: Props) {
     const capacity = item.capacity_override ?? item.spaces?.capacity ?? 30;
     const spotsLeft = capacity - (item.booking_count ?? 0);
     const isFull = spotsLeft <= 0;
+    // Stage 5 · inteligencia: avisa cuando queda un cuarto o menos de cupos.
+    const isNearlyFull = !isFull && capacity > 0 && spotsLeft / capacity <= 0.25;
     const coachName = item.coaches?.memberships?.profiles?.full_name;
 
     const myStatus = myStatusBySession.get(item.id);
@@ -76,8 +78,14 @@ export function ScheduleScreen({ navigation }: Props) {
         style={styles.sessionCard}
         title={item.class_types?.name ?? 'Clase'}
         subtitle={`${formatTime(item.starts_at)} – ${formatTime(item.ends_at)}  ·  ${item.spaces?.venues?.name ?? ''} · ${item.spaces?.name ?? ''}`}
-        badge={isFull ? 'Completo' : `${spotsLeft} cupos`}
-        badgeColor={isFull ? '#EF4444' : colors.turquesa}
+        badge={
+          isFull
+            ? 'Completo'
+            : isNearlyFull
+              ? `¡Casi lleno! · ${spotsLeft} ${spotsLeft === 1 ? 'cupo' : 'cupos'}`
+              : `${spotsLeft} cupos`
+        }
+        badgeColor={isFull ? '#EF4444' : isNearlyFull ? '#F59E0B' : colors.turquesa}
       >
         {coachName && <Text style={styles.coach}>Coach: {coachName}</Text>}
         <Button

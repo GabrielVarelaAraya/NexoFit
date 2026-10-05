@@ -378,6 +378,44 @@ CREATE TABLE IF NOT EXISTS public.workout_template_exercises (
 ALTER TABLE public.measurements ALTER COLUMN organization_id DROP NOT NULL;
 
 -- ============================================================
+-- PAYMENTS (Stage 5): membership plans + payment ledger
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.membership_plans (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  description text,
+  price_cents int NOT NULL CHECK (price_cents >= 0),
+  currency text NOT NULL DEFAULT 'USD',
+  duration_days int NOT NULL CHECK (duration_days > 0),
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, name)
+);
+
+-- amount_cents keeps money in integers (no float rounding). Payments are
+-- recorded by an admin (cash/transfer/card taken at the gym); Stripe or any
+-- gateway can later write into this same ledger.
+CREATE TABLE IF NOT EXISTS public.payments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  profile_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  plan_id uuid REFERENCES public.membership_plans(id) ON DELETE SET NULL,
+  amount_cents int NOT NULL CHECK (amount_cents >= 0),
+  currency text NOT NULL DEFAULT 'USD',
+  method text NOT NULL DEFAULT 'cash'
+    CHECK (method IN ('cash', 'transfer', 'card', 'other')),
+  status text NOT NULL DEFAULT 'paid'
+    CHECK (status IN ('paid', 'pending', 'refunded')),
+  paid_at timestamptz NOT NULL DEFAULT now(),
+  notes text,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- ============================================================
 -- INDEXES
 -- ============================================================
 
@@ -402,6 +440,10 @@ CREATE INDEX IF NOT EXISTS idx_exercise_sets_exercise ON public.exercise_sets(wo
 CREATE INDEX IF NOT EXISTS idx_personal_records_profile ON public.personal_records(profile_id);
 CREATE INDEX IF NOT EXISTS idx_personal_records_exercise ON public.personal_records(exercise_library_id);
 CREATE INDEX IF NOT EXISTS idx_workout_templates_org ON public.workout_templates(organization_id);
+
+CREATE INDEX IF NOT EXISTS idx_membership_plans_org ON public.membership_plans(organization_id);
+CREATE INDEX IF NOT EXISTS idx_payments_org_profile ON public.payments(organization_id, profile_id);
+CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON public.payments(paid_at DESC);
 
 -- ============================================================
 -- TRIGGERS

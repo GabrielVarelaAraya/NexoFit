@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,18 +8,31 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { Header, Card } from '../../components/ui';
+import { Header, Card, LoadingView } from '../../components/ui';
+import { useDashboard, type ActivityItem, type UpcomingClass } from '../../hooks/useAdmin';
+import { formatMoney } from '../../hooks/usePayments';
+import { toLocalDateStr } from '../../utils/date';
+import type { NavigationProp } from '../../types/screens';
 
-export function DashboardScreen() {
+export function DashboardScreen({ navigation }: { navigation: NavigationProp }) {
   const { membership } = useAuth();
   const orgId = membership?.organization_id ?? '';
+  const { stats, activity, upcoming, loading, error, refresh } = useDashboard(orgId);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Refrescar al volver a la pestaña: los contadores cambian con reservas y altas.
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await new Promise((r) => setTimeout(r, 1000));
+    await refresh();
     setRefreshing(false);
   };
 
@@ -33,6 +46,31 @@ export function DashboardScreen() {
       </SafeAreaView>
     );
   }
+
+  // Transición inicial: sin datos aún, spinner a pantalla completa.
+  const initialLoading = loading && stats === null;
+
+  if (initialLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header
+          title="Dashboard"
+          subtitle={membership?.role === 'admin' ? 'Administrador' : 'Entrenador'}
+        />
+        <LoadingView label="Cargando métricas…" />
+      </SafeAreaView>
+    );
+  }
+
+  const safeStats = stats ?? {
+    activeMembers: 0,
+    newMembersThisMonth: 0,
+    sessionsToday: 0,
+    occupancy7d: null,
+    bookingsThisMonth: 0,
+    monthRevenueCents: 0,
+    monthRevenueCurrency: null,
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -51,29 +89,38 @@ export function DashboardScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Key Metrics */}
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        {/* Métricas reales (ingresos = pagos registrados del mes, Stage 5) */}
         <View style={styles.metricsGrid}>
           <MetricCard
             title="Miembros activos"
-            value="247"
-            change="+12 este mes"
+            value={String(safeStats.activeMembers)}
+            change={
+              safeStats.newMembersThisMonth > 0
+                ? `+${safeStats.newMembersThisMonth} este mes`
+                : undefined
+            }
             changePositive
             icon="👥"
           />
-          <MetricCard title="Clases hoy" value="8" change="3 completadas" icon="📅" />
+          <MetricCard
+            title="Ingresos del mes"
+            value={formatMoney(safeStats.monthRevenueCents, safeStats.monthRevenueCurrency)}
+            icon="💰"
+          />
+          <MetricCard title="Clases hoy" value={String(safeStats.sessionsToday)} icon="📅" />
           <MetricCard
             title="Ocupación media"
-            value="78%"
-            change="+5% vs semana pasada"
+            value={safeStats.occupancy7d != null ? `${safeStats.occupancy7d}%` : '—'}
+            change={safeStats.occupancy7d != null ? 'Próximos 7 días' : 'Sin clases programadas'}
             changePositive
             icon="📊"
           />
           <MetricCard
-            title="Ingresos mes"
-            value="€12,450"
-            change="+18% vs mes anterior"
-            changePositive
-            icon="💰"
+            title="Reservas este mes"
+            value={String(safeStats.bookingsThisMonth)}
+            icon="🎟️"
           />
         </View>
 
@@ -85,25 +132,39 @@ export function DashboardScreen() {
               icon="➕"
               label="Nueva clase"
               color={colors.turquesa}
-              onPress={() => {}}
-            />
-            <ActionButton
-              icon="👤"
-              label="Nuevo miembro"
-              color={colors.mentaActiva}
-              onPress={() => {}}
+              onPress={() =>
+                navigation.navigate('CreateSession', { defaultDate: toLocalDateStr() })
+              }
             />
             <ActionButton
               icon="📋"
-              label="Crear programa"
+              label="Publicar programa"
               color={colors.limaProgreso}
-              onPress={() => {}}
+              onPress={() => navigation.navigate('PublishProgram')}
             />
             <ActionButton
               icon="🔔"
               label="Enviar notificación"
               color={colors.azulNexo}
-              onPress={() => {}}
+              onPress={() => navigation.navigate('SendNotification')}
+            />
+            <ActionButton
+              icon="💰"
+              label="Pagos"
+              color={colors.mentaActiva}
+              onPress={() => navigation.navigate('Payments')}
+            />
+            <ActionButton
+              icon="🎨"
+              label="Crear tipo de clase"
+              color="#8B5CF6"
+              onPress={() => navigation.navigate('GymContent', { form: 'classType' })}
+            />
+            <ActionButton
+              icon="🏟️"
+              label="Crear sedes/espacios"
+              color="#F59E0B"
+              onPress={() => navigation.navigate('GymContent', { form: 'spaces' })}
             />
           </View>
         </Card>
@@ -112,91 +173,45 @@ export function DashboardScreen() {
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Actividad reciente</Text>
-            <Text style={styles.seeAll}>Ver todo</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Agenda')}>
+              <Text style={styles.seeAll}>Ver agenda</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.activityList}>
-            {recentActivity.map((item) => (
-              <ActivityItem key={item.id} item={item} />
-            ))}
-          </View>
+          {activity.length > 0 ? (
+            <View style={styles.activityList}>
+              {activity.map((item) => (
+                <ActivityRow key={item.id} item={item} />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptySection}>Todavía no hay actividad registrada.</Text>
+          )}
         </Card>
 
         {/* Upcoming Classes */}
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Próximas clases</Text>
-            <Text style={styles.seeAll}>Ver agenda</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Agenda')}>
+              <Text style={styles.seeAll}>Ver agenda</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.upcomingList}>
-            {upcomingClasses.map((cls) => (
-              <UpcomingClass key={cls.id} cls={cls} />
-            ))}
-          </View>
+          {upcoming.length > 0 ? (
+            <View style={styles.upcomingList}>
+              {upcoming.map((cls) => (
+                <UpcomingRow key={cls.id} cls={cls} />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptySection}>
+              Sin clases programadas. Crea una con «Nueva clase».
+            </Text>
+          )}
         </Card>
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const recentActivity = [
-  {
-    id: '1',
-    type: 'booking',
-    text: 'María García reservó "CrossFit WOD"',
-    time: 'hace 5 min',
-    icon: '✅',
-  },
-  { id: '2', type: 'member', text: 'Nuevo miembro: Carlos López', time: 'hace 12 min', icon: '👤' },
-  {
-    id: '3',
-    type: 'cancel',
-    text: 'Juan Pérez canceló "Yoga Matutino"',
-    time: 'hace 28 min',
-    icon: '❌',
-  },
-  {
-    id: '4',
-    type: 'waitlist',
-    text: 'Ana Martín promovida de lista de espera',
-    time: 'hace 1 h',
-    icon: '⬆️',
-  },
-];
-
-const upcomingClasses = [
-  {
-    id: '1',
-    name: 'CrossFit WOD',
-    time: '07:00',
-    coach: 'Carlos R.',
-    spots: '12/20',
-    color: '#EF4444',
-  },
-  {
-    id: '2',
-    name: 'Yoga Vinyasa',
-    time: '09:30',
-    coach: 'Laura M.',
-    spots: '8/15',
-    color: '#8B5CF6',
-  },
-  {
-    id: '3',
-    name: 'Funcional',
-    time: '12:00',
-    coach: 'Pedro G.',
-    spots: '15/20',
-    color: '#06B6D4',
-  },
-  {
-    id: '4',
-    name: 'HIIT Cardio',
-    time: '18:30',
-    coach: 'Sara K.',
-    spots: '5/15',
-    color: '#F59E0B',
-  },
-];
 
 function MetricCard({
   title,
@@ -207,7 +222,7 @@ function MetricCard({
 }: {
   title: string;
   value: string;
-  change: string;
+  change?: string;
   changePositive?: boolean;
   icon: string;
 }) {
@@ -216,11 +231,13 @@ function MetricCard({
       <Text style={styles.metricIcon}>{icon}</Text>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricTitle}>{title}</Text>
-      <Text
-        style={[styles.metricChange, { color: changePositive ? colors.limaProgreso : '#EF4444' }]}
-      >
-        {change}
-      </Text>
+      {change !== undefined && (
+        <Text
+          style={[styles.metricChange, { color: changePositive ? colors.limaProgreso : '#EF4444' }]}
+        >
+          {change}
+        </Text>
+      )}
     </View>
   );
 }
@@ -248,7 +265,7 @@ function ActionButton({
   );
 }
 
-function ActivityItem({ item }: { item: (typeof recentActivity)[0] }) {
+function ActivityRow({ item }: { item: ActivityItem }) {
   return (
     <View style={styles.activityItem}>
       <Text style={styles.activityIcon}>{item.icon}</Text>
@@ -260,7 +277,7 @@ function ActivityItem({ item }: { item: (typeof recentActivity)[0] }) {
   );
 }
 
-function UpcomingClass({ cls }: { cls: (typeof upcomingClasses)[0] }) {
+function UpcomingRow({ cls }: { cls: UpcomingClass }) {
   return (
     <View style={styles.upcomingItem}>
       <View style={[styles.upcomingColor, { backgroundColor: cls.color }]} />
@@ -277,6 +294,12 @@ function UpcomingClass({ cls }: { cls: (typeof upcomingClasses)[0] }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
   content: { padding: 16, gap: 16, paddingBottom: 40 },
+  error: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 13,
+    color: '#EF4444',
+    textAlign: 'center',
+  },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -326,6 +349,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.uiRegular,
     fontSize: 13,
     color: colors.turquesa,
+  },
+  emptySection: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 13,
+    color: '#9CA3AF',
+    paddingVertical: 8,
   },
   actionsGrid: {
     flexDirection: 'row',

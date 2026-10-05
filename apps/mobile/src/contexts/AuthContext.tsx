@@ -8,6 +8,8 @@ export interface AuthContextValue {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  /** true mientras se resuelve la membresía (rol) del usuario con sesión. */
+  membershipLoading: boolean;
   membership: { organization_id: string; role: RoleType; organization_name?: string } | null;
   refreshMembership: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
@@ -30,6 +32,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = getSupabase();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  // Usuario al que pertenece `membership` (null = sin membresía resuelta).
+  // Evita el parpadeo de pestañas al iniciar sesión: el rol se resuelve por
+  // id de usuario, no por un booleano con carreras de timing.
+  const [membershipUserId, setMembershipUserId] = useState<string | null>(null);
   const [membership, setMembership] = useState<{
     organization_id: string;
     role: RoleType;
@@ -108,14 +114,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!session?.user) {
       setMembership(null);
+      setMembershipUserId(null);
       return;
     }
 
     let cancelled = false;
+    const uid = session.user.id;
 
     // maybeSingle: un usuario sin membresía no debe dejar la membresía
     // del usuario anterior ni provocar errores PGRST116 en consola.
-    fetchMembership(session.user.id).then((data) => {
+    fetchMembership(uid).then((data) => {
       if (cancelled) return;
       if (data) {
         setMembership({
@@ -126,6 +134,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setMembership(null);
       }
+      // Marca la membresía como resuelta PARA ESTE usuario.
+      setMembershipUserId(uid);
     });
 
     return () => {
@@ -138,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshMembership = useCallback(async () => {
     if (!session?.user) {
       setMembership(null);
+      setMembershipUserId(null);
       return;
     }
     const data = await fetchMembership(session.user.id);
@@ -150,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setMembership(null);
     }
+    setMembershipUserId(session.user.id);
   }, [session?.user, fetchMembership]);
 
   const signIn = async (email: string, password: string) => {
@@ -195,12 +207,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message };
   };
 
+  // La membresía (y con ella el rol) debe estar resuelta ANTES de montar el
+  // stack principal: initialRouteName (AdminTabs vs ClientTabs) solo aplica
+  // en el primer render del navegador.
+  const membershipLoading = session ? membershipUserId !== session.user.id : false;
+
   return (
     <AuthContext.Provider
       value={{
         session,
         user: session?.user ?? null,
         loading,
+        membershipLoading,
         membership,
         refreshMembership,
         signIn,

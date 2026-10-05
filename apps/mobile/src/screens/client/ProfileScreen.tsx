@@ -15,6 +15,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../hooks/useProgress';
+import {
+  fetchMyPayments,
+  formatMoney,
+  formatShortDate,
+  METHOD_LABELS,
+  STATUS_LABELS,
+  type PaymentMethod,
+  type MyPayment,
+  type CurrentPlan,
+} from '../../hooks/usePayments';
 import { Header, Button, Card } from '../../components/ui';
 
 interface NotificationItem {
@@ -37,6 +47,12 @@ export function ProfileScreen() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState<string | null>(null);
+
+  const [payVisible, setPayVisible] = useState(false);
+  const [payLoading, setPayLoading] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [myPayments, setMyPayments] = useState<MyPayment[]>([]);
+  const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
 
   const handleSignOut = () => {
     Alert.alert('Cerrar sesión', '¿Estás seguro?', [
@@ -78,6 +94,19 @@ export function ProfileScreen() {
     setNotifications(error ? [] : (data ?? []));
     setNotifError(error ? 'No se pudieron cargar las notificaciones.' : null);
     setNotifLoading(false);
+  }, [user?.id]);
+
+  // Stage 5 · pagos del miembro: plan vigente + historial.
+  const openPayments = useCallback(async () => {
+    setPayVisible(true);
+    setPayLoading(true);
+    setPayError(null);
+
+    const result = await fetchMyPayments(user?.id ?? '');
+    setMyPayments(result.payments);
+    setCurrentPlan(result.currentPlan);
+    setPayError(result.error ?? null);
+    setPayLoading(false);
   }, [user?.id]);
 
   const roleLabels: Record<string, string> = {
@@ -124,6 +153,7 @@ export function ProfileScreen() {
           <Text style={styles.cardTitle}>Cuenta</Text>
           <ActionRow icon="person" label="Editar perfil" onPress={openEdit} />
           <ActionRow icon="notifications" label="Notificaciones" onPress={openNotifications} />
+          <ActionRow icon="card" label="Mis pagos y plan" onPress={openPayments} />
           <ActionRow
             icon="help-circle"
             label="Ayuda y soporte"
@@ -233,6 +263,75 @@ export function ProfileScreen() {
               variant="ghost"
               style={styles.modalButton}
               onPress={() => setNotifVisible(false)}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Payments modal (Stage 5): plan vigente + historial de cobros */}
+      <Modal
+        visible={payVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPayVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Mis pagos y plan</Text>
+
+            {payLoading ? (
+              <ActivityIndicator
+                size="large"
+                color={colors.turquesa}
+                style={{ marginVertical: 24 }}
+              />
+            ) : payError ? (
+              <Text style={styles.notifError}>{payError}</Text>
+            ) : (
+              <>
+                {currentPlan ? (
+                  <View style={styles.planBox}>
+                    <Text style={styles.planBoxLabel}>Plan vigente</Text>
+                    <Text style={styles.planBoxName}>{currentPlan.planName}</Text>
+                    <Text style={styles.planBoxMeta}>
+                      Válido hasta el {formatShortDate(currentPlan.validUntil)}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.notifEmpty}>
+                    Aún no tienes un plan activo. Consulta las membresías disponibles en tu
+                    gimnasio.
+                  </Text>
+                )}
+
+                {myPayments.length > 0 && (
+                  <ScrollView style={styles.notifList} showsVerticalScrollIndicator={false}>
+                    {myPayments.map((p) => (
+                      <View key={p.id} style={styles.notifItem}>
+                        <Text style={styles.notifTitle}>
+                          {formatMoney(p.amountCents, p.currency)}
+                        </Text>
+                        <Text style={styles.notifBody}>
+                          {[p.planName ?? 'Pago sin plan', METHOD_LABELS[p.method as PaymentMethod]]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Text>
+                        <Text style={styles.notifDate}>
+                          {formatShortDate(p.paidAt)}
+                          {p.status !== 'paid' ? ` · ${STATUS_LABELS[p.status] ?? p.status}` : ''}
+                        </Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+              </>
+            )}
+
+            <Button
+              title="Cerrar"
+              variant="ghost"
+              style={styles.modalButton}
+              onPress={() => setPayVisible(false)}
             />
           </View>
         </View>
@@ -421,5 +520,26 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     paddingVertical: 16,
     textAlign: 'center',
+  },
+  planBox: {
+    backgroundColor: '#E8F7F5',
+    borderRadius: 12,
+    padding: 14,
+    gap: 4,
+  },
+  planBoxLabel: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  planBoxName: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 16,
+    color: colors.azulNexo,
+  },
+  planBoxMeta: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 13,
+    color: '#374151',
   },
 });

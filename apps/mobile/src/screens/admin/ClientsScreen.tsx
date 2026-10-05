@@ -7,48 +7,50 @@ import {
   RefreshControl,
   TextInput,
   TouchableOpacity,
+  Image,
+  Alert,
+  ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts } from '@nexofit/core';
+import { colors, fonts, type RoleType } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrgMembers, type OrgMember } from '../../hooks/useAdmin';
 import { Header, Card } from '../../components/ui';
 
-interface Member {
-  id: string;
-  email: string;
-  full_name: string;
-  role: 'admin' | 'coach' | 'professional' | 'member';
-  joined_at: string;
-  avatar_url?: string;
-}
+const roleLabels: Record<string, string> = {
+  admin: 'Admin',
+  coach: 'Entrenador',
+  professional: 'Profesional',
+  member: 'Miembro',
+};
+
+const roleColors: Record<string, string> = {
+  admin: '#EF4444',
+  coach: '#8B5CF6',
+  professional: '#06B6D4',
+  member: colors.turquesa,
+};
 
 export function ClientsScreen() {
-  const { membership } = useAuth();
+  const { user, membership } = useAuth();
   const orgId = membership?.organization_id ?? '';
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const isAdmin = membership?.role === 'admin';
+  const { members, loading, error, refresh, updateRole } = useOrgMembers(orgId);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'member' | 'coach' | 'professional'>('all');
-
-  const fetchMembers = useCallback(async () => {
-    setLoading(true);
-    // TODO: Replace with actual Supabase query
-    await new Promise((r) => setTimeout(r, 500));
-    setMembers(mockMembers);
-    setLoading(false);
-  }, []);
+  const [changingId, setChangingId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      fetchMembers();
-    }, [fetchMembers])
+      refresh();
+    }, [refresh])
   );
 
   const filteredMembers = members.filter((m) => {
+    const term = search.trim().toLowerCase();
     const matchesSearch =
-      m.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      m.email?.toLowerCase().includes(search.toLowerCase());
+      !term || m.fullName?.toLowerCase().includes(term) || m.phone?.toLowerCase().includes(term);
     const matchesRole = filterRole === 'all' || m.role === filterRole;
     return matchesSearch && matchesRole;
   });
@@ -58,61 +60,77 @@ export function ClientsScreen() {
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const roleLabels: Record<string, string> = {
-    admin: 'Admin',
-    coach: 'Entrenador',
-    professional: 'Profesional',
-    member: 'Miembro',
+  const applyRole = async (member: OrgMember, role: RoleType) => {
+    setChangingId(member.membershipId);
+    const result = await updateRole(member.membershipId, role);
+    setChangingId(null);
+
+    if (!result.success) {
+      Alert.alert('No se pudo cambiar el rol', result.error ?? 'Inténtalo de nuevo.');
+    }
   };
 
-  const roleColors: Record<string, string> = {
-    admin: '#EF4444',
-    coach: '#8B5CF6',
-    professional: '#06B6D4',
-    member: colors.turquesa,
+  const requestRoleChange = (member: OrgMember) => {
+    if (!isAdmin) {
+      Alert.alert('Sin permiso', 'Solo el administrador del gimnasio puede cambiar roles.');
+      return;
+    }
+    if (member.profileId === user?.id) {
+      Alert.alert('Atención', 'No puedes cambiar tu propio rol.');
+      return;
+    }
+
+    const options: RoleType[] = ['member', 'coach', 'professional', 'admin'];
+    Alert.alert('Cambiar rol', `Selecciona el nuevo rol de ${member.fullName ?? 'este miembro'}:`, [
+      ...options.map((role) => ({
+        text: roleLabels[role],
+        onPress: () => applyRole(member, role),
+      })),
+      { text: 'Cancelar', style: 'cancel' as const },
+    ]);
   };
 
-  const handleRoleChange = (memberId: string, newRole: Member['role']) => {
-    // TODO: Implement actual role update
-    setMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m)));
-  };
-
-  const renderMember = ({ item }: { item: Member }) => {
+  const renderMember = ({ item }: { item: OrgMember }) => {
     const roleColor = roleColors[item.role];
+    const initial =
+      item.fullName?.charAt(0)?.toUpperCase() ?? item.phone?.charAt(0)?.toUpperCase() ?? '?';
+    const isChanging = changingId === item.membershipId;
 
     return (
       <Card style={styles.memberCard}>
         <View style={styles.memberHeader}>
           <View style={styles.memberAvatar}>
-            {item.avatar_url ? null : (
-              <Text style={styles.avatarText}>
-                {item.full_name?.charAt(0)?.toUpperCase() ??
-                  item.email?.charAt(0)?.toUpperCase() ??
-                  '?'}
-              </Text>
+            {item.avatarUrl ? (
+              <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{initial}</Text>
             )}
           </View>
           <View style={styles.memberInfo}>
-            <Text style={styles.memberName}>{item.full_name ?? 'Sin nombre'}</Text>
-            <Text style={styles.memberEmail}>{item.email}</Text>
+            <Text style={styles.memberName}>{item.fullName ?? 'Sin nombre'}</Text>
+            <Text style={styles.memberEmail}>
+              {item.phone ? `Tel. ${item.phone}` : 'Sin teléfono registrado'}
+            </Text>
           </View>
           <View style={[styles.roleBadge, { backgroundColor: roleColor + '20' }]}>
             <Text style={[styles.roleText, { color: roleColor }]}>{roleLabels[item.role]}</Text>
           </View>
         </View>
         <View style={styles.memberFooter}>
-          <Text style={styles.joinedDate}>Miembro desde: {formatDate(item.joined_at)}</Text>
-          <TouchableOpacity
-            style={[styles.roleSelector, { borderColor: roleColor }]}
-            onPress={() => {
-              const roles: Member['role'][] = ['member', 'coach', 'professional', 'admin'];
-              const currentIndex = roles.indexOf(item.role);
-              const nextRole = roles[(currentIndex + 1) % roles.length];
-              handleRoleChange(item.id, nextRole);
-            }}
-          >
-            <Text style={[styles.roleSelectorText, { color: roleColor }]}>Cambiar rol</Text>
-          </TouchableOpacity>
+          <Text style={styles.joinedDate}>Miembro desde: {formatDate(item.joinedAt)}</Text>
+          {isAdmin && (
+            <TouchableOpacity
+              style={[styles.roleSelector, { borderColor: roleColor }]}
+              disabled={isChanging}
+              onPress={() => requestRoleChange(item)}
+            >
+              {isChanging ? (
+                <ActivityIndicator size="small" color={roleColor} />
+              ) : (
+                <Text style={[styles.roleSelectorText, { color: roleColor }]}>Cambiar rol</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </Card>
     );
@@ -131,13 +149,16 @@ export function ClientsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="Clientes" subtitle="Gestiona tus miembros" />
+      <Header
+        title="Clientes"
+        subtitle={isAdmin ? 'Gestiona tus miembros' : 'Solo lectura (rol entrenador)'}
+      />
 
       {/* Search & Filters */}
       <View style={styles.filters}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar por nombre o email"
+          placeholder="Buscar por nombre o teléfono"
           placeholderTextColor={colors.textSecondary}
           value={search}
           onChangeText={setSearch}
@@ -161,72 +182,33 @@ export function ClientsScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        {error && <Text style={styles.error}>{error}</Text>}
       </View>
 
       {/* Members List */}
       <FlatList
         data={filteredMembers}
-        keyExtractor={(m) => m.id}
+        keyExtractor={(m) => m.membershipId}
         renderItem={renderMember}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchMembers} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
         ListEmptyComponent={
-          !loading ? (
+          loading ? (
+            <View style={styles.center}>
+              <ActivityIndicator color={colors.turquesa} />
+              <Text style={styles.emptyHint}>Cargando miembros…</Text>
+            </View>
+          ) : (
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>Sin miembros</Text>
               <Text style={styles.emptyHint}>No hay miembros que coincidan con la búsqueda.</Text>
             </View>
-          ) : null
+          )
         }
       />
     </SafeAreaView>
   );
 }
-
-const mockMembers: Member[] = [
-  {
-    id: '1',
-    email: 'maria@email.com',
-    full_name: 'María García',
-    role: 'member',
-    joined_at: '2024-01-15T00:00:00Z',
-  },
-  {
-    id: '2',
-    email: 'carlos@email.com',
-    full_name: 'Carlos López',
-    role: 'member',
-    joined_at: '2024-02-20T00:00:00Z',
-  },
-  {
-    id: '3',
-    email: 'laura@email.com',
-    full_name: 'Laura Martín',
-    role: 'coach',
-    joined_at: '2023-11-10T00:00:00Z',
-  },
-  {
-    id: '4',
-    email: 'pedro@email.com',
-    full_name: 'Pedro González',
-    role: 'coach',
-    joined_at: '2023-09-01T00:00:00Z',
-  },
-  {
-    id: '5',
-    email: 'ana@email.com',
-    full_name: 'Ana Ruiz',
-    role: 'professional',
-    joined_at: '2024-03-01T00:00:00Z',
-  },
-  {
-    id: '6',
-    email: 'admin@nexofit.com',
-    full_name: 'Admin Principal',
-    role: 'admin',
-    joined_at: '2023-01-01T00:00:00Z',
-  },
-];
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
@@ -251,6 +233,7 @@ const styles = StyleSheet.create({
     borderColor: colors.azulNexo + '20',
   },
   filterChipText: { fontFamily: fonts.uiSemiBold, fontSize: 13, color: colors.azulNexo },
+  error: { fontFamily: fonts.uiRegular, fontSize: 12, color: '#EF4444' },
   list: { padding: 16, gap: 12, paddingBottom: 24 },
   memberCard: { gap: 12 },
   memberHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -261,7 +244,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.turquesa + '20',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: 48, height: 48, borderRadius: 24 },
   avatarText: { fontFamily: fonts.brand, fontSize: 18, color: colors.turquesa },
   memberInfo: { flex: 1, gap: 2 },
   memberName: { fontFamily: fonts.uiSemiBold, fontSize: 15, color: colors.azulNexo },
@@ -277,7 +262,14 @@ const styles = StyleSheet.create({
     borderTopColor: '#F3F4F6',
   },
   joinedDate: { fontFamily: fonts.uiRegular, fontSize: 12, color: '#9CA3AF' },
-  roleSelector: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+  roleSelector: {
+    minWidth: 110,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
   roleSelectorText: { fontFamily: fonts.uiSemiBold, fontSize: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 80 },
   emptyTitle: { fontFamily: fonts.uiSemiBold, fontSize: 18, color: colors.azulNexo },

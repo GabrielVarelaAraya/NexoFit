@@ -74,7 +74,14 @@ export function CreateGymScreen({ navigation }: Props) {
     Alert.alert(
       '¡Gimnasio creado!',
       `"${result.name}" ya está disponible en NexoFit (/${result.slug}).`,
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
+      // Como admin, entrar directo al panel de gestión: volver atrás dejaría
+      // al usuario en la app de cliente con la que llegó a esta pantalla.
+      [
+        {
+          text: 'Gestionar gimnasio',
+          onPress: () => navigation.reset({ index: 0, routes: [{ name: 'AdminTabs' }] }),
+        },
+      ]
     );
   };
 

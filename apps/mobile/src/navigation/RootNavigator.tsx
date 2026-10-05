@@ -21,6 +21,14 @@ import { SessionDetailScreen } from '../screens/client/SessionDetailScreen';
 import { MyBookingsScreen } from '../screens/client/MyBookingsScreen';
 import { JoinGymScreen } from '../screens/client/JoinGymScreen';
 import { CreateGymScreen } from '../screens/client/CreateGymScreen';
+import { WorkoutLogScreen } from '../screens/client/WorkoutLogScreen';
+
+// Admin screens (from admin tabs)
+import { CreateSessionScreen } from '../screens/admin/CreateSessionScreen';
+import { PublishProgramScreen } from '../screens/admin/PublishProgramScreen';
+import { SendNotificationScreen } from '../screens/admin/SendNotificationScreen';
+import { PaymentsScreen } from '../screens/admin/PaymentsScreen';
+import { GymContentScreen } from '../screens/admin/GymContentScreen';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -48,9 +56,16 @@ function AuthNavigator() {
 
 function MainNavigator() {
   const theme = useTheme();
+  const { membership } = useAuth();
+
+  // Rol resuelto antes de montar el stack (RootNavigator espera a
+  // membershipLoading): admin/coach entran a su panel de gestión
+  // (clases, programas, clientes, pagos); los miembros ven la app cliente.
+  const isStaff = membership?.role === 'admin' || membership?.role === 'coach';
 
   return (
     <MainStack.Navigator
+      initialRouteName={isStaff ? 'AdminTabs' : 'ClientTabs'}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: theme.crema },
@@ -62,15 +77,23 @@ function MainNavigator() {
       <MainStack.Screen name="MyBookings" component={MyBookingsScreen} />
       <MainStack.Screen name="JoinGym" component={JoinGymScreen} />
       <MainStack.Screen name="CreateGym" component={CreateGymScreen} />
+      <MainStack.Screen name="WorkoutLog" component={WorkoutLogScreen} />
+      <MainStack.Screen name="CreateSession" component={CreateSessionScreen} />
+      <MainStack.Screen name="PublishProgram" component={PublishProgramScreen} />
+      <MainStack.Screen name="SendNotification" component={SendNotificationScreen} />
+      <MainStack.Screen name="Payments" component={PaymentsScreen} />
+      <MainStack.Screen name="GymContent" component={GymContentScreen} />
     </MainStack.Navigator>
   );
 }
 
 export function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, membershipLoading } = useAuth();
   const theme = useTheme();
 
-  if (loading) {
+  // membershipLoading: con sesión pero aún sin rol resuelto, mantener el
+  // spinner para no montar las pestañas equivocadas (initialRouteName).
+  if (loading || membershipLoading) {
     return (
       <View
         style={{

@@ -40,14 +40,19 @@ Wait for each to complete before running the next. You should see "Success" afte
 > policies), so it is safe to re-run them. A project already set up with the
 > previous 8-file layout does **not** need to re-run anything — the final
 > state is identical.
+>
+> **Upgrading an existing project:** re-run all three files in order after
+> pulling new changes. That's how you get the Stage 5 additions (the
+> `membership_plans`/`payments` tables, their RLS policies, and the updated
+> `cancel_booking` with the waitlist-promotion notification).
 
 ### What each migration does
 
 | Migration | Purpose                                                                                |
 | --------- | -------------------------------------------------------------------------------------- |
-| `000001`  | Creates all 27 tables, 7 enums, 20 indexes, and the timestamp/user triggers            |
+| `000001`  | Creates all 29 tables, 7 enums, 23 indexes, and the timestamp/user triggers            |
 | `000002`  | Creates RPCs: `book_session`, `cancel_booking`, `create_organization`, and RLS helpers |
-| `000003`  | Enables RLS on every table and creates the 94 final policies                           |
+| `000003`  | Enables RLS on every table and creates the 101 final policies                          |
 
 ## 3. Disable Email Confirmation (optional, for faster testing)
 
@@ -111,15 +116,23 @@ You'll see a QR code in the terminal.
 
 ### Join or create a gym (real flow)
 
-After logging in you land on **Inicio**. If your account has no gym yet you
-get two real options (no mocks):
+After logging in without a gym you land on **Inicio**. If your account has
+no gym yet you get two real options (no mocks):
 
 - **Buscar un gimnasio** → directory of real organizations → _Unirme a este
-  gimnasio_ enrolls you instantly as a `member`.
+  gimnasio_ enrolls you instantly as a `member` (client tabs).
 - **Registrar mi gimnasio** → creates the organization via the
-  `create_organization()` RPC and makes you its `admin`.
+  `create_organization()` RPC, makes you its `admin` and drops you straight
+  into the **admin panel** (Dashboard / Agenda / Clientes / Más).
 
 Either action refreshes your membership immediately — no app restart needed.
+The role decides the tabs: `admin`/`coach` → admin tabs (create classes,
+publish programs, notifications, payments); everyone else → client tabs.
+
+> A brand-new gym starts with **no venues, spaces or class types**. Your
+> first stop as admin is **Más → Espacios y clases**: create a sede, its
+> spaces (with cupo) and your class types — then **Nueva clase** works end
+> to end. No SQL needed.
 
 ### Create test data (via SQL)
 
@@ -260,6 +273,48 @@ FROM profiles p
 ORDER BY p.created_at DESC
 LIMIT 1
 ON CONFLICT (id) DO NOTHING;
+
+-- 9) Biblioteca de ejercicios (para registrar entrenamientos en Progreso)
+INSERT INTO exercise_library (id, organization_id, name, category, primary_muscle, equipment)
+VALUES
+  ('dddddddd-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Sentadilla', 'Fuerza', 'Piernas', ARRAY['Barra']),
+  ('dddddddd-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'Press de banca', 'Fuerza', 'Pecho', ARRAY['Barra', 'Banco']),
+  ('dddddddd-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', 'Peso muerto', 'Fuerza', 'Espalda', ARRAY['Barra']),
+  ('dddddddd-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'Dominadas', 'Calistenia', 'Espalda', ARRAY['Barra de dominadas']),
+  ('dddddddd-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'Carrera continua', 'Cardio', NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- 10) Programa del coach para la sesión de hoy (se ve en el detalle de la clase)
+INSERT INTO workout_programs (id, session_id, content, published_by)
+VALUES (
+  'eeeeeeee-0000-0000-0000-000000000001',
+  '66666666-6666-6666-6666-666666666666',
+  E'Warm-up\n• 500 m remo\n• 10 flexiones\n• 10 sentadillas\n\nWOD\n• 5 rondas: 10 sentadillas con peso (30 kg) y 200 m carrera\n\nCool-down\n• Estiramiento 5 min',
+  (SELECT id FROM profiles ORDER BY created_at DESC LIMIT 1)
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- 11) Planes de membresía (Stage 5 · Pagos)
+INSERT INTO membership_plans (id, organization_id, name, description, price_cents, currency, duration_days)
+VALUES
+  ('eeeeeeee-0000-0000-0000-000000000011', '11111111-1111-1111-1111-111111111111', 'Plan mensual', 'Acceso ilimitado a clases grupales', 2500, 'USD', 30),
+  ('eeeeeeee-0000-0000-0000-000000000012', '11111111-1111-1111-1111-111111111111', 'Plan anual', '12 meses de acceso con descuento', 24000, 'USD', 365)
+ON CONFLICT (id) DO NOTHING;
+
+-- 12) Un pago de ejemplo (hoy) para el perfil más reciente: alimenta el
+--     "Ingresos del mes" del Dashboard y Perfil → "Mis pagos y plan".
+INSERT INTO payments (id, organization_id, profile_id, plan_id, amount_cents, currency, method, status, created_by)
+SELECT
+  'eeeeeeee-0000-0000-0000-000000000013',
+  '11111111-1111-1111-1111-111111111111',
+  p.id,
+  'eeeeeeee-0000-0000-0000-000000000011',
+  2500, 'USD', 'cash', 'paid',
+  p.id
+FROM profiles p
+ORDER BY p.created_at DESC
+LIMIT 1
+ON CONFLICT (id) DO NOTHING;
 ```
 
 ### Book a session
@@ -310,14 +365,85 @@ A single profile can't queue behind itself — a confirmed booking returns
    → waitlist #1 (re-tapping returns your position, not an error)
 5. Cancel the confirmed booking → the waitlist auto-promotes to confirmed
 
+### Log a workout (Stage 4)
+
+1. Run the seed above — steps 9–10 add an exercise library and a coach
+   program for today's session.
+2. **Progreso** tab → **+ Entrenamiento** → _+ Añadir_ → pick "Sentadilla"
+   → enter reps/peso per serie → **Guardar entrenamiento**.
+3. The log appears under **Mis entrenamientos** (tap it to expand the sets)
+   and, if you beat your best weight, a new row shows under
+   **Récords personales**.
+4. From **Clases → detalle de la clase** you can also tap
+   **Registrar entrenamiento**: the log stays linked to that session (and its
+   program), and when the coach published one you'll see the card
+   **Entrenamiento de la sesión**.
+
+### Admin flows (Stage 6)
+
+1. Log in with the seed user (step 2 makes the latest profile **admin** of
+   Test Gym). You land on the admin tabs: Dashboard / Agenda / Clientes / Más.
+2. **Dashboard** — metrics are real: miembros activos, ingresos del mes,
+   clases hoy, ocupación media (próximos 7 días) y reservas este mes;
+   _Actividad reciente_ shows real bookings/cancellations/signups and
+   _Próximas clases_ the next sessions with their cupos. Pull to refresh.
+3. **Agenda** — pick a day → real sessions with occupancy bars. Tap the **+**
+   FAB → _Nueva clase_ (tipo, espacio, fecha, horario, cupo opcional) → the
+   class shows up on that day (and in the member schedule).
+4. **Clientes** — search by nombre/teléfono, filter by rol. As **admin**,
+   _Cambiar rol_ writes to `memberships` (confirmation dialog; you cannot
+   change your own role).
+5. **Más → Espacios y clases** — el gimnasio carga su contenido sin SQL:
+   _Tipos de clase_ (nombre, color, descripción) y _Sedes y espacios_
+   (sede con dirección + espacios con cupo). Eliminar un tipo o espacio con
+   clases programadas está bloqueado (los CASCADE borrarían esas clases).
+   Sedes/espacios solo los ve el admin; los entrenadores gestionan tipos.
+6. **Dashboard → Acciones rápidas / Más**:
+   - _Publicar programa_ → pick an upcoming class, write the WOD → the member
+     sees it in the class detail as **Entrenamiento de la sesión**.
+   - _Enviar notificación_ → title + message → every member receives it under
+     **Perfil → Notificaciones**.
+   - _Pagos_ → planes, historial y registro de cobros (flujo Stage 5 abajo).
+   - _Crear tipo de clase_ / _Crear sedes/espacios_ → abren **Espacios y
+     clases** con el formulario listo (si aún no hay sede abre la de sede;
+     si ya existe, la de espacio).
+
+### Payments & scheduling intelligence (Stage 5)
+
+1. **Role-based tabs:** sign in as the Test Gym admin (seed step 2) → you
+   land on the **admin tabs** (Dashboard / Agenda / Clientes / Más). Creating
+   your own gym (_Registrar mi gimnasio_) also drops you straight into the
+   admin panel; plain members land on the client tabs.
+2. **Payments (admin)** — Más → **Pagos** (or Dashboard → action 💰):
+   - _Historial_ shows "Ingresos de {mes}" (seed step 12) and the last
+     payments.
+   - **Registrar pago** → member picker (search), plan chip (prefills the
+     amount), método → **Registrar pago**.
+   - _Planes_ tab → **Nuevo plan** (nombre, precio, moneda, días) and
+     **Archivar** on each active plan.
+3. **Payments (member)** — Perfil → **Mis pagos y plan** → plan vigente
+   ("Válido hasta el …") + historial de pagos.
+4. **Conflict detection** — Agenda/**Nueva clase**: program a class that
+   overlaps another one in the same space → blocked with
+   **"Espacio ocupado"**.
+5. **¡Casi lleno! badge** — with a class at ≥75 % occupancy, Inicio and
+   Clases show an amber **"¡Casi lleno! · N cupos"** badge (red **Completo**
+   at 100 %).
+6. **Waitlist promotion notification** — run the 2-account waitlist flow and
+   cancel the confirmed booking → the promoted member receives a
+   **"¡Cupo confirmado!"** notification (_Perfil → Notificaciones_).
+7. **Recommendations** — book/attend a couple of classes of the same type →
+   Inicio shows **"Recomendadas para ti"** with upcoming unbooked classes of
+   that type. No history → no section (nothing is invented).
+
 ## Troubleshooting
 
 | Problem                            | Solution                                                               |
 | ---------------------------------- | ---------------------------------------------------------------------- |
 | "Cannot find module @nexofit/core" | Run `pnpm install` from project root                                   |
-| Expo Go can't connect              | Ensure phone and电脑 are on the same network, or use `--tunnel`        |
+| Expo Go can't connect              | Ensure phone and computer are on the same network, or use `--tunnel`   |
 | "RLS policy violation"             | Make sure you have a membership for the org in the `memberships` table |
-| Empty schedule                     | You need to create sessions via SQL or admin UI (not built yet)        |
+| Empty schedule                     | Create sessions from the admin Agenda (FAB +) or via SQL               |
 | Type errors after pulling          | Run `pnpm install` then `pnpm typecheck`                               |
 
 ## Useful Commands

@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } 
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { useBookings, useSchedule } from '../../hooks/useBooking';
+import { useBookings, useSchedule, useRecommendations } from '../../hooks/useBooking';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import type { BookingWithSession, SessionWithType, NavigationProp } from '../../types/screens';
 
@@ -30,6 +30,12 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
     loading: sessionsLoading,
     refresh: refreshSessions,
   } = useSchedule(orgId, undefined);
+  // Stage 5 · inteligencia: clases de tus tipos favoritos sin reservar aún.
+  const {
+    sessions: recommended,
+    loading: recommendationsLoading,
+    refresh: refreshRecommendations,
+  } = useRecommendations(orgId, user?.id ?? '');
   const [refreshing, setRefreshing] = useState(false);
 
   const loading = bookingsLoading || sessionsLoading;
@@ -38,14 +44,16 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
     useCallback(() => {
       refreshBookings();
       refreshSessions();
-    }, [refreshBookings, refreshSessions])
+      refreshRecommendations();
+    }, [refreshBookings, refreshSessions, refreshRecommendations])
   );
 
   const upcomingBookings = (bookings as BookingWithSession[])
     .filter((b) => b.sessions && new Date(b.sessions.starts_at) > new Date())
     .slice(0, 3);
 
-  const isEmpty = upcomingBookings.length === 0 && todaySessions.length === 0;
+  const isEmpty =
+    upcomingBookings.length === 0 && todaySessions.length === 0 && recommended.length === 0;
 
   if (!orgId) {
     return (
@@ -91,7 +99,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
             refreshing={refreshing}
             onRefresh={async () => {
               setRefreshing(true);
-              await Promise.all([refreshBookings(), refreshSessions()]);
+              await Promise.all([refreshBookings(), refreshSessions(), refreshRecommendations()]);
               setRefreshing(false);
             }}
             colors={[colors.turquesa]}
@@ -151,7 +159,32 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
               </View>
             )}
 
-            {isEmpty && (
+            {/* Recomendaciones (Stage 5): solo si hay historial y algo nuevo */}
+            {!recommendationsLoading && recommended.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Recomendadas para ti</Text>
+                </View>
+                <View style={styles.sessionsList}>
+                  {recommended.map((session) => (
+                    <TouchableOpacity
+                      key={session.id}
+                      onPress={() =>
+                        navigation.navigate('SessionDetail', {
+                          sessionId: session.id,
+                          sessionData: session,
+                        })
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <SessionCard session={session} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {isEmpty && !recommendationsLoading && (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyTitle}>Sin actividad reciente</Text>
                 <Text style={styles.emptyText}>
@@ -186,6 +219,8 @@ function SessionCard({ session }: { session: SessionWithType }) {
   const capacity = session.capacity_override ?? session.spaces?.capacity ?? 30;
   const spotsLeft = capacity - (session.booking_count ?? 0);
   const isFull = spotsLeft <= 0;
+  // Stage 5 · inteligencia: avisa cuando queda un cuarto o menos de cupos.
+  const isNearlyFull = !isFull && capacity > 0 && spotsLeft / capacity <= 0.25;
   const coachName = session.coaches?.memberships?.profiles?.full_name;
 
   return (
@@ -193,8 +228,14 @@ function SessionCard({ session }: { session: SessionWithType }) {
       style={styles.sessionCard}
       title={session.class_types?.name ?? 'Clase'}
       subtitle={`${formatTime(session.starts_at)} – ${formatTime(session.ends_at)} · ${session.spaces?.venues?.name ?? ''} · ${session.spaces?.name ?? ''}`}
-      badge={isFull ? 'Completo' : `${spotsLeft} cupos`}
-      badgeColor={isFull ? '#EF4444' : colors.turquesa}
+      badge={
+        isFull
+          ? 'Completo'
+          : isNearlyFull
+            ? `¡Casi lleno! · ${spotsLeft} ${spotsLeft === 1 ? 'cupo' : 'cupos'}`
+            : `${spotsLeft} cupos`
+      }
+      badgeColor={isFull ? '#EF4444' : isNearlyFull ? '#F59E0B' : colors.turquesa}
     >
       {coachName && <Text style={styles.coach}>Coach: {coachName}</Text>}
     </Card>

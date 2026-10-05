@@ -10,6 +10,7 @@ import {
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card } from '../../components/ui';
+import type { NavigationProp } from '../../types/screens';
 
 type MenuItemType = {
   icon: string;
@@ -19,52 +20,46 @@ type MenuItemType = {
   destructive?: boolean;
 };
 
-const menuItems: MenuItemType[] = [
-  {
-    icon: '🏢',
-    title: 'Mi organización',
-    subtitle: 'Datos, facturación, ajustes',
-    onPress: () => {},
-  },
-  {
-    icon: '🏟️',
-    title: 'Sedes y espacios',
-    subtitle: 'Gestionar ubicaciones y capacidades',
-    onPress: () => {},
-  },
-  {
-    icon: '🏷️',
-    title: 'Tipos de clase',
-    subtitle: 'Crear y editar modalidades',
-    onPress: () => {},
-  },
-  {
-    icon: '👨‍🏫',
-    title: 'Entrenadores',
-    subtitle: 'Gestionar coaches y especialidades',
-    onPress: () => {},
-  },
-  {
-    icon: '👨‍⚕️',
-    title: 'Profesionales',
-    subtitle: 'Fisioterapeutas, nutricionistas, etc.',
-    onPress: () => {},
-  },
-  {
-    icon: '📋',
-    title: 'Programas de entreno',
-    subtitle: 'Crear WODs y rutinas',
-    onPress: () => {},
-  },
-  { icon: '🔔', title: 'Notificaciones', subtitle: 'Enviar avisos a miembros', onPress: () => {} },
-  {
-    icon: '⚙️',
-    title: 'Ajustes de la app',
-    subtitle: 'Preferencias, tema, idioma',
-    onPress: () => {},
-  },
-  { icon: '❓', title: 'Ayuda y soporte', subtitle: 'Documentación y contacto', onPress: () => {} },
-];
+// Solo entradas que abren una pantalla real: los puntos muertos se eliminaron.
+// Pagos es solo admin: la RLS de payments solo deja ver el libro completo al admin.
+function buildMenuItems(navigation: NavigationProp, isAdmin: boolean): MenuItemType[] {
+  return [
+    {
+      icon: '📋',
+      title: 'Programas de entreno',
+      subtitle: 'Publica el WOD de una clase',
+      onPress: () => navigation.navigate('PublishProgram'),
+    },
+    {
+      icon: '🔔',
+      title: 'Notificaciones',
+      subtitle: 'Enviar avisos a miembros',
+      onPress: () => navigation.navigate('SendNotification'),
+    },
+    {
+      icon: '➕',
+      title: 'Nueva clase',
+      subtitle: 'Programar una clase en la agenda',
+      onPress: () => navigation.navigate('CreateSession'),
+    },
+    {
+      icon: '🏟️',
+      title: 'Espacios y clases',
+      subtitle: 'Tipos de clase, sedes y espacios',
+      onPress: () => navigation.navigate('GymContent'),
+    },
+    ...(isAdmin
+      ? [
+          {
+            icon: '💰',
+            title: 'Pagos',
+            subtitle: 'Historial, planes y registrar cobros',
+            onPress: () => navigation.navigate('Payments'),
+          },
+        ]
+      : []),
+  ];
+}
 
 const dangerItems: MenuItemType[] = [
   {
@@ -76,7 +71,7 @@ const dangerItems: MenuItemType[] = [
   },
 ];
 
-export function MoreScreen() {
+export function MoreScreen({ navigation }: { navigation: NavigationProp }) {
   const { membership, signOut } = useAuth();
   const orgId = membership?.organization_id ?? '';
 
@@ -102,6 +97,8 @@ export function MoreScreen() {
     ...item,
     onPress: handleSignOut,
   }));
+
+  const menuItems = buildMenuItems(navigation, membership?.role === 'admin');
 
   return (
     <SafeAreaView style={styles.container}>

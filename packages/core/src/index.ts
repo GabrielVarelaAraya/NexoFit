@@ -22,4 +22,6 @@ export type {
   PersonalRecordRow,
   WorkoutTemplateRow,
   WorkoutTemplateExerciseRow,
+  MembershipPlanRow,
+  PaymentRow,
 } from './supabase/database.types';

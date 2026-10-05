@@ -649,6 +649,110 @@ export interface Database {
           },
         ];
       };
+      membership_plans: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          description: string | null;
+          price_cents: number;
+          currency: string;
+          duration_days: number;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          description?: string | null;
+          price_cents: number;
+          currency?: string;
+          duration_days: number;
+          active?: boolean;
+        };
+        Update: {
+          name?: string;
+          description?: string | null;
+          price_cents?: number;
+          currency?: string;
+          duration_days?: number;
+          active?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'membership_plans_organization_id_fkey';
+            columns: ['organization_id'];
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      payments: {
+        Row: {
+          id: string;
+          organization_id: string;
+          profile_id: string;
+          plan_id: string | null;
+          amount_cents: number;
+          currency: string;
+          method: string;
+          status: string;
+          paid_at: string;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          profile_id: string;
+          plan_id?: string | null;
+          amount_cents: number;
+          currency?: string;
+          method?: string;
+          status?: string;
+          paid_at?: string;
+          notes?: string | null;
+          created_by?: string | null;
+        };
+        Update: {
+          plan_id?: string | null;
+          amount_cents?: number;
+          currency?: string;
+          method?: string;
+          status?: string;
+          paid_at?: string;
+          notes?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payments_organization_id_fkey';
+            columns: ['organization_id'];
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payments_profile_id_fkey';
+            columns: ['profile_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payments_plan_id_fkey';
+            columns: ['plan_id'];
+            referencedRelation: 'membership_plans';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'payments_created_by_fkey';
+            columns: ['created_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       exercise_library: {
         Row: {
           id: string;
@@ -1047,3 +1151,5 @@ export type PersonalRecordRow = Database['public']['Tables']['personal_records']
 export type WorkoutTemplateRow = Database['public']['Tables']['workout_templates']['Row'];
 export type WorkoutTemplateExerciseRow =
   Database['public']['Tables']['workout_template_exercises']['Row'];
+export type MembershipPlanRow = Database['public']['Tables']['membership_plans']['Row'];
+export type PaymentRow = Database['public']['Tables']['payments']['Row'];

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { bookSession } from '../../hooks/useBooking';
+import { fetchSessionProgram } from '../../hooks/useWorkout';
 import { holdLoading } from '../../utils/loading';
 import { Header, Button, Card } from '../../components/ui';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -72,6 +73,19 @@ export function SessionDetailScreen({ route, navigation }: Props) {
       cancelled = true;
     };
   }, [sessionData.id, user?.id]);
+
+  // Programa (entrenamiento) publicado por el coach para esta sesión.
+  const [program, setProgram] = useState<{ id: string; content: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSessionProgram(sessionData.id).then((data) => {
+      if (!cancelled) setProgram(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionData.id]);
 
   const capacity = sessionData.capacity_override ?? sessionData.spaces?.capacity ?? 30;
   const bookingCount = liveBookings ?? sessionData.booking_count ?? 0;
@@ -161,6 +175,13 @@ export function SessionDetailScreen({ route, navigation }: Props) {
           )}
         </Card>
 
+        {program && (
+          <Card style={styles.programCard}>
+            <Text style={styles.programTitle}>Entrenamiento de la sesión</Text>
+            <Text style={styles.programContent}>{program.content}</Text>
+          </Card>
+        )}
+
         <Button
           title={
             isPast
@@ -178,6 +199,19 @@ export function SessionDetailScreen({ route, navigation }: Props) {
           loading={loading}
           disabled={isPast || !!ownBooking}
           onPress={handleBook}
+        />
+
+        <Button
+          title="Registrar entrenamiento"
+          variant="secondary"
+          fullWidth
+          style={styles.logWorkoutButton}
+          onPress={() =>
+            navigation.navigate('WorkoutLog', {
+              sessionId: sessionData.id,
+              programId: program?.id,
+            })
+          }
         />
       </ScrollView>
     </View>
@@ -220,6 +254,19 @@ const infoStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
   content: { padding: 16, gap: 12, paddingBottom: 40 },
+  programCard: { gap: 8 },
+  programTitle: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 15,
+    color: colors.azulNexo,
+  },
+  programContent: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 21,
+  },
+  logWorkoutButton: { marginTop: 4 },
   emojiBanner: {
     height: 80,
     borderRadius: 12,

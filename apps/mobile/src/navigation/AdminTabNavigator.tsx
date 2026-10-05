@@ -27,7 +27,9 @@ export function AdminTabNavigator() {
         tabBarStyle: {
           paddingBottom: 4,
           height: 56,
-          backgroundColor: theme.white,
+          // Mismo color que el fondo de las pantallas (crema), no blanco.
+          backgroundColor: theme.crema,
+          borderTopColor: '#E5E7EB',
         },
       }}
     >

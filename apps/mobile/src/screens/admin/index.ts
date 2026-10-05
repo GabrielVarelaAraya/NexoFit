@@ -2,3 +2,8 @@ export { DashboardScreen } from './DashboardScreen';
 export { AgendaScreen } from './AgendaScreen';
 export { ClientsScreen } from './ClientsScreen';
 export { MoreScreen } from './MoreScreen';
+export { CreateSessionScreen } from './CreateSessionScreen';
+export { PublishProgramScreen } from './PublishProgramScreen';
+export { SendNotificationScreen } from './SendNotificationScreen';
+export { PaymentsScreen } from './PaymentsScreen';
+export { GymContentScreen } from './GymContentScreen';
