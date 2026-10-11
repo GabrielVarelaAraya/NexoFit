@@ -26,6 +26,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const variantStyles = variants[variant];
+  const textColor = disabled || loading ? colors.textSecondary : variantStyles.textColor;
 
   return (
     <TouchableOpacity
@@ -41,9 +42,9 @@ export function Button({
       {...rest}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={variantStyles.textColor} />
+        <ActivityIndicator size="small" color={textColor} />
       ) : (
-        <Text style={[styles.text, { color: variantStyles.textColor }]}>{title}</Text>
+        <Text style={[styles.text, { color: textColor }]}>{title}</Text>
       )}
     </TouchableOpacity>
   );
@@ -51,7 +52,7 @@ export function Button({
 
 const variants: Record<ButtonVariant, { container: object; textColor: string }> = {
   primary: {
-    container: { backgroundColor: colors.turquesa },
+    container: { backgroundColor: colors.textAccent },
     textColor: colors.crema,
   },
   secondary: {
@@ -60,10 +61,10 @@ const variants: Record<ButtonVariant, { container: object; textColor: string }> 
   },
   ghost: {
     container: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.turquesa },
-    textColor: colors.turquesa,
+    textColor: colors.textAccent,
   },
   danger: {
-    container: { backgroundColor: '#E74C3C' },
+    container: { backgroundColor: colors.textError },
     textColor: colors.crema,
   },
 };
@@ -81,7 +82,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   disabled: {
-    opacity: 0.5,
+    backgroundColor: '#E5E7EB',
+    borderColor: '#D1D5DB',
   },
   text: {
     fontFamily: fonts.uiSemiBold,

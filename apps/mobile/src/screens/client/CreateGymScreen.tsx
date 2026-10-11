@@ -100,7 +100,7 @@ export function CreateGymScreen({ navigation }: Props) {
           value={name}
           onChangeText={setName}
           placeholder="Ej: CrossFit Heredia"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.textSecondary}
           autoCapitalize="words"
           maxLength={80}
         />
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     color: colors.azulNexo,
   },
   slugPreview: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textSecondary },
-  slugValue: { fontFamily: fonts.uiSemiBold, color: colors.turquesa },
+  slugValue: { fontFamily: fonts.uiSemiBold, color: colors.textAccent },
   note: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,

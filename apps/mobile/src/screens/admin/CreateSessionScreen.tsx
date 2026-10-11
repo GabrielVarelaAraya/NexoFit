@@ -360,13 +360,13 @@ const styles = StyleSheet.create({
   optionsHint: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   optionsError: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#EF4444',
+    color: colors.textError,
   },
   loading: { marginTop: 8 },
   timeRow: { flexDirection: 'row', gap: 12 },

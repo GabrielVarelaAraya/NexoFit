@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   radioSelected: {
     borderColor: colors.turquesa,
-    backgroundColor: colors.turquesa,
+    backgroundColor: colors.textAccent,
   },
   sessionLabel: {
     flex: 1,
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.uiSemiBold,
     fontSize: 11,
     // El lima sobre blanco no contrasta: verde oscuro para el texto.
-    color: '#3F7D20',
+    color: colors.textSuccess,
     backgroundColor: '#A9F56F40',
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -285,12 +285,12 @@ const styles = StyleSheet.create({
   hint: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   loadError: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#EF4444',
+    color: colors.textError,
   },
 });

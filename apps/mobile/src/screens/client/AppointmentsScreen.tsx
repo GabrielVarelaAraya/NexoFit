@@ -206,19 +206,19 @@ const styles = StyleSheet.create({
   emptyHint: {
     fontFamily: fonts.uiRegular,
     fontSize: 14,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   professional: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   pastText: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -231,5 +231,5 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
     gap: 8,
   },
-  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: '#EF4444' },
+  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },
 });

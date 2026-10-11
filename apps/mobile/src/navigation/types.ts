@@ -7,7 +7,6 @@ export type AuthStackParamList = {
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
-  NewPassword: { token?: string; type?: 'signup' | 'recovery'; email?: string };
   VerificationCode: { email: string; token?: string; type?: 'signup' | 'recovery' };
 };
 
@@ -28,6 +27,12 @@ export type AdminTabParamList = {
   Mas: undefined;
 };
 
+export type ProfessionalTabParamList = {
+  AgendaProfesional: undefined;
+  Disponibilidad: undefined;
+  PerfilProfesional: undefined;
+};
+
 // Trainer Tabs
 export type TrainerTabParamList = {
   Inicio: undefined;
@@ -41,6 +46,7 @@ export type TrainerTabParamList = {
 export type MainStackParamList = {
   ClientTabs: NavigatorScreenParams<ClientTabParamList>;
   AdminTabs: NavigatorScreenParams<AdminTabParamList>;
+  ProfessionalTabs: NavigatorScreenParams<ProfessionalTabParamList>;
   TrainerTabs: NavigatorScreenParams<TrainerTabParamList>;
   ClassDetail: { sessionId: string };
   BookingConfirmed: { sessionId: string };
@@ -68,6 +74,7 @@ export type MainStackParamList = {
 
 // Root Stack
 export type RootStackParamList = {
+  NewPassword: undefined;
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Main: NavigatorScreenParams<MainStackParamList>;
 };

@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
     gap: 8,
   },
-  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: '#EF4444' },
+  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -162,11 +162,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.azulNexo,
   },
-  emptyHint: { fontFamily: fonts.uiRegular, fontSize: 13, color: '#9CA3AF' },
+  emptyHint: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textSecondary },
   pastText: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
   },

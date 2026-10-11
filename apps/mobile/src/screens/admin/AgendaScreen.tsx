@@ -201,11 +201,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#F3F4F6',
   },
-  dateItemActive: { backgroundColor: colors.turquesa },
+  dateItemActive: { backgroundColor: colors.textAccent },
   dateDay: {
     fontFamily: fonts.uiRegular,
     fontSize: 11,
-    color: '#6B7280',
+    color: colors.textSecondary,
     textTransform: 'uppercase',
   },
   dateDayActive: { color: colors.crema },
@@ -227,18 +227,18 @@ const styles = StyleSheet.create({
   sessionClass: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   sessionMeta: { gap: 2, alignItems: 'flex-end' },
   sessionCoach: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
   },
   sessionLocation: {
     fontFamily: fonts.uiRegular,
     fontSize: 11,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
   },
   sessionFooter: {
     flexDirection: 'row',
@@ -266,7 +266,12 @@ const styles = StyleSheet.create({
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 80 },
   emptyTitle: { fontFamily: fonts.uiSemiBold, fontSize: 18, color: colors.azulNexo },
-  emptyHint: { fontFamily: fonts.uiRegular, fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
+  emptyHint: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   fab: {
     position: 'absolute',
@@ -275,7 +280,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.turquesa,
+    backgroundColor: colors.textAccent,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: colors.turquesa,

@@ -63,12 +63,12 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   action: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 14,
-    color: colors.turquesa,
+    color: colors.textAccent,
   },
 });

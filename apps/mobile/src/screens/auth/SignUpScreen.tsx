@@ -23,6 +23,7 @@ export function SignUpScreen({ navigation }: Props) {
   const { signUp } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -35,14 +36,30 @@ export function SignUpScreen({ navigation }: Props) {
       Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres.');
       return;
     }
+    if (loading) return;
+    const normalizedEmail = email.trim().toLowerCase();
     Keyboard.dismiss();
+    setEmailError(null);
     setLoading(true);
-    const { error } = await signUp(email.trim(), password, fullName.trim());
-    setLoading(false);
-    if (error) {
-      Alert.alert('Error de registro', error);
-    } else {
-      navigation.navigate('VerificationCode', { email: email.trim() });
+    try {
+      const { error, code, needsConfirmation } = await signUp(
+        normalizedEmail,
+        password,
+        fullName.trim()
+      );
+      if (error) {
+        if (code === 'email_exists') {
+          setEmailError(error);
+        } else {
+          Alert.alert('Error de registro', error);
+        }
+      } else if (needsConfirmation) {
+        navigation.navigate('VerificationCode', { email: normalizedEmail });
+      }
+    } catch {
+      Alert.alert('Error de registro', 'No se pudo completar el registro. Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,18 +102,31 @@ export function SignUpScreen({ navigation }: Props) {
               styles.input,
               {
                 backgroundColor: theme.white,
-                borderColor: theme.azulNexo + '20',
+                borderColor: emailError ? theme.error : theme.azulNexo + '20',
                 color: theme.azulNexo,
               },
             ]}
             placeholder="sofia@email.com"
             placeholderTextColor={theme.textSecondary}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => {
+              setEmail(value);
+              setEmailError(null);
+            }}
+            editable={!loading}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
           />
+          {emailError && (
+            <Text
+              style={[styles.emailError, { color: theme.error }]}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+            >
+              {emailError}
+            </Text>
+          )}
         </View>
 
         <View style={styles.inputContainer}>
@@ -122,7 +152,7 @@ export function SignUpScreen({ navigation }: Props) {
         <TouchableOpacity
           style={[
             styles.signupButton,
-            { backgroundColor: theme.turquesa },
+            { backgroundColor: theme.textAccent },
             loading && { opacity: 0.6 },
           ]}
           onPress={handleSignUp}
@@ -163,7 +193,7 @@ export function SignUpScreen({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
           <Text style={[styles.footerText, { color: theme.textSecondary }]}>
             ¿Ya tienes cuenta?{' '}
-            <Text style={[styles.footerLink, { color: theme.turquesa }]}>Iniciar sesión</Text>
+            <Text style={[styles.footerLink, { color: theme.textAccent }]}>Iniciar sesión</Text>
           </Text>
         </TouchableOpacity>
       </View>
@@ -208,6 +238,11 @@ const baseStyles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     fontSize: 16,
     borderWidth: 1,
+  },
+  emailError: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    lineHeight: 18,
   },
   signupButton: {
     borderRadius: 12,

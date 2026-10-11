@@ -134,7 +134,7 @@ function MenuItem({ item }: { item: MenuItemType }) {
     <TouchableOpacity style={styles.menuItem} onPress={item.onPress} activeOpacity={0.7}>
       <Text style={styles.menuIcon}>{item.icon}</Text>
       <View style={styles.menuText}>
-        <Text style={[styles.menuTitle, item.destructive && { color: '#EF4444' }]}>
+        <Text style={[styles.menuTitle, item.destructive && { color: colors.textError }]}>
           {item.title}
         </Text>
         <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
@@ -160,10 +160,10 @@ const styles = StyleSheet.create({
   menuIcon: { fontSize: 24, width: 40, textAlign: 'center' },
   menuText: { flex: 1, gap: 2 },
   menuTitle: { fontFamily: fonts.uiSemiBold, fontSize: 15, color: colors.azulNexo },
-  menuSubtitle: { fontFamily: fonts.uiRegular, fontSize: 12, color: '#9CA3AF' },
-  chevron: { fontFamily: fonts.uiRegular, fontSize: 20, color: '#9CA3AF' },
+  menuSubtitle: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },
+  chevron: { fontFamily: fonts.uiRegular, fontSize: 20, color: colors.textSecondary },
   version: { alignItems: 'center', paddingVertical: 24, gap: 4 },
-  versionText: { fontFamily: fonts.uiRegular, fontSize: 12, color: '#9CA3AF' },
+  versionText: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontFamily: fonts.uiSemiBold, fontSize: 18, color: colors.azulNexo },
 });

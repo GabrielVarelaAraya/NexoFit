@@ -1,19 +1,53 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Linking } from 'react-native';
-import type { Session, User } from '@supabase/supabase-js';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
+import { Alert, AppState, Linking, Platform } from 'react-native';
+import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { getSupabase } from '@nexofit/core';
 import type { RoleType } from '@nexofit/core';
+import { recoverySessionStore } from '../utils/authStorage';
+import { registerWithEmail } from '../utils/registerWithEmail';
+import type { RegistrationResult } from '../utils/registerWithEmail';
+import {
+  authenticateAuthLink,
+  authErrorMessage,
+  authSessionReducer,
+  initialAuthSessionState,
+  parseAuthLink,
+  requestPasswordRecovery,
+  updateRecoveryPassword,
+  verifyEmailCode,
+} from '../utils/authRecovery';
 
 export interface AuthContextValue {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  passwordRecovery: boolean;
+  updatePassword: (password: string) => Promise<{ error?: string }>;
+  finishPasswordRecovery: () => Promise<void>;
+  sessionError: string | null;
+  retrySession: () => void;
+  membershipError: string | null;
+  cancelPasswordRecovery: () => Promise<{ error?: string }>;
   /** true mientras se resuelve la membresía (rol) del usuario con sesión. */
   membershipLoading: boolean;
-  membership: { organization_id: string; role: RoleType; organization_name?: string } | null;
+  membership: {
+    id: string;
+    organization_id: string;
+    role: RoleType;
+    organization_name?: string;
+  } | null;
   refreshMembership: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error?: string; code?: string }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<RegistrationResult>;
+  resendVerificationEmail: (email: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
   verifyOtp: (
@@ -30,181 +64,259 @@ const DEEPLINK_SCHEME = 'nexofit';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = getSupabase();
-  const [session, setSession] = useState<Session | null>(null);
+  const [authState, dispatchAuth] = useReducer(authSessionReducer, initialAuthSessionState);
+  const { session, passwordRecovery } = authState;
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [authAttempt, setAuthAttempt] = useState(0);
+  const [membershipError, setMembershipError] = useState<string | null>(null);
+  const membershipRequest = useRef(0);
+  const currentUserId = useRef(session?.user.id);
+  currentUserId.current = session?.user.id;
+  const [authLinkLoading, setAuthLinkLoading] = useState(false);
   // Usuario al que pertenece `membership` (null = sin membresía resuelta).
   // Evita el parpadeo de pestañas al iniciar sesión: el rol se resuelve por
   // id de usuario, no por un booleano con carreras de timing.
   const [membershipUserId, setMembershipUserId] = useState<string | null>(null);
   const [membership, setMembership] = useState<{
+    id: string;
     organization_id: string;
     role: RoleType;
     organization_name?: string;
   } | null>(null);
 
-  // Handle deep links for email verification and password reset
   useEffect(() => {
-    const handleDeepLink = async (url: string) => {
-      // Parse the deep link: nexofit://auth/verify?token=xxx&type=signup
-      const parsedUrl = new URL(url);
-      if (parsedUrl.pathname === '/auth/verify' || parsedUrl.pathname === '/auth/reset-password') {
-        const token = parsedUrl.searchParams.get('token');
-        const type = parsedUrl.searchParams.get('type') as 'signup' | 'recovery' | null;
-        const email = parsedUrl.searchParams.get('email');
-
-        if (token && type && email) {
-          const { error } = await supabase.auth.verifyOtp({
-            email,
-            token,
-            type,
-          });
-          if (!error) {
-            // Navigation will happen automatically via onAuthStateChange
-          }
+    let active = true;
+    let receivedAuthEvent = false;
+    let eventVersion = 0;
+    setLoading(true);
+    setSessionError(null);
+    const applyEvent = async (event: AuthChangeEvent, nextSession: Session | null) => {
+      const version = ++eventVersion;
+      try {
+        // No Supabase calls inside the auth callback: it runs under the SDK lock.
+        if (event === 'PASSWORD_RECOVERY' && nextSession) {
+          await recoverySessionStore.setUserId(nextSession.user.id);
+        } else if (!nextSession) {
+          await recoverySessionStore.clear();
         }
+        const recoveryUserId = nextSession ? await recoverySessionStore.getUserId() : null;
+        if (!active || version !== eventVersion) return;
+        dispatchAuth({ type: 'authChanged', event, session: nextSession, recoveryUserId });
+        setSessionError(null);
+      } catch {
+        if (active && version === eventVersion) {
+          setSessionError('No pudimos recuperar la sesión guardada. Inténtalo de nuevo.');
+        }
+      } finally {
+        if (active && version === eventVersion) setLoading(false);
       }
     };
-
-    // Listen for incoming links
-    const subscription = Linking.addEventListener('url', ({ url }) => {
-      handleDeepLink(url);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      receivedAuthEvent = true;
+      return applyEvent(event, nextSession);
     });
-
-    // Handle initial URL if app was launched from a link
-    Linking.getInitialURL().then((url) => {
-      if (url) handleDeepLink(url);
-    });
-
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active || receivedAuthEvent) return;
+        if (error) {
+          setSessionError('No pudimos recuperar tu sesión. Inténtalo de nuevo.');
+          setLoading(false);
+        } else {
+          void applyEvent('INITIAL_SESSION', data.session);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSessionError('No pudimos recuperar tu sesión. Inténtalo de nuevo.');
+          setLoading(false);
+        }
+      });
     return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase, authAttempt]);
+
+  useEffect(() => {
+    let active = true;
+    let processing = false;
+    const handledLinks = new Set<string>();
+    const handleDeepLink = async (url: string) => {
+      const link = parseAuthLink(url);
+      if (!active || !link || processing || handledLinks.has(url)) return;
+      if (link.kind === 'error') {
+        Alert.alert('No se pudo verificar', link.error);
+        return;
+      }
+      processing = true;
+      setAuthLinkLoading(true);
+      try {
+        const { data, error } = await authenticateAuthLink(supabase.auth, link);
+        if (!active) return;
+        if (error || !data.session) {
+          Alert.alert(
+            'No se pudo verificar',
+            authErrorMessage(error) ?? 'Solicita un correo nuevo e inténtalo de nuevo.'
+          );
+        } else {
+          if (link.type === 'recovery') await recoverySessionStore.setUserId(data.session.user.id);
+          if (!active) return;
+          handledLinks.add(url);
+          // setSession emite SIGNED_IN incluso para el fragmento de recuperación.
+          dispatchAuth({
+            type: 'authChanged',
+            event: link.type === 'recovery' ? 'PASSWORD_RECOVERY' : 'SIGNED_IN',
+            session: data.session,
+          });
+        }
+      } catch {
+        if (active)
+          Alert.alert('Sin conexión', 'No pudimos verificar el enlace. Inténtalo de nuevo.');
+      } finally {
+        processing = false;
+        if (active) setAuthLinkLoading(false);
+      }
+    };
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      void handleDeepLink(url);
+    });
+    Linking.getInitialURL()
+      .then((url) => {
+        if (url) void handleDeepLink(url);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
       subscription.remove();
     };
   }, [supabase]);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Consulta reutilizable de la membresía. Ordena por created_at desc para
-  // que el gimnasio recién creado/unido sea el activo por defecto.
-  const fetchMembership = useCallback(
-    async (userId: string) => {
-      const { data } = await supabase
+  const refreshMembership = useCallback(async () => {
+    const uid = currentUserId.current;
+    const request = ++membershipRequest.current;
+    if (!uid) {
+      setMembership(null);
+      setMembershipUserId(null);
+      setMembershipError(null);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
         .from('memberships')
-        .select('organization_id, role, organizations ( name )')
-        .eq('profile_id', userId)
+        .select('id, organization_id, role, organizations ( name )')
+        .eq('profile_id', uid)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      return data;
-    },
-    [supabase]
-  );
+      if (error) throw error;
+      if (request !== membershipRequest.current || uid !== currentUserId.current) return;
+      setMembership(
+        data
+          ? {
+              id: data.id,
+              organization_id: data.organization_id,
+              role: data.role,
+              organization_name: data.organizations?.name ?? undefined,
+            }
+          : null
+      );
+      setMembershipError(null);
+      setMembershipUserId(uid);
+    } catch {
+      if (request !== membershipRequest.current || uid !== currentUserId.current) return;
+      setMembershipError('No pudimos comprobar tu rol en el gimnasio. Inténtalo de nuevo.');
+      setMembershipUserId(uid);
+    }
+  }, [supabase]);
 
   useEffect(() => {
-    if (!session?.user) {
-      setMembership(null);
-      setMembershipUserId(null);
-      return;
-    }
-
-    let cancelled = false;
-    const uid = session.user.id;
-
-    // maybeSingle: un usuario sin membresía no debe dejar la membresía
-    // del usuario anterior ni provocar errores PGRST116 en consola.
-    fetchMembership(uid).then((data) => {
-      if (cancelled) return;
-      if (data) {
-        setMembership({
-          organization_id: data.organization_id,
-          role: data.role,
-          organization_name: data.organizations?.name ?? undefined,
-        });
-      } else {
-        setMembership(null);
-      }
-      // Marca la membresía como resuelta PARA ESTE usuario.
-      setMembershipUserId(uid);
-    });
-
+    setMembership(null);
+    setMembershipUserId(null);
+    void refreshMembership();
     return () => {
-      cancelled = true;
+      membershipRequest.current += 1;
     };
-  }, [session?.user, fetchMembership]);
+  }, [session?.user.id, refreshMembership]);
 
-  // Se llama tras unirse o crear un gimnasio para que todas las pantallas
-  // reflejen la nueva membresía sin reiniciar la app.
-  const refreshMembership = useCallback(async () => {
-    if (!session?.user) {
-      setMembership(null);
-      setMembershipUserId(null);
-      return;
-    }
-    const data = await fetchMembership(session.user.id);
-    if (data) {
-      setMembership({
-        organization_id: data.organization_id,
-        role: data.role,
-        organization_name: data.organizations?.name ?? undefined,
-      });
-    } else {
-      setMembership(null);
-    }
-    setMembershipUserId(session.user.id);
-  }, [session?.user, fetchMembership]);
+  useEffect(() => {
+    const onStateChange = (state: string) => {
+      if (Platform.OS !== 'web') {
+        if (state === 'active') void supabase.auth.startAutoRefresh();
+        else void supabase.auth.stopAutoRefresh();
+      }
+      if (state === 'active') void refreshMembership();
+    };
+    onStateChange(AppState.currentState);
+    const subscription = AppState.addEventListener('change', onStateChange);
+    return () => {
+      subscription.remove();
+      if (Platform.OS !== 'web') void supabase.auth.stopAutoRefresh();
+    };
+  }, [supabase, refreshMembership]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message };
+    return { error: error?.message, code: error?.code };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    // Use magic link instead of OTP - single email with deep link
-    const redirectTo = `${DEEPLINK_SCHEME}://auth/verify`;
-
-    const { error } = await supabase.auth.signUp({
+    return registerWithEmail(supabase, {
       email,
       password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: redirectTo,
-      },
+      fullName,
+      emailRedirectTo: DEEPLINK_SCHEME + '://auth/verify',
     });
-    return { error: error?.message };
+  };
+
+  const resendVerificationEmail = async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${DEEPLINK_SCHEME}://auth/verify` },
+    });
+    return {
+      error:
+        error?.code === 'over_email_send_rate_limit'
+          ? 'Se alcanzó el límite de envío de correos. Inténtalo más tarde.'
+          : error?.message,
+    };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) Alert.alert('No se pudo cerrar sesión', error.message);
   };
 
-  const resetPassword = async (email: string) => {
-    // Use magic link for password reset too
-    const redirectTo = `${DEEPLINK_SCHEME}://auth/reset-password`;
+  const resetPassword = async (email: string) => requestPasswordRecovery(supabase.auth, email);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    });
-    return { error: error?.message };
+  const verifyOtp = useCallback(
+    (email: string, token: string, type: 'signup' | 'recovery') =>
+      verifyEmailCode(supabase.auth, email, token, type),
+    [supabase]
+  );
+
+  const updatePassword = async (password: string) =>
+    updateRecoveryPassword(supabase.auth, authState, password);
+
+  const finishPasswordRecovery = async () => {
+    try {
+      await recoverySessionStore.clear();
+      dispatchAuth({ type: 'recoveryFinished' });
+    } catch {
+      Alert.alert(
+        'No se pudo continuar',
+        'No pudimos guardar el final de la recuperación. Inténtalo de nuevo.'
+      );
+    }
   };
 
-  const verifyOtp = async (email: string, token: string, type: 'signup' | 'recovery') => {
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type,
-    });
-    return { error: error?.message };
+  const cancelPasswordRecovery = async () => {
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    return { error: authErrorMessage(error) };
   };
 
   // La membresía (y con ella el rol) debe estar resuelta ANTES de montar el
@@ -217,12 +329,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         session,
         user: session?.user ?? null,
-        loading,
+        loading: loading || authLinkLoading,
+        passwordRecovery,
+        sessionError,
+        retrySession: () => setAuthAttempt((attempt) => attempt + 1),
+        membershipError,
+        updatePassword,
+        finishPasswordRecovery,
+        cancelPasswordRecovery,
         membershipLoading,
         membership,
         refreshMembership,
         signIn,
         signUp,
+        resendVerificationEmail,
         signOut,
         resetPassword,
         verifyOtp,

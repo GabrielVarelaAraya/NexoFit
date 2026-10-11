@@ -32,9 +32,13 @@ export function LoginScreen({ navigation }: Props) {
     }
     Keyboard.dismiss();
     setLoading(true);
-    const { error } = await signIn(email.trim(), password);
+    const { error, code } = await signIn(email.trim(), password);
     setLoading(false);
-    if (error) Alert.alert('Error de inicio de sesión', error);
+    if (code === 'email_not_confirmed') {
+      navigation.navigate('VerificationCode', { email: email.trim() });
+    } else if (error) {
+      Alert.alert('Error de inicio de sesión', error);
+    }
   };
 
   return (
@@ -93,7 +97,7 @@ export function LoginScreen({ navigation }: Props) {
           style={styles.forgotButton}
           onPress={() => navigation.navigate('ForgotPassword')}
         >
-          <Text style={[styles.forgotText, { color: theme.turquesa }]}>
+          <Text style={[styles.forgotText, { color: theme.textAccent }]}>
             ¿Olvidaste tu contraseña?
           </Text>
         </TouchableOpacity>
@@ -101,7 +105,7 @@ export function LoginScreen({ navigation }: Props) {
         <TouchableOpacity
           style={[
             styles.loginButton,
-            { backgroundColor: theme.turquesa },
+            { backgroundColor: theme.textAccent },
             loading && { opacity: 0.6 },
           ]}
           onPress={handleLogin}
@@ -143,7 +147,7 @@ export function LoginScreen({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
           <Text style={[styles.footerText, { color: theme.textSecondary }]}>
             ¿No tienes cuenta?{' '}
-            <Text style={[styles.footerLink, { color: theme.turquesa }]}>Crear cuenta</Text>
+            <Text style={[styles.footerLink, { color: theme.textAccent }]}>Crear cuenta</Text>
           </Text>
         </TouchableOpacity>
       </View>

@@ -507,12 +507,12 @@ const styles = StyleSheet.create({
   rowMeta: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   deleteText: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 13,
-    color: '#E74C3C',
+    color: colors.textError,
   },
   venueBlock: { gap: 6 },
   venueTitle: {
@@ -524,13 +524,13 @@ const styles = StyleSheet.create({
   hint: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   error: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#EF4444',
+    color: colors.textError,
   },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontFamily: fonts.uiSemiBold, fontSize: 18, color: colors.azulNexo },

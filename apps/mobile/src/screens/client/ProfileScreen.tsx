@@ -35,7 +35,7 @@ interface NotificationItem {
   read: boolean;
 }
 
-export function ProfileScreen() {
+export function ProfileScreen({ professionalDetails }: { professionalDetails?: React.ReactNode }) {
   const { user, membership, signOut } = useAuth();
   const { profile, updateProfile } = useSettings(user?.id ?? '');
 
@@ -139,6 +139,8 @@ export function ProfileScreen() {
           <Text style={styles.email}>{user?.email ?? ''}</Text>
         </View>
 
+        {professionalDetails}
+
         {/* Membership Info */}
         {membership && (
           <Card style={styles.infoCard}>
@@ -153,7 +155,9 @@ export function ProfileScreen() {
           <Text style={styles.cardTitle}>Cuenta</Text>
           <ActionRow icon="person" label="Editar perfil" onPress={openEdit} />
           <ActionRow icon="notifications" label="Notificaciones" onPress={openNotifications} />
-          <ActionRow icon="card" label="Mis pagos y plan" onPress={openPayments} />
+          {membership?.role !== 'professional' && (
+            <ActionRow icon="card" label="Mis pagos y plan" onPress={openPayments} />
+          )}
           <ActionRow
             icon="help-circle"
             label="Ayuda y soporte"
@@ -196,7 +200,7 @@ export function ProfileScreen() {
               value={nameInput}
               onChangeText={setNameInput}
               placeholder="Tu nombre"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textSecondary}
               autoCapitalize="words"
               maxLength={60}
             />
@@ -375,7 +379,7 @@ const rowStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  label: { fontFamily: fonts.uiRegular, fontSize: 14, color: '#6B7280' },
+  label: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.textSecondary },
   value: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 14,
@@ -395,7 +399,7 @@ const rowStyles = StyleSheet.create({
     color: colors.azulNexo,
     flex: 1,
   },
-  chevron: { fontFamily: fonts.uiRegular, fontSize: 20, color: '#9CA3AF' },
+  chevron: { fontFamily: fonts.uiRegular, fontSize: 20, color: colors.textSecondary },
 });
 
 const styles = StyleSheet.create({
@@ -410,7 +414,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: colors.turquesa,
+    backgroundColor: colors.textAccent,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -462,7 +466,7 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   modalInput: {
     backgroundColor: '#FFFFFF',
@@ -505,19 +509,19 @@ const styles = StyleSheet.create({
   notifDate: {
     fontFamily: fonts.uiRegular,
     fontSize: 11,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
   },
   notifEmpty: {
     fontFamily: fonts.uiRegular,
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
     paddingVertical: 16,
     textAlign: 'center',
   },
   notifError: {
     fontFamily: fonts.uiRegular,
     fontSize: 14,
-    color: '#EF4444',
+    color: colors.textError,
     paddingVertical: 16,
     textAlign: 'center',
   },
@@ -530,7 +534,7 @@ const styles = StyleSheet.create({
   planBoxLabel: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   planBoxName: {
     fontFamily: fonts.uiSemiBold,

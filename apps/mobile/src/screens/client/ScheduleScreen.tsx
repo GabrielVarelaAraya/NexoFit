@@ -196,11 +196,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#F3F4F6',
   },
-  dateItemActive: { backgroundColor: colors.turquesa },
+  dateItemActive: { backgroundColor: colors.textAccent },
   dateDay: {
     fontFamily: fonts.uiRegular,
     fontSize: 11,
-    color: '#6B7280',
+    color: colors.textSecondary,
     textTransform: 'uppercase',
   },
   dateDayActive: { color: colors.crema },
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   coach: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   center: {
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.azulNexo,
   },
-  emptyHint: { fontFamily: fonts.uiRegular, fontSize: 13, color: '#9CA3AF' },
+  emptyHint: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textSecondary },
   errorBox: {
     margin: 16,
     padding: 12,
@@ -242,5 +242,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FECACA',
   },
-  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: '#EF4444' },
+  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },
 });

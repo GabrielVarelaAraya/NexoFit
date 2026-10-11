@@ -11,31 +11,25 @@ import {
 } from 'react-native';
 import { useTheme } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RouteProp } from '@react-navigation/native';
-import type { AuthStackParamList } from '../../navigation/types';
+import { Button } from '../../components/ui/Button';
 
-interface Props {
-  navigation: NativeStackNavigationProp<AuthStackParamList, 'NewPassword'>;
-  route: RouteProp<AuthStackParamList, 'NewPassword'>;
-}
-
-export function NewPasswordScreen({ navigation, route }: Props) {
+export function NewPasswordScreen() {
   const theme = useTheme();
-  const { verifyOtp, session } = useAuth();
-  const { token, type, email } = route.params;
+  const { updatePassword, finishPasswordRecovery, cancelPasswordRecovery } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const busy = loading || cancelling;
 
   const hasMinLength = password.length >= 8;
   const hasUpperCase = /[A-Z]/.test(password);
   const passwordValid = hasMinLength && hasUpperCase;
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
 
-  // If we have a session (from deep link), we can update password directly
-  // Otherwise we need to verify the OTP first
   const handleSave = async () => {
+    if (loading || cancelling || saved) return;
     if (!passwordValid) {
       Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres y una mayúscula.');
       return;
@@ -44,31 +38,48 @@ export function NewPasswordScreen({ navigation, route }: Props) {
       Alert.alert('Error', 'Las contraseñas no coinciden.');
       return;
     }
-
     Keyboard.dismiss();
     setLoading(true);
-
-    // If we have a token but no session, verify OTP first
-    if (token && type && email && !session) {
-      const { error } = await verifyOtp(email, token, type);
+    try {
+      const { error } = await updatePassword(password);
       if (error) {
-        Alert.alert('Error', error);
-        setLoading(false);
-        return;
+        Alert.alert('No se pudo cambiar la contraseña', error);
+      } else {
+        setPassword('');
+        setConfirmPassword('');
+        setSaved(true);
       }
-    }
-
-    // Update password (requires authenticated session)
-    const supabase = (await import('@nexofit/core')).getSupabase();
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
-
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
-      navigation.navigate('Login');
+    } catch {
+      Alert.alert('Sin conexión', 'No pudimos guardar la contraseña. Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleCancel = async () => {
+    if (loading || cancelling) return;
+    setCancelling(true);
+    try {
+      const { error } = await cancelPasswordRecovery();
+      if (error) Alert.alert('No se pudo salir', error);
+    } catch {
+      Alert.alert('Sin conexión', 'No pudimos cerrar la recuperación. Inténtalo de nuevo.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  if (saved) {
+    return (
+      <View style={[styles.container, styles.content, { backgroundColor: theme.crema }]}>
+        <Text style={[styles.title, { color: theme.azulNexo }]}>Contraseña actualizada</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          Tu contraseña nueva se guardó correctamente. Puedes continuar en NexoFit.
+        </Text>
+        <Button title="Entrar a NexoFit" onPress={finishPasswordRecovery} fullWidth />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -79,7 +90,7 @@ export function NewPasswordScreen({ navigation, route }: Props) {
     >
       <Text style={[styles.title, { color: theme.azulNexo }]}>Crea una nueva contraseña</Text>
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Usa al menos 8 caracteres.
+        Usa al menos 8 caracteres y una mayúscula.
       </Text>
 
       <View style={styles.form}>
@@ -99,6 +110,12 @@ export function NewPasswordScreen({ navigation, route }: Props) {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            editable={!busy}
+            accessibilityLabel="Nueva contraseña"
           />
         </View>
 
@@ -118,6 +135,12 @@ export function NewPasswordScreen({ navigation, route }: Props) {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            editable={!busy}
+            accessibilityLabel="Confirmar contraseña"
           />
         </View>
 
@@ -126,7 +149,7 @@ export function NewPasswordScreen({ navigation, route }: Props) {
             <Text
               style={[
                 styles.requirementIcon,
-                { color: hasMinLength ? theme.turquesa : theme.textSecondary },
+                { color: hasMinLength ? theme.textAccent : theme.textSecondary },
               ]}
             >
               {hasMinLength ? '✓' : '○'}
@@ -134,7 +157,7 @@ export function NewPasswordScreen({ navigation, route }: Props) {
             <Text
               style={[
                 styles.requirementText,
-                { color: hasMinLength ? theme.turquesa : theme.textSecondary },
+                { color: hasMinLength ? theme.textAccent : theme.textSecondary },
               ]}
             >
               8+ caracteres
@@ -144,7 +167,7 @@ export function NewPasswordScreen({ navigation, route }: Props) {
             <Text
               style={[
                 styles.requirementIcon,
-                { color: hasUpperCase ? theme.turquesa : theme.textSecondary },
+                { color: hasUpperCase ? theme.textAccent : theme.textSecondary },
               ]}
             >
               {hasUpperCase ? '✓' : '○'}
@@ -152,7 +175,7 @@ export function NewPasswordScreen({ navigation, route }: Props) {
             <Text
               style={[
                 styles.requirementText,
-                { color: hasUpperCase ? theme.turquesa : theme.textSecondary },
+                { color: hasUpperCase ? theme.textAccent : theme.textSecondary },
               ]}
             >
               una mayúscula
@@ -161,19 +184,17 @@ export function NewPasswordScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[
-          styles.button,
-          {
-            backgroundColor:
-              passwordValid && passwordsMatch ? theme.turquesa : theme.turquesa + '60',
-          },
-        ]}
+      <Button
+        title={loading ? 'Guardando...' : 'Guardar contraseña'}
         onPress={handleSave}
-        disabled={!passwordValid || !passwordsMatch || loading}
-      >
-        <Text style={[styles.buttonText, { color: theme.white }]}>
-          {loading ? 'Guardando...' : 'Guardar contraseña'}
+        loading={loading}
+        disabled={!passwordValid || !passwordsMatch || busy}
+        fullWidth
+        style={{ marginTop: 24 }}
+      />
+      <TouchableOpacity style={styles.backButton} onPress={handleCancel} disabled={busy}>
+        <Text style={[styles.buttonText, { color: theme.textAccent }]}>
+          {cancelling ? 'Saliendo...' : 'Cancelar recuperación'}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -236,8 +257,7 @@ const baseStyles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
   },
-  button: {
-    borderRadius: 12,
+  backButton: {
     paddingVertical: 16,
     alignItems: 'center',
   },

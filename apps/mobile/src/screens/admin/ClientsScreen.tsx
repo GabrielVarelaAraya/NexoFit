@@ -113,7 +113,9 @@ export function ClientsScreen() {
             </Text>
           </View>
           <View style={[styles.roleBadge, { backgroundColor: roleColor + '20' }]}>
-            <Text style={[styles.roleText, { color: roleColor }]}>{roleLabels[item.role]}</Text>
+            <Text style={[styles.roleText, { color: colors.azulNexo }]}>
+              {roleLabels[item.role]}
+            </Text>
           </View>
         </View>
         <View style={styles.memberFooter}>
@@ -127,7 +129,9 @@ export function ClientsScreen() {
               {isChanging ? (
                 <ActivityIndicator size="small" color={roleColor} />
               ) : (
-                <Text style={[styles.roleSelectorText, { color: roleColor }]}>Cambiar rol</Text>
+                <Text style={[styles.roleSelectorText, { color: colors.azulNexo }]}>
+                  Cambiar rol
+                </Text>
               )}
             </TouchableOpacity>
           )}
@@ -170,7 +174,7 @@ export function ClientsScreen() {
               style={[
                 styles.filterChip,
                 filterRole === role && {
-                  backgroundColor: colors.turquesa,
+                  backgroundColor: colors.textAccent,
                   borderColor: colors.turquesa,
                 },
               ]}
@@ -233,7 +237,7 @@ const styles = StyleSheet.create({
     borderColor: colors.azulNexo + '20',
   },
   filterChipText: { fontFamily: fonts.uiSemiBold, fontSize: 13, color: colors.azulNexo },
-  error: { fontFamily: fonts.uiRegular, fontSize: 12, color: '#EF4444' },
+  error: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textError },
   list: { padding: 16, gap: 12, paddingBottom: 24 },
   memberCard: { gap: 12 },
   memberHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -247,10 +251,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   avatarImage: { width: 48, height: 48, borderRadius: 24 },
-  avatarText: { fontFamily: fonts.brand, fontSize: 18, color: colors.turquesa },
+  avatarText: { fontFamily: fonts.brand, fontSize: 18, color: colors.textAccent },
   memberInfo: { flex: 1, gap: 2 },
   memberName: { fontFamily: fonts.uiSemiBold, fontSize: 15, color: colors.azulNexo },
-  memberEmail: { fontFamily: fonts.uiRegular, fontSize: 13, color: '#9CA3AF' },
+  memberEmail: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textSecondary },
   roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   roleText: { fontFamily: fonts.uiSemiBold, fontSize: 11 },
   memberFooter: {
@@ -261,7 +265,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
-  joinedDate: { fontFamily: fonts.uiRegular, fontSize: 12, color: '#9CA3AF' },
+  joinedDate: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },
   roleSelector: {
     minWidth: 110,
     alignItems: 'center',
@@ -273,6 +277,11 @@ const styles = StyleSheet.create({
   roleSelectorText: { fontFamily: fonts.uiSemiBold, fontSize: 12 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 80 },
   emptyTitle: { fontFamily: fonts.uiSemiBold, fontSize: 18, color: colors.azulNexo },
-  emptyHint: { fontFamily: fonts.uiRegular, fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
+  emptyHint: {
+    fontFamily: fonts.uiRegular,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

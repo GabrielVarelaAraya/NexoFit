@@ -105,7 +105,7 @@ export function JoinGymScreen({ navigation }: Props) {
       <TextInput
         style={styles.searchInput}
         placeholder="Buscar por nombre…"
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor={colors.textSecondary}
         value={search}
         onChangeText={setSearch}
         autoCapitalize="none"
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
     gap: 8,
   },
-  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: '#EF4444' },
+  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },
   loading: { marginTop: 40 },
   center: { alignItems: 'center', paddingTop: 40, gap: 6 },
   emptyTitle: { fontFamily: fonts.uiSemiBold, fontSize: 16, color: colors.azulNexo },

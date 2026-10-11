@@ -12,16 +12,17 @@ export const defaultTheme = {
   white: colors.white,
 
   // Semantic colors
-  success: colors.limaProgreso,
-  warning: '#F5A623',
-  error: '#E74C3C',
-  info: colors.turquesa,
+  success: colors.textSuccess,
+  warning: colors.textWarning,
+  error: colors.textError,
+  info: colors.textAccent,
 
   // Background
   background: colors.crema,
   cardBackground: colors.white,
   textPrimary: colors.azulNexo,
-  textSecondary: colors.azulNexo + 'AA',
+  textSecondary: colors.textSecondary,
+  textAccent: colors.textAccent,
 
   // Typography
   fonts,

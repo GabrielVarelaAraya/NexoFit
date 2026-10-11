@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     marginTop: 8,
-    color: colors.turquesa,
+    color: colors.textAccent,
     fontFamily: fonts.uiRegular,
     fontSize: 16,
   },

@@ -114,7 +114,7 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
             title="Ocupación media"
             value={safeStats.occupancy7d != null ? `${safeStats.occupancy7d}%` : '—'}
             change={safeStats.occupancy7d != null ? 'Próximos 7 días' : 'Sin clases programadas'}
-            changePositive
+            changePositive={safeStats.occupancy7d != null}
             icon="📊"
           />
           <MetricCard
@@ -140,6 +140,7 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
               icon="📋"
               label="Publicar programa"
               color={colors.limaProgreso}
+              textColor={colors.azulNexo}
               onPress={() => navigation.navigate('PublishProgram')}
             />
             <ActionButton
@@ -233,7 +234,10 @@ function MetricCard({
       <Text style={styles.metricTitle}>{title}</Text>
       {change !== undefined && (
         <Text
-          style={[styles.metricChange, { color: changePositive ? colors.limaProgreso : '#EF4444' }]}
+          style={[
+            styles.metricChange,
+            { color: changePositive ? colors.textSuccess : colors.textSecondary },
+          ]}
         >
           {change}
         </Text>
@@ -246,11 +250,13 @@ function ActionButton({
   icon,
   label,
   color,
+  textColor = colors.azulNexo,
   onPress,
 }: {
   icon: string;
   label: string;
   color: string;
+  textColor?: string;
   onPress: () => void;
 }) {
   return (
@@ -260,7 +266,7 @@ function ActionButton({
       activeOpacity={0.7}
     >
       <Text style={[styles.actionIcon, { color }]}>{icon}</Text>
-      <Text style={[styles.actionLabel, { color }]}>{label}</Text>
+      <Text style={[styles.actionLabel, { color: textColor }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -297,7 +303,7 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#EF4444',
+    color: colors.textError,
     textAlign: 'center',
   },
   metricsGrid: {
@@ -348,12 +354,12 @@ const styles = StyleSheet.create({
   seeAll: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: colors.turquesa,
+    color: colors.textAccent,
   },
   emptySection: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     paddingVertical: 8,
   },
   actionsGrid: {

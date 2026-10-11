@@ -278,7 +278,7 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
                       value={set.reps}
                       onChangeText={(v) => updateSet(ex.key, set.key, 'reps', v)}
                       placeholder="10"
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.textSecondary}
                       keyboardType="decimal-pad"
                     />
                     <TextInput
@@ -286,7 +286,7 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
                       value={set.weight}
                       onChangeText={(v) => updateSet(ex.key, set.key, 'weight', v)}
                       placeholder="40"
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.textSecondary}
                       keyboardType="decimal-pad"
                     />
                     <TouchableOpacity
@@ -405,11 +405,11 @@ const styles = StyleSheet.create({
   emptyHint: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   addChip: {
-    backgroundColor: colors.turquesa,
+    backgroundColor: colors.textAccent,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.azulNexo,
   },
-  removeExercise: { fontSize: 16, color: '#EF4444' },
+  removeExercise: { fontSize: 16, color: colors.textError },
   setRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
   setHeader: {
     fontFamily: fonts.uiRegular,
     fontSize: 11,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     width: 24,
     textAlign: 'center',
   },
@@ -470,12 +470,12 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   setRemoveSpace: { width: 16 },
-  removeSet: { fontSize: 14, color: '#9CA3AF' },
+  removeSet: { fontSize: 14, color: colors.textSecondary },
   addSetButton: { alignSelf: 'flex-start' },
   addSetText: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 13,
-    color: colors.turquesa,
+    color: colors.textAccent,
   },
   modalOverlay: {
     flex: 1,
@@ -513,6 +513,6 @@ const styles = StyleSheet.create({
   libraryMeta: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
   },
 });

@@ -13,7 +13,7 @@ export function Input({ label, error, hint, style, ...rest }: InputProps) {
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
         style={[styles.input, error && styles.inputError, style]}
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor={colors.textSecondary}
         {...rest}
       />
       {error && <Text style={styles.error}>{error}</Text>}
@@ -48,11 +48,11 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#EF4444',
+    color: colors.textError,
   },
   hint: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
   },
 });

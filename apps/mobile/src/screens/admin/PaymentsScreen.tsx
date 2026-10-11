@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   tabTextActive: { color: colors.azulNexo },
   content: { padding: 16, gap: 16 },
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
   revenueHint: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
@@ -592,18 +592,18 @@ const styles = StyleSheet.create({
   selectorPlaceholder: {
     fontFamily: fonts.uiRegular,
     fontSize: 16,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
   },
   hint: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   error: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#EF4444',
+    color: colors.textError,
   },
   paymentRow: {
     flexDirection: 'row',
@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
   paymentMeta: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   paymentRight: { alignItems: 'flex-end', gap: 2 },
   paymentAmount: {
@@ -643,12 +643,12 @@ const styles = StyleSheet.create({
   paymentDate: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
   },
   archiveText: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 13,
-    color: '#E74C3C',
+    color: colors.textError,
   },
   modalBackdrop: {
     flex: 1,
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
   },
   modalClose: {
     fontSize: 18,
-    color: '#6B7280',
+    color: colors.textSecondary,
     paddingHorizontal: 8,
   },
   modalList: { flexGrow: 0 },
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
   memberMeta: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     textTransform: 'capitalize',
   },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },

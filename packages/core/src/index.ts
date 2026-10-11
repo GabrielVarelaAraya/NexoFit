@@ -11,6 +11,7 @@ export { themePresets } from './theme/themes';
 export type { ThemePreset, ThemeStyle } from './theme/themes';
 
 export { getSupabase, setSupabaseConfig } from './supabase/client';
+export type { SupabaseConfig } from './supabase/client';
 export type { Database } from './supabase/database.types';
 export type {
   MeasurementRow,

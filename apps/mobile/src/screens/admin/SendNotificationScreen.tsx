@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   hint: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
 });

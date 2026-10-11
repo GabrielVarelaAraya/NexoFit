@@ -18,7 +18,7 @@ export function AdminTabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.turquesa,
+        tabBarActiveTintColor: theme.textAccent,
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarLabelStyle: {
           fontFamily: theme.fonts.uiSemiBold,

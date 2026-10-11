@@ -160,7 +160,9 @@ export function SessionDetailScreen({ route, navigation }: Props) {
             value={
               isPast ? 'Clase finalizada' : isFull ? 'Completo' : `${spotsLeft} cupos disponibles`
             }
-            valueColor={isPast ? '#9CA3AF' : isFull ? '#EF4444' : colors.turquesa}
+            valueColor={
+              isPast ? colors.textSecondary : isFull ? colors.textError : colors.textAccent
+            }
           />
           {ownBooking && !isPast && (
             <InfoRow
@@ -170,7 +172,9 @@ export function SessionDetailScreen({ route, navigation }: Props) {
                   ? 'Reserva confirmada'
                   : `En lista de espera (#${ownBooking.position ?? '—'})`
               }
-              valueColor={ownBooking.status === 'confirmed' ? colors.turquesa : '#F59E0B'}
+              valueColor={
+                ownBooking.status === 'confirmed' ? colors.textAccent : colors.textWarning
+              }
             />
           )}
         </Card>
@@ -243,7 +247,7 @@ const infoStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  label: { fontFamily: fonts.uiRegular, fontSize: 14, color: '#6B7280' },
+  label: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.textSecondary },
   value: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 14,
@@ -283,12 +287,12 @@ const styles = StyleSheet.create({
   dateTime: {
     fontFamily: fonts.uiRegular,
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   timeRange: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 16,
-    color: colors.turquesa,
+    color: colors.textAccent,
   },
   infoCard: { gap: 0 },
   notesCard: { gap: 4 },

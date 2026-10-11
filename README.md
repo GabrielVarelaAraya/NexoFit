@@ -29,12 +29,24 @@ NexoFit is a mobile-first platform that lets fitness businesses manage their ope
 - Set capacity per space
 - View attendance and member progress
 
+### For Professionals
+
+- View assigned appointments and appointment history
+- Cancel upcoming appointments and record attendance or absence
+- Manage weekly availability with time and overlap validation
+- Edit specialty, biography, and account details
+- Keep the session when reopening the mobile app
+
+Professional access requires an organization administrator to assign the
+`professional` membership role and migration `000005` to be applied.
+See [RUNNING.md](./RUNNING.md) for setup and manual verification.
+
 ## Architecture
 
 ```
 NexoFit/
 ├── apps/
-│   ├── mobile/          # Member & coach app (React Native + Expo)
+│   ├── mobile/          # Member, staff & professional app (React Native + Expo)
 │   └── admin/           # Admin dashboard (Expo Web, landscape)
 │
 ├── packages/
@@ -48,16 +60,16 @@ NexoFit/
 
 ## Tech Stack
 
-| Layer    | Technology                                         |
-| -------- | -------------------------------------------------- |
-| Mobile   | React Native 0.86, Expo SDK 57, React Navigation 7 |
-| Auth     | Supabase Auth (email/password, magic link)         |
-| Database | PostgreSQL 15 (via Supabase)                       |
-| API      | Supabase PostgREST + Edge Functions                |
-| Realtime | Supabase Realtime (bookings, notifications)        |
-| Styling  | React Native StyleSheet, brand tokens              |
-| Monorepo | pnpm workspaces                                    |
-| CI       | GitHub Actions (typecheck → lint → test → build)   |
+| Layer    | Technology                                                      |
+| -------- | --------------------------------------------------------------- |
+| Mobile   | React Native 0.86, Expo SDK 57, React Navigation 7              |
+| Auth     | Supabase Auth (email/password, email codes, persisted sessions) |
+| Database | PostgreSQL 15 (via Supabase)                                    |
+| API      | Supabase PostgREST + Edge Functions                             |
+| Realtime | Supabase Realtime (bookings, notifications)                     |
+| Styling  | React Native StyleSheet, brand tokens                           |
+| Monorepo | pnpm workspaces                                                 |
+| CI       | GitHub Actions (typecheck → lint → test → build)                |
 
 ## Brand Palette
 
@@ -73,7 +85,7 @@ NexoFit/
 
 ## Database Schema
 
-27 tables across 3 idempotent SQL files (run in order via the Supabase SQL Editor):
+29 tables across 5 idempotent SQL files (run in order via the Supabase SQL Editor):
 
 - **Organizations** — multi-tenant root
 - **Venues & Spaces** — locations with capacity

@@ -28,7 +28,7 @@ export function Card({
           </View>
           {badge && (
             <View style={[styles.badge, { backgroundColor: badgeColor + '20' }]}>
-              <Text style={[styles.badgeText, { color: badgeColor }]}>{badge}</Text>
+              <Text style={[styles.badgeText, { color: colors.azulNexo }]}>{badge}</Text>
             </View>
           )}
         </View>
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   badge: {

@@ -25,21 +25,25 @@ export function ForgotPasswordScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleSendCode = async () => {
-    if (!email.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu correo electrónico.');
+    if (loading) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      Alert.alert('Correo no válido', 'Ingresa una dirección de correo válida.');
       return;
     }
     Keyboard.dismiss();
     setLoading(true);
-    const { error } = await resetPassword(email.trim());
-    setLoading(false);
-    if (error) {
-      Alert.alert('Error', error);
-    } else {
-      navigation.navigate('VerificationCode', {
-        email: email.trim(),
-        type: 'recovery',
-      });
+    try {
+      const { error } = await resetPassword(normalizedEmail);
+      if (error) {
+        Alert.alert('No se pudo enviar el código', error);
+      } else {
+        navigation.navigate('VerificationCode', { email: normalizedEmail, type: 'recovery' });
+      }
+    } catch {
+      Alert.alert('Sin conexión', 'No pudimos enviar el código. Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,7 +56,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
     >
       <Text style={[styles.title, { color: theme.azulNexo }]}>Recupera tu acceso</Text>
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Te enviaremos un código de 6 dígitos.
+        Si el correo está registrado, recibirás un código para recuperar tu acceso.
       </Text>
 
       <View style={styles.inputContainer}>
@@ -70,6 +74,8 @@ export function ForgotPasswordScreen({ navigation }: Props) {
           placeholderTextColor={theme.textSecondary}
           value={email}
           onChangeText={setEmail}
+          editable={!loading}
+          accessibilityLabel="Correo de recuperación"
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
@@ -78,7 +84,11 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.turquesa }, loading && { opacity: 0.6 }]}
+          style={[
+            styles.button,
+            { backgroundColor: theme.textAccent },
+            loading && { opacity: 0.6 },
+          ]}
           onPress={handleSendCode}
           disabled={loading}
         >
@@ -87,8 +97,14 @@ export function ForgotPasswordScreen({ navigation }: Props) {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Login')}>
-          <Text style={[styles.backText, { color: theme.turquesa }]}>Volver a iniciar sesión</Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Login')}
+          disabled={loading}
+        >
+          <Text style={[styles.backText, { color: theme.textAccent }]}>
+            Volver a iniciar sesión
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

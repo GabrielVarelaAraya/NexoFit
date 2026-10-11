@@ -484,7 +484,7 @@ function StatCard({
 }) {
   return (
     <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={[styles.statValue, { color: colors.azulNexo }]}>{value}</Text>
       <Text style={styles.statTitle}>{title}</Text>
       <Text style={styles.statSubtitle}>{subtitle}</Text>
     </View>
@@ -506,8 +506,8 @@ function MetricItem({
     trend == null || trend === '0'
       ? colors.textSecondary
       : trend.startsWith('-')
-        ? '#EF4444'
-        : colors.mentaActiva;
+        ? colors.textError
+        : colors.textSuccess;
   return (
     <View style={styles.metricItem}>
       <Text style={styles.metricLabel}>{label}</Text>
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
     gap: 8,
   },
-  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: '#EF4444' },
+  errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   addChip: {
-    backgroundColor: colors.turquesa,
+    backgroundColor: colors.textAccent,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
   metricLabel: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
   },
   metricValue: {
     fontFamily: fonts.uiSemiBold,
@@ -694,12 +694,12 @@ const styles = StyleSheet.create({
   historyDay: {
     fontFamily: fonts.brand,
     fontSize: 24,
-    color: colors.turquesa,
+    color: colors.textAccent,
   },
   historyMonth: {
     fontFamily: fonts.uiRegular,
     fontSize: 11,
-    color: colors.turquesa,
+    color: colors.textAccent,
     textTransform: 'uppercase',
   },
   historyMetrics: {
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   historyDelete: {
     fontFamily: fonts.uiRegular,
     fontSize: 11,
-    color: '#EF4444',
+    color: colors.textError,
   },
   noHistory: {
     textAlign: 'center',
@@ -741,19 +741,19 @@ const styles = StyleSheet.create({
   recordValue: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 14,
-    color: colors.turquesa,
+    color: colors.textAccent,
   },
   recordDate: {
     fontFamily: fonts.uiRegular,
     fontSize: 11,
-    color: '#9CA3AF',
+    color: colors.textSecondary,
     width: 52,
     textAlign: 'right',
   },
   workoutsError: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#EF4444',
+    color: colors.textError,
   },
   // Historial de entrenamientos
   workoutItem: {
@@ -779,11 +779,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-  workoutItemChevron: { fontSize: 14, color: '#9CA3AF' },
+  workoutItemChevron: { fontSize: 14, color: colors.textSecondary },
   workoutItemNotes: {
     fontFamily: fonts.uiRegular,
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontStyle: 'italic',
   },
   workoutDetail: {

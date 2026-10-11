@@ -1,15 +1,25 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  type SupabaseClient,
+  type SupabaseClientOptions,
+} from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
+export interface SupabaseConfig {
+  url: string;
+  key: string;
+  auth?: SupabaseClientOptions<'public'>['auth'];
+}
+
 let _client: SupabaseClient<Database> | null = null;
-let _config: { url: string; key: string } | null = null;
+let _config: SupabaseConfig | null = null;
 
 /**
  * Set the Supabase configuration. Must be called before getSupabase().
  * In Expo apps, call this with values from expo-constants.
  * In Node scripts, you can use process.env directly.
  */
-export function setSupabaseConfig(config: { url: string; key: string }): void {
+export function setSupabaseConfig(config: SupabaseConfig): void {
   _config = config;
   // Reset client so it gets recreated with new config
   _client = null;
@@ -33,7 +43,7 @@ export function getSupabase(): SupabaseClient<Database> {
       );
     }
 
-    _client = createClient<Database>(url, key);
+    _client = createClient<Database>(url, key, { auth: _config?.auth });
   }
   return _client;
 }

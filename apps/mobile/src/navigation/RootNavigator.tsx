@@ -1,7 +1,8 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '@nexofit/core';
-import { View, ActivityIndicator } from 'react-native';
+import { getAuthDestination } from '../utils/authRecovery';
+import { useTheme, colors } from '@nexofit/core';
+import { View, Text, ActivityIndicator } from 'react-native';
 import type { RootStackParamList, AuthStackParamList, MainStackParamList } from './types';
 
 // Auth screens
@@ -15,6 +16,9 @@ import { VerificationCodeScreen } from '../screens/auth/VerificationCodeScreen';
 // Tab navigators
 import { ClientTabNavigator } from './ClientTabNavigator';
 import { AdminTabNavigator } from './AdminTabNavigator';
+import { ProfessionalTabNavigator } from './ProfessionalTabNavigator';
+import { getRoleAccess, getRoleTab } from '../utils/roleAccess';
+import { Button } from '../components/ui';
 
 // Client screens (for modals/push screens)
 import { SessionDetailScreen } from '../screens/client/SessionDetailScreen';
@@ -48,7 +52,6 @@ function AuthNavigator() {
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="SignUp" component={SignUpScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-      <AuthStack.Screen name="NewPassword" component={NewPasswordScreen} />
       <AuthStack.Screen name="VerificationCode" component={VerificationCodeScreen} />
     </AuthStack.Navigator>
   );
@@ -58,42 +61,78 @@ function MainNavigator() {
   const theme = useTheme();
   const { membership } = useAuth();
 
-  // Rol resuelto antes de montar el stack (RootNavigator espera a
-  // membershipLoading): admin/coach entran a su panel de gestión
-  // (clases, programas, clientes, pagos); los miembros ven la app cliente.
-  const isStaff = membership?.role === 'admin' || membership?.role === 'coach';
-
+  const access = getRoleAccess(membership?.role);
   return (
     <MainStack.Navigator
-      initialRouteName={isStaff ? 'AdminTabs' : 'ClientTabs'}
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: theme.crema },
-      }}
+      key={(membership?.id ?? 'no-membership') + ':' + (membership?.role ?? 'member')}
+      initialRouteName={getRoleTab(membership?.role)}
+      screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.crema } }}
     >
-      <MainStack.Screen name="ClientTabs" component={ClientTabNavigator} />
-      <MainStack.Screen name="AdminTabs" component={AdminTabNavigator} />
-      <MainStack.Screen name="SessionDetail" component={SessionDetailScreen} />
-      <MainStack.Screen name="MyBookings" component={MyBookingsScreen} />
-      <MainStack.Screen name="JoinGym" component={JoinGymScreen} />
-      <MainStack.Screen name="CreateGym" component={CreateGymScreen} />
-      <MainStack.Screen name="WorkoutLog" component={WorkoutLogScreen} />
-      <MainStack.Screen name="CreateSession" component={CreateSessionScreen} />
-      <MainStack.Screen name="PublishProgram" component={PublishProgramScreen} />
-      <MainStack.Screen name="SendNotification" component={SendNotificationScreen} />
-      <MainStack.Screen name="Payments" component={PaymentsScreen} />
-      <MainStack.Screen name="GymContent" component={GymContentScreen} />
+      {access === 'professional' ? (
+        <MainStack.Screen name="ProfessionalTabs" component={ProfessionalTabNavigator} />
+      ) : (
+        <>
+          {access === 'staff' ? (
+            <MainStack.Screen name="AdminTabs" component={AdminTabNavigator} />
+          ) : (
+            <MainStack.Screen name="ClientTabs" component={ClientTabNavigator} />
+          )}
+          <MainStack.Screen name="SessionDetail" component={SessionDetailScreen} />
+          <MainStack.Screen name="MyBookings" component={MyBookingsScreen} />
+          <MainStack.Screen name="JoinGym" component={JoinGymScreen} />
+          <MainStack.Screen name="CreateGym" component={CreateGymScreen} />
+          <MainStack.Screen name="WorkoutLog" component={WorkoutLogScreen} />
+          {access === 'staff' && (
+            <>
+              <MainStack.Screen name="CreateSession" component={CreateSessionScreen} />
+              <MainStack.Screen name="PublishProgram" component={PublishProgramScreen} />
+              <MainStack.Screen name="SendNotification" component={SendNotificationScreen} />
+              <MainStack.Screen name="Payments" component={PaymentsScreen} />
+              <MainStack.Screen name="GymContent" component={GymContentScreen} />
+            </>
+          )}
+        </>
+      )}
     </MainStack.Navigator>
   );
 }
 
 export function RootNavigator() {
-  const { session, loading, membershipLoading } = useAuth();
+  const {
+    session,
+    loading,
+    membershipLoading,
+    passwordRecovery,
+    sessionError,
+    retrySession,
+    membershipError,
+    refreshMembership,
+  } = useAuth();
+  const destination = getAuthDestination({ session, passwordRecovery }, loading, membershipLoading);
   const theme = useTheme();
 
-  // membershipLoading: con sesión pero aún sin rol resuelto, mantener el
-  // spinner para no montar las pestañas equivocadas (initialRouteName).
-  if (loading || membershipLoading) {
+  const accessError = sessionError ?? (destination === 'Main' ? membershipError : null);
+  if (accessError)
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          padding: 24,
+          gap: 16,
+          backgroundColor: theme.crema,
+        }}
+      >
+        <Text style={{ color: colors.textError, fontSize: 16 }}>{accessError}</Text>
+        <Button
+          title="Reintentar"
+          onPress={sessionError ? retrySession : () => void refreshMembership()}
+        />
+      </View>
+    );
+
+  // Esperar el rol solo para las pestañas; la recuperación debe ser accesible antes.
+  if (destination === 'Loading') {
     return (
       <View
         style={{
@@ -110,7 +149,13 @@ export function RootNavigator() {
 
   return (
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
-      {session ? (
+      {destination === 'NewPassword' ? (
+        <RootStack.Screen
+          name="NewPassword"
+          component={NewPasswordScreen}
+          options={{ gestureEnabled: false }}
+        />
+      ) : destination === 'Main' ? (
         <RootStack.Screen name="Main" component={MainNavigator} />
       ) : (
         <RootStack.Screen name="Auth" component={AuthNavigator} />

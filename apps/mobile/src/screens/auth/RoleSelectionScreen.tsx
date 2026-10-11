@@ -8,9 +8,16 @@ interface Props {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'RoleSelection'>;
 }
 
-type Role = 'client' | 'gym_owner';
+type Role = 'client' | 'gym_owner' | 'professional';
 
 const roles = [
+  {
+    id: 'professional' as Role,
+    title: 'Soy profesional',
+    description: 'Tu agenda, disponibilidad y perfil',
+    icon: '🩺',
+    iconBg: '#CFFAFE',
+  },
   {
     id: 'client' as Role,
     title: 'Soy cliente',
@@ -32,7 +39,7 @@ export function RoleSelectionScreen({ navigation }: Props) {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
 
   const handleContinue = () => {
-    if (selectedRole === 'client') {
+    if (selectedRole === 'client' || selectedRole === 'professional') {
       navigation.navigate('Login');
     } else if (selectedRole === 'gym_owner') {
       navigation.navigate('SignUp');
@@ -88,7 +95,7 @@ export function RoleSelectionScreen({ navigation }: Props) {
         disabled={!selectedRole}
         activeOpacity={0.8}
       >
-        <Text style={[styles.buttonText, { color: theme.white }]}>Continuar</Text>
+        <Text style={[styles.buttonText, { color: theme.azulNexo }]}>Continuar</Text>
       </TouchableOpacity>
     </View>
   );

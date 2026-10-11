@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   seeAll: {
     fontFamily: fonts.uiRegular,
     fontSize: 14,
-    color: colors.turquesa,
+    color: colors.textAccent,
   },
   bookingsList: { gap: 12 },
   sessionsList: { gap: 12 },
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   coach: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   emptyState: {

@@ -5,7 +5,12 @@ export const colors = {
   limaProgreso: '#A9F56F',
   crema: '#F8F6EF',
   white: '#FFFFFF',
-  textSecondary: '#6B7280',
+  // Dark text colors for light surfaces; brand accents remain available for fills.
+  textSecondary: '#475569',
+  textAccent: '#08766F',
+  textSuccess: '#2F6B1A',
+  textError: '#B91C1C',
+  textWarning: '#92400E',
 };
 
 export const brandProportions = {

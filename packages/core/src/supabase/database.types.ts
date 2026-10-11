@@ -1119,6 +1119,18 @@ export interface Database {
       };
     };
     Functions: {
+      can_manage_professional: {
+        Args: { p_professional_id: string; p_organization_id?: string };
+        Returns: boolean;
+      };
+      is_assigned_professional: {
+        Args: { p_profile_id: string };
+        Returns: boolean;
+      };
+      email_exists: {
+        Args: { p_email: string };
+        Returns: boolean;
+      };
       book_session: {
         Args: { p_session_id: string; p_profile_id: string };
         Returns: Json;

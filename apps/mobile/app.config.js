@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+const { existsSync } = require('node:fs');
+const { resolve } = require('node:path');
 const { config } = require('dotenv');
-config({ path: '../../.env' });
+config({ path: resolve(__dirname, '../../.env') });
+
+// Los iconos son opcionales mientras no se agreguen los archivos de marca.
+const optionalAsset = (filename) =>
+  existsSync(resolve(__dirname, 'assets', filename)) ? './assets/' + filename : undefined;
 
 module.exports = {
   expo: {
@@ -8,7 +14,7 @@ module.exports = {
     slug: 'nexofit',
     version: '0.1.0',
     orientation: 'portrait',
-    icon: './assets/icon.png',
+    icon: optionalAsset('icon.png'),
     userInterfaceStyle: 'light',
     backgroundColor: '#F8F6EF',
     splash: {
@@ -22,13 +28,13 @@ module.exports = {
       package: 'com.nexofit.app',
       adaptiveIcon: {
         backgroundColor: '#06354E',
-        foregroundImage: './assets/android-icon-foreground.png',
-        backgroundImage: './assets/android-icon-background.png',
-        monochromeImage: './assets/android-icon-monochrome.png',
+        foregroundImage: optionalAsset('android-icon-foreground.png'),
+        backgroundImage: optionalAsset('android-icon-background.png'),
+        monochromeImage: optionalAsset('android-icon-monochrome.png'),
       },
     },
     web: {
-      favicon: './assets/favicon.png',
+      favicon: optionalAsset('favicon.png'),
       backgroundColor: '#F8F6EF',
     },
     scheme: 'nexofit',
