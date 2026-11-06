@@ -439,7 +439,13 @@ function ActionRow({
 }) {
   const tint = destructive ? colors.textError : colors.azulNexo;
   return (
-    <TouchableOpacity style={rowStyles.actionRow} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      style={rowStyles.actionRow}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityLabel={label}
+    >
       <Ionicons name={icon} size={20} color={tint} />
       <Text style={[rowStyles.actionLabel, destructive && { color: colors.textError }]}>
         {label}

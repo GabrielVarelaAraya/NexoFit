@@ -30,6 +30,7 @@ export function Button({
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
       style={[
         styles.base,
         variantStyles.container,
@@ -39,6 +40,7 @@ export function Button({
       ]}
       disabled={disabled || loading}
       activeOpacity={0.7}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
       {...rest}
     >
       {loading ? (

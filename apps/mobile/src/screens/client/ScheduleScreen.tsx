@@ -146,8 +146,11 @@ export function ScheduleScreen({ navigation }: Props) {
           const isSelected = dateStr === selectedDate;
           return (
             <TouchableOpacity
+              accessibilityRole="button"
               style={[styles.dateItem, isSelected && styles.dateItemActive]}
               onPress={() => setSelectedDate(dateStr)}
+              accessibilityLabel={`Seleccionar ${day} ${num}`}
+              accessibilityState={{ selected: isSelected }}
             >
               <Text style={[styles.dateDay, isSelected && styles.dateDayActive]}>{day}</Text>
               <Text style={[styles.dateNum, isSelected && styles.dateNumActive]}>{num}</Text>

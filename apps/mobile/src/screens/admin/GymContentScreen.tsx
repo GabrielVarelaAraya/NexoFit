@@ -246,6 +246,7 @@ export function GymContentScreen({ route, navigation }: Props) {
                 <View style={styles.colorRow}>
                   {CLASS_COLORS.map((c) => (
                     <TouchableOpacity
+                      accessibilityRole="button"
                       key={c}
                       style={[
                         styles.colorDot,
@@ -363,6 +364,7 @@ export function GymContentScreen({ route, navigation }: Props) {
                       <View style={styles.chips}>
                         {venues.map((v) => (
                           <TouchableOpacity
+                            accessibilityRole="button"
                             key={v.id}
                             style={[styles.chip, effectiveVenueId === v.id && styles.chipActive]}
                             onPress={() => setSpaceVenueId(v.id)}

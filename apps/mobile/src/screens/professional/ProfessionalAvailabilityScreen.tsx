@@ -62,9 +62,9 @@ export function ProfessionalAvailabilityScreen() {
         <View style={styles.row}>
           {WEEKDAYS.map((name, index) => (
             <TouchableOpacity
+              accessibilityRole="button"
               key={name}
               style={[styles.chip, day === index && styles.chipActive]}
-              accessibilityRole="button"
               accessibilityState={{ selected: day === index }}
               disabled={pending}
               onPress={() => setDay(index)}

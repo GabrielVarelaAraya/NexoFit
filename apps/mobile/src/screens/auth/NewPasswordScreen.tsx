@@ -1,26 +1,20 @@
 import { useState } from 'react';
-import {
-  Keyboard,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Alert,
-} from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '@nexofit/core';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
-import { Button } from '../../components/ui/Button';
+import { Button, ErrorBanner, Input } from '../../components/ui';
 
 export function NewPasswordScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { updatePassword, finishPasswordRecovery, cancelPasswordRecovery } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const busy = loading || cancelling;
 
   const hasMinLength = password.length >= 8;
@@ -31,26 +25,27 @@ export function NewPasswordScreen() {
   const handleSave = async () => {
     if (loading || cancelling || saved) return;
     if (!passwordValid) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres y una mayúscula.');
+      setErrorMessage('La contraseña debe tener al menos 8 caracteres y una mayúscula.');
       return;
     }
     if (!passwordsMatch) {
-      Alert.alert('Error', 'Las contraseñas no coinciden.');
+      setErrorMessage('Las contraseñas no coinciden.');
       return;
     }
     Keyboard.dismiss();
+    setErrorMessage(null);
     setLoading(true);
     try {
       const { error } = await updatePassword(password);
       if (error) {
-        Alert.alert('No se pudo cambiar la contraseña', error);
+        setErrorMessage(error);
       } else {
         setPassword('');
         setConfirmPassword('');
         setSaved(true);
       }
     } catch {
-      Alert.alert('Sin conexión', 'No pudimos guardar la contraseña. Inténtalo de nuevo.');
+      setErrorMessage('No pudimos guardar la contraseña. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -61,9 +56,9 @@ export function NewPasswordScreen() {
     setCancelling(true);
     try {
       const { error } = await cancelPasswordRecovery();
-      if (error) Alert.alert('No se pudo salir', error);
+      if (error) setErrorMessage(error);
     } catch {
-      Alert.alert('Sin conexión', 'No pudimos cerrar la recuperación. Inténtalo de nuevo.');
+      setErrorMessage('No pudimos cerrar la recuperación. Inténtalo de nuevo.');
     } finally {
       setCancelling(false);
     }
@@ -84,7 +79,7 @@ export function NewPasswordScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.crema }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 24, 80) }]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -94,55 +89,32 @@ export function NewPasswordScreen() {
       </Text>
 
       <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.azulNexo }]}>Nueva contraseña</Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.white,
-                borderColor: theme.azulNexo + '20',
-                color: theme.azulNexo,
-              },
-            ]}
-            placeholder="••••••••"
-            placeholderTextColor={theme.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="new-password"
-            textContentType="newPassword"
-            editable={!busy}
-            accessibilityLabel="Nueva contraseña"
-          />
-        </View>
+        <ErrorBanner message={errorMessage} />
+        <Input
+          label="Nueva contraseña"
+          placeholder="••••••••"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="new-password"
+          textContentType="newPassword"
+          editable={!busy}
+        />
 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.azulNexo }]}>Confirmar contraseña</Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.white,
-                borderColor: theme.azulNexo + '20',
-                color: theme.azulNexo,
-              },
-            ]}
-            placeholder="••••••••"
-            placeholderTextColor={theme.textSecondary}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="new-password"
-            textContentType="newPassword"
-            editable={!busy}
-            accessibilityLabel="Confirmar contraseña"
-          />
-        </View>
+        <Input
+          label="Confirmar contraseña"
+          placeholder="••••••••"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="new-password"
+          textContentType="newPassword"
+          editable={!busy}
+        />
 
         <View style={styles.requirements}>
           <View style={styles.requirement}>
@@ -192,7 +164,12 @@ export function NewPasswordScreen() {
         fullWidth
         style={{ marginTop: 24 }}
       />
-      <TouchableOpacity style={styles.backButton} onPress={handleCancel} disabled={busy}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        style={styles.backButton}
+        onPress={handleCancel}
+        disabled={busy}
+      >
         <Text style={[styles.buttonText, { color: theme.textAccent }]}>
           {cancelling ? 'Saliendo...' : 'Cancelar recuperación'}
         </Text>

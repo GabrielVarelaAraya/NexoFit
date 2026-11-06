@@ -60,8 +60,8 @@ export function ProfessionalAgendaScreen() {
       <View style={styles.row}>
         {[false, true].map((value) => (
           <TouchableOpacity
-            key={String(value)}
             accessibilityRole="button"
+            key={String(value)}
             accessibilityState={{ selected: history === value }}
             style={[styles.chip, history === value && styles.chipActive]}
             onPress={() => setHistory(value)}

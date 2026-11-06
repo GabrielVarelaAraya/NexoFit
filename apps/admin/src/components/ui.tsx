@@ -65,6 +65,7 @@ export function Button({
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.8}
+      accessibilityRole="button"
     >
       <Text style={[styles.buttonText, isGhost && styles.buttonTextGhost]}>{label}</Text>
     </TouchableOpacity>

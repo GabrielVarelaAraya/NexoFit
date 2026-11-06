@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, useTheme } from '@nexofit/core';
 import { useUnreadNotifications } from '../contexts/NotificationsContext';
 import { badgeValue } from './tabBadge';
@@ -13,6 +14,7 @@ const Tab = createBottomTabNavigator<ProfessionalTabParamList>();
 export function ProfessionalTabNavigator() {
   const theme = useTheme();
   const { unread } = useUnreadNotifications();
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -20,7 +22,12 @@ export function ProfessionalTabNavigator() {
         tabBarActiveTintColor: theme.textAccent,
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarLabelStyle: { fontFamily: theme.fonts.uiSemiBold, fontSize: 11 },
-        tabBarStyle: { backgroundColor: theme.crema, borderTopColor: '#E5E7EB' },
+        tabBarStyle: {
+          paddingBottom: Math.max(insets.bottom, 4),
+          height: 56 + insets.bottom,
+          backgroundColor: theme.crema,
+          borderTopColor: '#E5E7EB',
+        },
       }}
     >
       <Tab.Screen

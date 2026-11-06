@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@nexofit/core';
 import type { AdminTabParamList } from './types';
 
@@ -13,6 +14,7 @@ const Tab = createBottomTabNavigator<AdminTabParamList>();
 
 export function AdminTabNavigator() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -25,8 +27,8 @@ export function AdminTabNavigator() {
           fontSize: 11,
         },
         tabBarStyle: {
-          paddingBottom: 4,
-          height: 56,
+          paddingBottom: Math.max(insets.bottom, 4),
+          height: 56 + insets.bottom,
           // Mismo color que el fondo de las pantallas (crema), no blanco.
           backgroundColor: theme.crema,
           borderTopColor: '#E5E7EB',

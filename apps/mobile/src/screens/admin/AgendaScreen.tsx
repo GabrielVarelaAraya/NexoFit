@@ -144,8 +144,11 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
           const isSelected = dateStr === selectedDate;
           return (
             <TouchableOpacity
+              accessibilityRole="button"
               style={[styles.dateItem, isSelected && styles.dateItemActive]}
               onPress={() => setSelectedDate(dateStr)}
+              accessibilityLabel={`Seleccionar ${day} ${num}`}
+              accessibilityState={{ selected: isSelected }}
             >
               <Text style={[styles.dateDay, isSelected && styles.dateDayActive]}>{day}</Text>
               <Text style={[styles.dateNum, isSelected && styles.dateNumActive]}>{num}</Text>
@@ -183,9 +186,9 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
 
       {/* FAB for new class */}
       <TouchableOpacity
+        accessibilityRole="button"
         style={styles.fab}
         onPress={() => navigation.navigate('CreateSession', { defaultDate: selectedDate })}
-        accessibilityRole="button"
         accessibilityLabel="Crear clase"
         activeOpacity={0.8}
       >

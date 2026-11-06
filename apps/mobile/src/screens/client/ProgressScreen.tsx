@@ -217,7 +217,13 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
           <Card style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Medidas corporales</Text>
-              <TouchableOpacity style={styles.addChip} onPress={openModal}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={styles.addChip}
+                onPress={openModal}
+                accessibilityLabel="Añadir medida"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Text style={styles.addChipText}>+ Añadir</Text>
               </TouchableOpacity>
             </View>
@@ -297,8 +303,11 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Mis entrenamientos</Text>
               <TouchableOpacity
+                accessibilityRole="button"
                 style={styles.addChip}
                 onPress={() => navigation.navigate('WorkoutLog', {})}
+                accessibilityLabel="Registrar entrenamiento"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Text style={styles.addChipText}>+ Entrenamiento</Text>
               </TouchableOpacity>
@@ -354,8 +363,8 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Registrar medidas</Text>
               <TouchableOpacity
-                onPress={closeModal}
                 accessibilityRole="button"
+                onPress={closeModal}
                 accessibilityLabel="Cerrar"
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
@@ -434,7 +443,13 @@ function WorkoutLogRow({
   const date = new Date(log.started_at);
 
   return (
-    <TouchableOpacity style={styles.workoutItem} onPress={onToggle} activeOpacity={0.7}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      style={styles.workoutItem}
+      onPress={onToggle}
+      activeOpacity={0.7}
+      accessibilityLabel="Expandir o colapsar entrenamiento"
+    >
       <View style={styles.workoutItemHeader}>
         <View style={styles.workoutItemInfo}>
           <Text style={styles.workoutItemDate}>
@@ -541,7 +556,12 @@ function HistoryItem({
 }) {
   const date = new Date(measurement.measured_at);
   return (
-    <TouchableOpacity style={styles.historyItem} onPress={() => onDelete(measurement.id)}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      style={styles.historyItem}
+      onPress={() => onDelete(measurement.id)}
+      accessibilityLabel="Eliminar medición"
+    >
       <View style={styles.historyDate}>
         <Text style={styles.historyDay}>{date.getDate()}</Text>
         <Text style={styles.historyMonth}>

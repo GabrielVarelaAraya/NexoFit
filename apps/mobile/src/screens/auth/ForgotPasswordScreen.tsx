@@ -1,16 +1,9 @@
 import { useState } from 'react';
-import {
-  Keyboard,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Alert,
-} from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '@nexofit/core';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button, ErrorBanner, Input } from '../../components/ui';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -20,28 +13,31 @@ interface Props {
 
 export function ForgotPasswordScreen({ navigation }: Props) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSendCode = async () => {
     if (loading) return;
     const normalizedEmail = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      Alert.alert('Correo no válido', 'Ingresa una dirección de correo válida.');
+      setErrorMessage('Ingresa una dirección de correo válida.');
       return;
     }
     Keyboard.dismiss();
+    setErrorMessage(null);
     setLoading(true);
     try {
       const { error } = await resetPassword(normalizedEmail);
       if (error) {
-        Alert.alert('No se pudo enviar el código', error);
+        setErrorMessage(error);
       } else {
         navigation.navigate('VerificationCode', { email: normalizedEmail, type: 'recovery' });
       }
     } catch {
-      Alert.alert('Sin conexión', 'No pudimos enviar el código. Inténtalo de nuevo.');
+      setErrorMessage('No pudimos enviar el código. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -50,7 +46,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.crema }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 24, 80) }]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -59,45 +55,29 @@ export function ForgotPasswordScreen({ navigation }: Props) {
         Si el correo está registrado, recibirás un código para recuperar tu acceso.
       </Text>
 
-      <View style={styles.inputContainer}>
-        <Text style={[styles.label, { color: theme.azulNexo }]}>Correo electrónico</Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.white,
-              borderColor: theme.azulNexo + '20',
-              color: theme.azulNexo,
-            },
-          ]}
-          placeholder="sofia@email.com"
-          placeholderTextColor={theme.textSecondary}
-          value={email}
-          onChangeText={setEmail}
-          editable={!loading}
-          accessibilityLabel="Correo de recuperación"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-        />
-      </View>
+      <ErrorBanner message={errorMessage} />
+
+      <Input
+        label="Correo electrónico"
+        placeholder="sofia@email.com"
+        value={email}
+        onChangeText={setEmail}
+        editable={!loading}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoComplete="email"
+      />
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            { backgroundColor: theme.textAccent },
-            loading && { opacity: 0.6 },
-          ]}
+        <Button
+          title={loading ? 'Enviando...' : 'Enviar código'}
+          loading={loading}
+          fullWidth
           onPress={handleSendCode}
-          disabled={loading}
-        >
-          <Text style={[styles.buttonText, { color: theme.white }]}>
-            {loading ? 'Enviando...' : 'Enviar código'}
-          </Text>
-        </TouchableOpacity>
+        />
 
         <TouchableOpacity
+          accessibilityRole="button"
           style={styles.backButton}
           onPress={() => navigation.navigate('Login')}
           disabled={loading}

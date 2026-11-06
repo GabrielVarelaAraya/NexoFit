@@ -132,7 +132,13 @@ export function MoreScreen({ navigation }: { navigation: NavigationProp }) {
 
 function MenuItem({ item }: { item: MenuItemType }) {
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={item.onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      style={styles.menuItem}
+      onPress={item.onPress}
+      activeOpacity={0.7}
+      accessibilityLabel={item.title}
+    >
       <Ionicons
         name={item.icon}
         size={22}

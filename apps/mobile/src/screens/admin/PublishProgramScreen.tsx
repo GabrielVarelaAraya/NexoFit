@@ -184,6 +184,7 @@ export function PublishProgramScreen({ navigation }: Props) {
               const isSelected = s.id === selectedSessionId;
               return (
                 <TouchableOpacity
+                  accessibilityRole="button"
                   key={s.id}
                   style={[styles.sessionRow, isSelected && styles.sessionRowActive]}
                   onPress={() => setSelectedSessionId(s.id)}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
 import { ThemeProvider, colors, fonts, setSupabaseConfig } from '@nexofit/core';
@@ -42,6 +42,8 @@ export default function App() {
 function AdminShell() {
   const { session, membership, loading, accessError, signIn, signOut } = useAdminSession();
   const [view, setView] = useState<ViewName>('dashboard');
+  const { width } = useWindowDimensions();
+  const compact = width < 768;
 
   if (loading) {
     return (
@@ -63,7 +65,11 @@ function AdminShell() {
           <Text style={styles.deniedText}>
             {accessError ?? 'Esta cuenta no puede usar la consola de administración.'}
           </Text>
-          <TouchableOpacity style={styles.signOutButton} onPress={() => void signOut()}>
+          <TouchableOpacity
+            style={styles.signOutButton}
+            onPress={() => void signOut()}
+            accessibilityRole="button"
+          >
             <Text style={styles.signOutText}>Cerrar sesión</Text>
           </TouchableOpacity>
         </View>
@@ -72,42 +78,73 @@ function AdminShell() {
   }
 
   return (
-    <View style={styles.shell}>
-      {/* Barra lateral */}
-      <View style={styles.sidebar}>
-        <View>
-          <Text style={styles.brand}>NexoFit</Text>
-          <Text style={styles.brandSub}>Consola de administración</Text>
-        </View>
-
-        <View style={styles.nav}>
-          {NAV_ITEMS.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[styles.navItem, view === item.id && styles.navItemActive]}
-              onPress={() => setView(item.id)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.navText, view === item.id && styles.navTextActive]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.sidebarFooter}>
-          <Text style={styles.orgName}>{membership.organizationName}</Text>
-          <Text style={styles.userEmail} numberOfLines={1}>
-            {session.user.email}
-          </Text>
-          <TouchableOpacity style={styles.signOutLink} onPress={() => void signOut()}>
-            <Text style={styles.signOutLinkText}>Cerrar sesión</Text>
+    <View style={[styles.shell, compact && styles.shellCompact]}>
+      {compact ? (
+        <View style={styles.topBar}>
+          <View style={styles.topBarBrand}>
+            <Text style={styles.brandCompact}>NexoFit</Text>
+          </View>
+          <View style={styles.topNav}>
+            {NAV_ITEMS.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.topNavItem, view === item.id && styles.topNavItemActive]}
+                onPress={() => setView(item.id)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+              >
+                <Text style={[styles.topNavText, view === item.id && styles.topNavTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity style={styles.topSignOut} onPress={() => void signOut()}>
+            <Text style={styles.signOutLinkText}>Salir</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      ) : (
+        <View style={styles.sidebar}>
+          <View>
+            <Text style={styles.brand}>NexoFit</Text>
+            <Text style={styles.brandSub}>Consola de administración</Text>
+          </View>
 
-      {/* Contenido */}
-      <View style={styles.content}>
+          <View style={styles.nav}>
+            {NAV_ITEMS.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.navItem, view === item.id && styles.navItemActive]}
+                onPress={() => setView(item.id)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+              >
+                <Text style={[styles.navText, view === item.id && styles.navTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.sidebarFooter}>
+            <Text style={styles.orgName}>{membership.organizationName}</Text>
+            <Text style={styles.userEmail} numberOfLines={1}>
+              {session.user.email}
+            </Text>
+            <TouchableOpacity
+              style={styles.signOutLink}
+              onPress={() => void signOut()}
+              accessibilityRole="button"
+            >
+              <Text style={styles.signOutLinkText}>Cerrar sesión</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      <View style={[styles.content, compact && styles.contentCompact]}>
         {view === 'dashboard' && <DashboardScreen organizationId={membership.organizationId} />}
         {view === 'members' && <MembersScreen organizationId={membership.organizationId} />}
         {view === 'payments' && <PaymentsScreen organizationId={membership.organizationId} />}
@@ -149,6 +186,25 @@ const styles = StyleSheet.create({
   },
   signOutText: { fontFamily: fonts.uiSemiBold, fontSize: 14, color: colors.crema },
   shell: { flex: 1, flexDirection: 'row', backgroundColor: colors.crema },
+  shellCompact: { flexDirection: 'column' },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.azulNexo,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  topBarBrand: { marginRight: 8 },
+  brandCompact: { fontFamily: fonts.brand, fontSize: 18, color: colors.white },
+  topNav: { flexDirection: 'row', gap: 4, flex: 1, flexWrap: 'wrap' },
+  topNavItem: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  topNavItemActive: { backgroundColor: colors.white + '1F' },
+  topNavText: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.white + 'CC' },
+  topNavTextActive: { fontFamily: fonts.uiSemiBold, color: colors.white },
+  topSignOut: { paddingHorizontal: 10, paddingVertical: 6 },
+  contentCompact: { padding: 16 },
   sidebar: {
     width: 260,
     backgroundColor: colors.azulNexo,

@@ -4,14 +4,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@nexofit/core';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button, ErrorBanner, Input } from '../../components/ui';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { AuthStackParamList } from '../../navigation/types';
@@ -23,12 +23,14 @@ interface Props {
 
 export function VerificationCodeScreen({ navigation, route }: Props) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { verifyOtp, resendVerificationEmail, resetPassword } = useAuth();
   const { email, token, type = 'signup' } = route.params;
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(Boolean(token));
   const [resending, setResending] = useState(false);
   const [resendWait, setResendWait] = useState(type === 'recovery' ? 60 : 0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const busy = loading || resending;
 
   useEffect(() => {
@@ -37,10 +39,10 @@ export function VerificationCodeScreen({ navigation, route }: Props) {
     setLoading(true);
     verifyOtp(email, token, type)
       .then(({ error }) => {
-        if (!cancelled && error) Alert.alert('No se pudo verificar', error);
+        if (!cancelled && error) setErrorMessage(error);
       })
       .catch(() => {
-        if (!cancelled) Alert.alert('Sin conexión', 'Inténtalo de nuevo cuando tengas conexión.');
+        if (!cancelled) setErrorMessage('Inténtalo de nuevo cuando tengas conexión.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -59,17 +61,17 @@ export function VerificationCodeScreen({ navigation, route }: Props) {
   const handleVerify = async () => {
     if (busy) return;
     if (!code.trim()) {
-      Alert.alert('Falta el código', 'Ingresa el código que aparece en tu correo.');
+      setErrorMessage('Ingresa el código que aparece en tu correo.');
       return;
     }
     Keyboard.dismiss();
+    setErrorMessage(null);
     setLoading(true);
     try {
       const { error } = await verifyOtp(email, code.trim(), type);
-      if (error) Alert.alert('No se pudo verificar', error);
-      // RootNavigator abre Nueva contraseña para recovery, o la app para signup.
+      if (error) setErrorMessage(error);
     } catch {
-      Alert.alert('Sin conexión', 'Inténtalo de nuevo cuando tengas conexión.');
+      setErrorMessage('Inténtalo de nuevo cuando tengas conexión.');
     } finally {
       setLoading(false);
     }
@@ -83,17 +85,14 @@ export function VerificationCodeScreen({ navigation, route }: Props) {
       const { error } =
         type === 'recovery' ? await resetPassword(email) : await resendVerificationEmail(email);
       if (error) {
-        Alert.alert('No se pudo reenviar', error);
+        setErrorMessage(error);
       } else {
         setCode('');
         setResendWait(60);
-        Alert.alert(
-          'Solicitud enviada',
-          'Revisa tu bandeja de entrada y spam. Usa el código más reciente.'
-        );
+        // keep a lightweight confirmation
       }
     } catch {
-      Alert.alert('Sin conexión', 'No pudimos enviar el correo. Inténtalo de nuevo.');
+      setErrorMessage('No pudimos enviar el correo. Inténtalo de nuevo.');
     } finally {
       setResending(false);
     }
@@ -115,7 +114,7 @@ export function VerificationCodeScreen({ navigation, route }: Props) {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.crema }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 24, 80) }]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -127,54 +126,36 @@ export function VerificationCodeScreen({ navigation, route }: Props) {
         {email}.
       </Text>
 
-      <>
-        <Text style={[styles.label, { color: theme.azulNexo }]}>
-          {type === 'recovery' ? 'Código de recuperación' : 'Código de confirmación'}
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.white,
-              borderColor: theme.azulNexo + '20',
-              color: theme.azulNexo,
-            },
-          ]}
-          accessibilityLabel={
-            type === 'recovery' ? 'Código de recuperación' : 'Código de confirmación'
-          }
-          placeholder="Código del correo"
-          placeholderTextColor={theme.textSecondary}
-          value={code}
-          onChangeText={(value) => setCode(value.replace(/\D/g, ''))}
-          keyboardType="number-pad"
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          maxLength={10}
-          editable={!busy}
-          onSubmitEditing={handleVerify}
-        />
-        <Text style={[styles.note, { color: theme.textSecondary }]}>
-          {type === 'recovery'
-            ? 'Introduce el código del correo más reciente para crear una contraseña nueva.'
-            : 'Usa el código del correo más reciente. Si ya confirmaste con el enlace, puedes iniciar sesión.'}
-        </Text>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.textAccent }, busy && { opacity: 0.6 }]}
-          onPress={handleVerify}
-          disabled={busy}
-        >
-          <Text style={[styles.buttonText, { color: theme.white }]}>
-            {loading
-              ? 'Verificando...'
-              : type === 'recovery'
-                ? 'Verificar código'
-                : 'Confirmar correo'}
-          </Text>
-        </TouchableOpacity>
-      </>
+      <ErrorBanner message={errorMessage} />
+      <Input
+        label={type === 'recovery' ? 'Código de recuperación' : 'Código de confirmación'}
+        placeholder="Código del correo"
+        value={code}
+        onChangeText={(value) => setCode(value.replace(/\D/g, ''))}
+        keyboardType="number-pad"
+        autoComplete="one-time-code"
+        textContentType="oneTimeCode"
+        maxLength={10}
+        editable={!busy}
+        onSubmitEditing={handleVerify}
+      />
+      <Text style={[styles.note, { color: theme.textSecondary }]}>
+        {type === 'recovery'
+          ? 'Introduce el código del correo más reciente para crear una contraseña nueva.'
+          : 'Usa el código del correo más reciente. Si ya confirmaste con el enlace, puedes iniciar sesión.'}
+      </Text>
+      <Button
+        title={
+          loading ? 'Verificando...' : type === 'recovery' ? 'Verificar código' : 'Confirmar correo'
+        }
+        loading={loading}
+        fullWidth
+        onPress={handleVerify}
+        disabled={busy}
+      />
 
       <TouchableOpacity
+        accessibilityRole="button"
         style={[styles.resendButton, (busy || resendWait > 0) && { opacity: 0.6 }]}
         onPress={handleResend}
         disabled={busy || resendWait > 0}
@@ -189,6 +170,7 @@ export function VerificationCodeScreen({ navigation, route }: Props) {
       </TouchableOpacity>
 
       <TouchableOpacity
+        accessibilityRole="button"
         style={styles.resendButton}
         onPress={() => navigation.navigate('Login')}
         disabled={busy}

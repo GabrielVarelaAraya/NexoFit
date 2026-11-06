@@ -18,9 +18,9 @@ export function Header({ title, subtitle, leftAction, rightAction }: HeaderProps
       <View style={styles.side}>
         {leftAction && (
           <TouchableOpacity
+            accessibilityRole="button"
             style={styles.actionButton}
             onPress={leftAction.onPress}
-            accessibilityRole="button"
             accessibilityLabel={leftAction.label}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.7}
@@ -37,9 +37,9 @@ export function Header({ title, subtitle, leftAction, rightAction }: HeaderProps
       <View style={[styles.side, styles.sideRight]}>
         {rightAction && (
           <TouchableOpacity
+            accessibilityRole="button"
             style={styles.actionButton}
             onPress={rightAction.onPress}
-            accessibilityRole="button"
             accessibilityLabel={rightAction.label}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.7}

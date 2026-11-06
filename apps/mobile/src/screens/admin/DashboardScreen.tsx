@@ -262,9 +262,11 @@ function ActionButton({
 }) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
       style={[styles.actionBtn, { backgroundColor: color + '15' }]}
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityLabel={label}
     >
       <Ionicons name={icon} size={20} color={color} />
       <Text style={[styles.actionLabel, { color: textColor }]}>{label}</Text>

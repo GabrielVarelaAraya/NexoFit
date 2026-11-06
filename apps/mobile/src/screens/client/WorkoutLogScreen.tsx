@@ -239,7 +239,11 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Ejercicios</Text>
-            <TouchableOpacity style={styles.addChip} onPress={openPicker}>
+            <TouchableOpacity
+              style={styles.addChip}
+              onPress={openPicker}
+              accessibilityRole="button"
+            >
               <Text style={styles.addChipText}>+ Añadir</Text>
             </TouchableOpacity>
           </View>
@@ -257,8 +261,8 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
                     {ex.libraryId ? '' : '  ·  personalizado'}
                   </Text>
                   <TouchableOpacity
-                    onPress={() => removeExercise(ex.key)}
                     accessibilityRole="button"
+                    onPress={() => removeExercise(ex.key)}
                     accessibilityLabel={`Eliminar ${ex.name}`}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   >
@@ -293,8 +297,8 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
                       keyboardType="decimal-pad"
                     />
                     <TouchableOpacity
-                      onPress={() => removeSet(ex.key, set.key)}
                       accessibilityRole="button"
+                      onPress={() => removeSet(ex.key, set.key)}
                       accessibilityLabel={`Eliminar serie ${setIndex + 1}`}
                       hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                     >
@@ -326,8 +330,8 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Añadir ejercicio</Text>
               <TouchableOpacity
-                onPress={() => setPickerVisible(false)}
                 accessibilityRole="button"
+                onPress={() => setPickerVisible(false)}
                 accessibilityLabel="Cerrar"
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
@@ -353,6 +357,7 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
                 style={styles.libraryList}
                 renderItem={({ item }) => (
                   <TouchableOpacity
+                    accessibilityRole="button"
                     style={styles.libraryItem}
                     onPress={() => addExercise(item.id, item.name)}
                   >

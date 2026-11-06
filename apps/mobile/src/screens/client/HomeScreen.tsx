@@ -132,15 +132,22 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Próximas reservas</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('MyBookings')}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => navigation.navigate('MyBookings')}
+                    accessibilityLabel="Ver todas mis reservas"
+                    activeOpacity={0.7}
+                  >
                     <Text style={styles.seeAll}>Ver todas</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={styles.bookingsList}>
                   {upcomingBookings.map((booking, index) => (
                     <TouchableOpacity
+                      accessibilityRole="button"
                       key={booking.id}
                       onPress={() => navigation.navigate('MyBookings')}
+                      accessibilityLabel="Ver mis reservas"
                       activeOpacity={0.7}
                     >
                       <BookingCard booking={booking} index={index} />
@@ -159,6 +166,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
                 <View style={styles.sessionsList}>
                   {todaySessions.map((session) => (
                     <TouchableOpacity
+                      accessibilityRole="button"
                       key={session.id}
                       onPress={() =>
                         navigation.navigate('SessionDetail', {
@@ -166,6 +174,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
                           sessionData: session,
                         })
                       }
+                      accessibilityLabel={`Ver detalle de ${session.class_types?.name ?? 'clase'}`}
                       activeOpacity={0.7}
                     >
                       <SessionCard session={session} />
@@ -184,6 +193,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
                 <View style={styles.sessionsList}>
                   {recommended.map((session) => (
                     <TouchableOpacity
+                      accessibilityRole="button"
                       key={session.id}
                       onPress={() =>
                         navigation.navigate('SessionDetail', {
@@ -191,6 +201,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
                           sessionData: session,
                         })
                       }
+                      accessibilityLabel={`Ver detalle de ${session.class_types?.name ?? 'clase'}`}
                       activeOpacity={0.7}
                     >
                       <SessionCard session={session} />

@@ -1,16 +1,9 @@
 import { useState } from 'react';
-import {
-  Keyboard,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Alert,
-} from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '@nexofit/core';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button, ErrorBanner, Input } from '../../components/ui';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -20,26 +13,29 @@ interface Props {
 
 export function SignUpScreen({ navigation }: Props) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { signUp } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSignUp = async () => {
     if (!fullName.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Por favor completa todos los campos.');
+      setErrorMessage('Por favor completa todos los campos.');
       return;
     }
     if (password.length < 8) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres.');
+      setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
     if (loading) return;
     const normalizedEmail = email.trim().toLowerCase();
     Keyboard.dismiss();
     setEmailError(null);
+    setErrorMessage(null);
     setLoading(true);
     try {
       const { error, code, needsConfirmation } = await signUp(
@@ -51,13 +47,13 @@ export function SignUpScreen({ navigation }: Props) {
         if (code === 'email_exists') {
           setEmailError(error);
         } else {
-          Alert.alert('Error de registro', error);
+          setErrorMessage(error);
         }
       } else if (needsConfirmation) {
         navigation.navigate('VerificationCode', { email: normalizedEmail });
       }
     } catch {
-      Alert.alert('Error de registro', 'No se pudo completar el registro. Inténtalo de nuevo.');
+      setErrorMessage('No se pudo completar el registro. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -66,7 +62,7 @@ export function SignUpScreen({ navigation }: Props) {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.crema }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 24, 80) }]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -76,92 +72,45 @@ export function SignUpScreen({ navigation }: Props) {
       </Text>
 
       <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.azulNexo }]}>Nombre completo</Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.white,
-                borderColor: theme.azulNexo + '20',
-                color: theme.azulNexo,
-              },
-            ]}
-            placeholder="Sofia Lizano"
-            placeholderTextColor={theme.textSecondary}
-            value={fullName}
-            onChangeText={setFullName}
-            autoComplete="name"
-          />
-        </View>
+        <ErrorBanner message={errorMessage} />
+        <Input
+          label="Nombre completo"
+          placeholder="Sofia Lizano"
+          value={fullName}
+          onChangeText={setFullName}
+          autoComplete="name"
+        />
 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.azulNexo }]}>Correo</Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.white,
-                borderColor: emailError ? theme.error : theme.azulNexo + '20',
-                color: theme.azulNexo,
-              },
-            ]}
-            placeholder="sofia@email.com"
-            placeholderTextColor={theme.textSecondary}
-            value={email}
-            onChangeText={(value) => {
-              setEmail(value);
-              setEmailError(null);
-            }}
-            editable={!loading}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-          />
-          {emailError && (
-            <Text
-              style={[styles.emailError, { color: theme.error }]}
-              accessibilityRole="alert"
-              accessibilityLiveRegion="polite"
-            >
-              {emailError}
-            </Text>
-          )}
-        </View>
+        <Input
+          label="Correo"
+          placeholder="sofia@email.com"
+          value={email}
+          onChangeText={(value) => {
+            setEmail(value);
+            setEmailError(null);
+          }}
+          error={emailError ?? undefined}
+          editable={!loading}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoComplete="email"
+        />
 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.azulNexo }]}>Contraseña</Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.white,
-                borderColor: theme.azulNexo + '20',
-                color: theme.azulNexo,
-              },
-            ]}
-            placeholder="••••••••"
-            placeholderTextColor={theme.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="new-password"
-          />
-        </View>
+        <Input
+          label="Contraseña"
+          placeholder="••••••••"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="new-password"
+        />
 
-        <TouchableOpacity
-          style={[
-            styles.signupButton,
-            { backgroundColor: theme.textAccent },
-            loading && { opacity: 0.6 },
-          ]}
+        <Button
+          title={loading ? 'Creando cuenta...' : 'Crear cuenta'}
+          loading={loading}
+          fullWidth
           onPress={handleSignUp}
-          disabled={loading}
-        >
-          <Text style={[styles.signupButtonText, { color: theme.white }]}>
-            {loading ? 'Creando cuenta...' : 'Crear cuenta'}
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
 
       <View style={styles.footer}>

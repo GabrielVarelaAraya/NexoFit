@@ -229,6 +229,7 @@ export function CreateSessionScreen({ route, navigation }: Props) {
                 <View style={styles.chips}>
                   {classTypes.map((ct) => (
                     <TouchableOpacity
+                      accessibilityRole="button"
                       key={ct.id}
                       style={[
                         styles.chip,
@@ -271,6 +272,7 @@ export function CreateSessionScreen({ route, navigation }: Props) {
                 <View style={styles.chips}>
                   {spaces.map((sp) => (
                     <TouchableOpacity
+                      accessibilityRole="button"
                       key={sp.id}
                       style={[styles.chip, selectedSpaceId === sp.id && styles.chipActive]}
                       onPress={() => setSelectedSpaceId(sp.id)}

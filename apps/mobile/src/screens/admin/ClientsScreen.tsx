@@ -135,9 +135,11 @@ export function ClientsScreen() {
           <Text style={styles.joinedDate}>Miembro desde: {formatDate(item.joinedAt)}</Text>
           {isAdmin && (
             <TouchableOpacity
+              accessibilityRole="button"
               style={[styles.roleSelector, { borderColor: roleColor }]}
               disabled={isChanging}
               onPress={() => requestRoleChange(item)}
+              accessibilityLabel={`Cambiar rol de ${item.fullName ?? 'miembro'}`}
             >
               {isChanging ? (
                 <ActivityIndicator size="small" color={roleColor} />
@@ -183,6 +185,7 @@ export function ClientsScreen() {
         <View style={styles.roleFilters}>
           {(['all', 'member', 'coach', 'professional'] as const).map((role) => (
             <TouchableOpacity
+              accessibilityRole="button"
               key={role}
               style={[
                 styles.filterChip,
@@ -192,6 +195,8 @@ export function ClientsScreen() {
                 },
               ]}
               onPress={() => setFilterRole(role)}
+              accessibilityLabel={`Filtrar por ${role}`}
+              accessibilityState={{ selected: filterRole === role }}
             >
               <Text style={[styles.filterChipText, filterRole === role && { color: colors.white }]}>
                 {role === 'all' ? 'Todos' : roleLabels[role]}

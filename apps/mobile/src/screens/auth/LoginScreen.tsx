@@ -1,16 +1,9 @@
 import { useState } from 'react';
-import {
-  Keyboard,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Alert,
-} from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button, ErrorBanner, Input } from '../../components/ui';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -20,31 +13,34 @@ interface Props {
 
 export function LoginScreen({ navigation }: Props) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu correo y contraseña.');
+      setErrorMessage('Por favor ingresa tu correo y contraseña.');
       return;
     }
     Keyboard.dismiss();
+    setErrorMessage(null);
     setLoading(true);
     const { error, code } = await signIn(email.trim(), password);
     setLoading(false);
     if (code === 'email_not_confirmed') {
       navigation.navigate('VerificationCode', { email: email.trim() });
     } else if (error) {
-      Alert.alert('Error de inicio de sesión', error);
+      setErrorMessage(error);
     }
   };
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.crema }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top + 24, 80) }]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
@@ -52,48 +48,28 @@ export function LoginScreen({ navigation }: Props) {
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Ingresa para continuar.</Text>
 
       <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.azulNexo }]}>Correo</Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.white,
-                borderColor: theme.azulNexo + '20',
-                color: theme.azulNexo,
-              },
-            ]}
-            placeholder="sofia@email.com"
-            placeholderTextColor={theme.textSecondary}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-          />
-        </View>
+        <ErrorBanner message={errorMessage} />
+        <Input
+          label="Correo"
+          placeholder="sofia@email.com"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoComplete="email"
+        />
 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.azulNexo }]}>Contraseña</Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.white,
-                borderColor: theme.azulNexo + '20',
-                color: theme.azulNexo,
-              },
-            ]}
-            placeholder="••••••••"
-            placeholderTextColor={theme.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="password"
-          />
-        </View>
+        <Input
+          label="Contraseña"
+          placeholder="••••••••"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="password"
+        />
 
         <TouchableOpacity
+          accessibilityRole="button"
           style={styles.forgotButton}
           onPress={() => navigation.navigate('ForgotPassword')}
         >
@@ -102,20 +78,12 @@ export function LoginScreen({ navigation }: Props) {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.loginButton,
-            { backgroundColor: theme.textAccent },
-            loading && { opacity: 0.6 },
-          ]}
+        <Button
+          title={loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+          loading={loading}
+          fullWidth
           onPress={handleLogin}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.loginButtonText, { color: theme.white }]}>
-            {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
 
       <View style={styles.footer}>

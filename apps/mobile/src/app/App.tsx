@@ -8,6 +8,10 @@ import { setSupabaseConfig } from '@nexofit/core';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { authStorage } from '../utils/authStorage';
+import { useFonts } from 'expo-font';
+import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
+import { Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { ErrorBoundary, LoadingView } from '../components/ui';
 
 // Configure Supabase with Expo environment variables
 const supabaseUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -38,16 +42,28 @@ function RealtimeBridge() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Nunito_800ExtraBold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+  });
+
+  if (!fontsLoaded) {
+    return <LoadingView label="Cargando NexoFit…" />;
+  }
+
   return (
-    <AuthProvider>
-      <NotificationsProvider>
-        <RealtimeBridge />
-        <ThemeProvider>
-          <NavigationContainer>
-            <RootNavigator />
-          </NavigationContainer>
-        </ThemeProvider>
-      </NotificationsProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <NotificationsProvider>
+          <RealtimeBridge />
+          <ThemeProvider>
+            <NavigationContainer>
+              <RootNavigator />
+            </NavigationContainer>
+          </ThemeProvider>
+        </NotificationsProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

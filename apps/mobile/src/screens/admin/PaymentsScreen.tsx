@@ -225,6 +225,7 @@ export function PaymentsScreen({ navigation }: Props) {
       {/* Selector de pestaña */}
       <View style={styles.tabs}>
         <TouchableOpacity
+          accessibilityRole="button"
           style={[styles.tab, tab === 'historial' && styles.tabActive]}
           onPress={() => setTab('historial')}
         >
@@ -233,6 +234,7 @@ export function PaymentsScreen({ navigation }: Props) {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          accessibilityRole="button"
           style={[styles.tab, tab === 'planes' && styles.tabActive]}
           onPress={() => setTab('planes')}
         >
@@ -270,6 +272,7 @@ export function PaymentsScreen({ navigation }: Props) {
 
                   <Text style={styles.fieldLabel}>Miembro</Text>
                   <TouchableOpacity
+                    accessibilityRole="button"
                     style={styles.selector}
                     onPress={() => {
                       setSearch('');
@@ -292,6 +295,7 @@ export function PaymentsScreen({ navigation }: Props) {
                         .filter((p) => p.active)
                         .map((p) => (
                           <TouchableOpacity
+                            accessibilityRole="button"
                             key={p.id}
                             style={[styles.chip, planId === p.id && styles.chipActive]}
                             onPress={() => togglePlan(p.id)}
@@ -310,6 +314,7 @@ export function PaymentsScreen({ navigation }: Props) {
                   <View style={styles.chips}>
                     {METHODS.map((m) => (
                       <TouchableOpacity
+                        accessibilityRole="button"
                         key={m}
                         style={[styles.chip, method === m && styles.chipActive]}
                         onPress={() => setMethod(m)}
@@ -325,6 +330,7 @@ export function PaymentsScreen({ navigation }: Props) {
                   <View style={styles.chips}>
                     {CURRENCIES.map((c) => (
                       <TouchableOpacity
+                        accessibilityRole="button"
                         key={c}
                         style={[
                           styles.chip,
@@ -333,7 +339,6 @@ export function PaymentsScreen({ navigation }: Props) {
                         ]}
                         onPress={() => setPaymentCurrency(c)}
                         disabled={planId !== null}
-                        accessibilityRole="button"
                         accessibilityState={{
                           selected: paymentCurrency === c,
                           disabled: planId !== null,
@@ -433,6 +438,7 @@ export function PaymentsScreen({ navigation }: Props) {
                   <View style={styles.chips}>
                     {CURRENCIES.map((c) => (
                       <TouchableOpacity
+                        accessibilityRole="button"
                         key={c}
                         style={[styles.chip, planCurrency === c && styles.chipActive]}
                         onPress={() => setPlanCurrency(c)}
@@ -517,8 +523,8 @@ export function PaymentsScreen({ navigation }: Props) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Seleccionar miembro</Text>
               <TouchableOpacity
-                onPress={() => setPickerOpen(false)}
                 accessibilityRole="button"
+                onPress={() => setPickerOpen(false)}
                 accessibilityLabel="Cerrar"
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
@@ -537,6 +543,7 @@ export function PaymentsScreen({ navigation }: Props) {
               ) : (
                 filteredMembers.map((m) => (
                   <TouchableOpacity
+                    accessibilityRole="button"
                     key={m.profileId}
                     style={[styles.memberRow, memberId === m.profileId && styles.memberRowActive]}
                     onPress={() => {

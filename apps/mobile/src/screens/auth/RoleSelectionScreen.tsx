@@ -61,6 +61,7 @@ export function RoleSelectionScreen({ navigation }: Props) {
         <View style={styles.rolesContainer}>
           {roles.map((role) => (
             <TouchableOpacity
+              accessibilityRole="button"
               key={role.id}
               style={[
                 styles.roleCard,
@@ -89,6 +90,7 @@ export function RoleSelectionScreen({ navigation }: Props) {
       </View>
 
       <TouchableOpacity
+        accessibilityRole="button"
         style={[
           styles.button,
           {
