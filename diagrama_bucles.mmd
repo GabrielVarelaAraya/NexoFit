@@ -1,0 +1,73 @@
+graph LR
+    V1["Desinformación<br/>y fake news"]
+    V2["Contagio<br/>emocional"]
+    V3["Algoritmo de<br/>recomendación"]
+    V4["Tiempo de<br/>permanencia e<br/>interacción"]
+    V5["Cámara de eco"]
+    V6["Sesgo de<br/>confirmación"]
+    V7["Polarización<br/>política"]
+    V8["Confianza<br/>social"]
+    V9["Alfabetización<br/>mediática"]
+    V10["Fact-checking<br/>y verificación"]
+    V11["Regulación de<br/>plataformas"]
+    V12["Deepfakes y<br/>contenido sintético"]
+
+    %% --- Bucles de Refuerzo (R) ---
+    V1 -- "0.6" --> V2
+    V2 -- "0.6" --> V1
+
+    V1 -- "0.6" --> V4
+    V4 -- "0.3" --> V3
+    V3 -- "0.6" --> V5
+    V5 -- "0.6" --> V1
+
+    V5 -- "0.6" --> V6
+    V6 -- "1" --> V7
+    V7 -- "0.6" --> V5
+
+    V1 -- "0.3" --> V7
+    V7 -- "-1" --> V8
+    V8 -- "-0.6" --> V1
+
+    V12 -- "0.6" --> V1
+    V4 -- "0.3" --> V12
+
+    %% --- Bucles de Compensación (B) ---
+    V1 -- "0.3" --> V10
+    V10 -- "-0.6" --> V1
+
+    V1 -- "0.3" --> V9
+    V9 -- "-0.6" --> V1
+
+    V1 -- "0.3" --> V11
+    V11 -- "-0.6" --> V3
+
+    %% --- Etiquetas de bucles (g = ganancia del bucle) ---
+    R1["R1<br/>Ciclo viral<br/>g = +0.36"]
+    R2["R2<br/>Burbuja<br/>algorítmica<br/>g = +0.065"]
+    R3["R3<br/>Polarización<br/>reforzada<br/>g = +0.36"]
+    R4["R4<br/>Erosión de<br/>confianza<br/>g = +0.18"]
+    R5["R5<br/>Escalada<br/>tecnológica<br/>g = +0.108"]
+    B1["B1<br/>Verificación<br/>g = -0.18"]
+    B2["B2<br/>Alfabetización<br/>g = -0.18"]
+    B3["B3<br/>Regulación<br/>g = -0.065"]
+
+    R1 -.- V2
+    R2 -.- V3
+    R3 -.- V6
+    R4 -.- V8
+    R5 -.- V12
+    B1 -.- V10
+    B2 -.- V9
+    B3 -.- V11
+
+    %% --- Estilos ---
+    classDef tecnologia fill:#4A90D9,stroke:#2C5F8A,color:#fff,rx:8,ry:8
+    classDef social fill:#E8833A,stroke:#B35F1D,color:#fff,rx:8,ry:8
+    classDef institucional fill:#7B68AE,stroke:#55418A,color:#fff,rx:8,ry:8
+    classDef loop fill:#2D2D2D,stroke:#000,color:#fff,rx:12,ry:12
+
+    class V3,V4,V12 tecnologia
+    class V1,V2,V5,V6,V7,V8 social
+    class V9,V10,V11 institucional
+    class R1,R2,R3,R4,R5,B1,B2,B3 loop

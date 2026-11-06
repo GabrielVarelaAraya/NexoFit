@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getSupabase, type SessionPublic, type BookingPublic } from '@nexofit/core';
 import { toLocalDateStr, startOfLocalDay, endOfLocalDay } from '../utils/date';
 import { holdLoading } from '../utils/loading';
+import { friendlyError } from '../utils/errors';
 import { onBookingsChanged, emitBookingsChanged } from '../utils/bookingEvents';
 
 // Columnas reales de la tabla sessions (migración 000001):
@@ -61,7 +62,7 @@ export function useSchedule(organizationId: string, date?: string): UseScheduleR
         .order('starts_at');
 
       if (fetchErr) {
-        setError(fetchErr.message);
+        setError(friendlyError(fetchErr, 'No se pudieron cargar las clases.'));
         setSessions([]);
         return;
       }
@@ -171,7 +172,7 @@ export function useBookings(profileId: string): UseBookingsResult {
         .order('created_at', { ascending: false });
 
       if (fetchErr) {
-        setError(fetchErr.message);
+        setError(friendlyError(fetchErr, 'No se pudieron cargar tus reservas.'));
         setBookings([]);
         return;
       }
@@ -197,7 +198,7 @@ export function useBookings(profileId: string): UseBookingsResult {
         .order('position', { ascending: true });
 
       if (waitlistErr) {
-        setError(waitlistErr.message);
+        setError(friendlyError(waitlistErr, 'No se pudo cargar tu lista de espera.'));
         setBookings((data ?? []) as BookingPublic[]);
         return;
       }
@@ -230,6 +231,14 @@ export function useBookings(profileId: string): UseBookingsResult {
     fetchBookings();
   }, [fetchBookings]);
 
+  // Refresco en vivo: Realtime emite por el mismo bus que usan reservar y
+  // cancelar, así que la lista se actualiza también al ser promovido desde
+  // la lista de espera.
+  useEffect(() => {
+    if (!profileId) return;
+    return onBookingsChanged(fetchBookings);
+  }, [profileId, fetchBookings]);
+
   return { bookings, loading, error, refresh: fetchBookings };
 }
 
@@ -255,7 +264,8 @@ export async function bookSession(
     if (error.code === '23505') {
       return { success: false, error: 'Ya estás en la lista de espera de esta clase.' };
     }
-    return { success: false, error: error.message };
+    console.warn('book session failed', error.message);
+    return { success: false };
   }
 
   // book_session devuelve { status, message, ... }. 'position' puede venir como
@@ -299,7 +309,10 @@ export async function cancelBooking(
     p_profile_id: profileId,
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.warn('cancel booking failed', error.message);
+    return { success: false };
+  }
 
   const result = data as { status?: string; message?: string };
   if (result?.status === 'cancelled') {
@@ -326,7 +339,10 @@ export async function cancelWaitlistEntry(
     .eq('id', entryId)
     .eq('profile_id', profileId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.warn('cancel waitlist entry failed', error.message);
+    return { success: false };
+  }
   emitBookingsChanged();
   return { success: true };
 }

@@ -58,6 +58,9 @@ export function AdminTabNavigator() {
         name="Mas"
         component={MoreScreen}
         options={{
+          // La ruta se llama "Mas" (sin tilde) por compatibilidad; la etiqueta
+          // visible sí lleva tilde.
+          tabBarLabel: 'Más',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="ellipsis-horizontal" size={size} color={color} />
           ),

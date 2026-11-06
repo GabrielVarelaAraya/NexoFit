@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../hooks/useProgress';
+import { friendlyError } from '../../utils/errors';
 import {
   fetchMyPayments,
   formatMoney,
@@ -25,18 +26,12 @@ import {
   type MyPayment,
   type CurrentPlan,
 } from '../../hooks/usePayments';
+import { useNotifications } from '../../hooks/useNotifications';
+import { countUnread } from '../../utils/notifications';
 import { Header, Button, Card } from '../../components/ui';
 
-interface NotificationItem {
-  id: string;
-  title: string;
-  body: string;
-  created_at: string;
-  read: boolean;
-}
-
 export function ProfileScreen({ professionalDetails }: { professionalDetails?: React.ReactNode }) {
-  const { user, membership, signOut } = useAuth();
+  const { user, membership, signOut, refreshMembership } = useAuth();
   const { profile, updateProfile } = useSettings(user?.id ?? '');
 
   const [editVisible, setEditVisible] = useState(false);
@@ -44,9 +39,16 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
   const [saving, setSaving] = useState(false);
 
   const [notifVisible, setNotifVisible] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notifLoading, setNotifLoading] = useState(false);
-  const [notifError, setNotifError] = useState<string | null>(null);
+
+  const {
+    notifications,
+    loading: notifLoading,
+    error: notifError,
+    markingRead,
+    refresh: refreshNotifications,
+    markAllRead,
+  } = useNotifications(user?.id ?? '');
+  const unreadNotifications = countUnread(notifications);
 
   const [payVisible, setPayVisible] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
@@ -54,11 +56,57 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
   const [myPayments, setMyPayments] = useState<MyPayment[]>([]);
   const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
 
+  const [leavingGym, setLeavingGym] = useState(false);
+
   const handleSignOut = () => {
     Alert.alert('Cerrar sesión', '¿Estás seguro?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Cerrar sesión', style: 'destructive', onPress: signOut },
     ]);
+  };
+
+  // Baja voluntaria: disponible solo para rol 'member' (la RLS 000003 lo
+  // permite explícitamente; coaches/profesionales/admins los da de baja el gimnasio).
+  const handleLeaveGym = async () => {
+    if (!membership?.id || leavingGym) return;
+    setLeavingGym(true);
+
+    const supabase = getSupabase();
+    // .select('id'): con RLS, un DELETE denegado afecta 0 filas en silencio.
+    const { data, error } = await supabase
+      .from('memberships')
+      .delete()
+      .eq('id', membership.id)
+      .select('id');
+
+    setLeavingGym(false);
+
+    if (error || !data || data.length === 0) {
+      Alert.alert(
+        'No se pudo salir',
+        friendlyError(error, 'No tienes permiso para darte de baja. Habla con tu gimnasio.')
+      );
+      return;
+    }
+
+    // Sin membresía, el ruteo por rol lleva a la pantalla «Sin gimnasio».
+    await refreshMembership();
+  };
+
+  const confirmLeaveGym = () => {
+    if (!membership?.id || leavingGym) return;
+    Alert.alert(
+      `Salir de ${membership.organization_name ?? 'tu gimnasio'}`,
+      'Tu cuenta se conserva y podrás inscribirte de nuevo cuando quieras. El historial de reservas y pagos se queda con el gimnasio y volverá a verse si te reinscribes.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Salir del gimnasio',
+          style: 'destructive',
+          onPress: () => void handleLeaveGym(),
+        },
+      ]
+    );
   };
 
   const openEdit = () => {
@@ -78,23 +126,17 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
     }
   };
 
-  const openNotifications = useCallback(async () => {
+  const openNotifications = useCallback(() => {
     setNotifVisible(true);
-    setNotifLoading(true);
-    setNotifError(null);
+    void refreshNotifications();
+  }, [refreshNotifications]);
 
-    const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('id, title, body, created_at, read')
-      .eq('profile_id', user?.id ?? '')
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    setNotifications(error ? [] : (data ?? []));
-    setNotifError(error ? 'No se pudieron cargar las notificaciones.' : null);
-    setNotifLoading(false);
-  }, [user?.id]);
+  const handleMarkAllRead = useCallback(async () => {
+    const result = await markAllRead();
+    if (!result.ok) {
+      Alert.alert('No se pudo actualizar', 'Inténtalo de nuevo en unos segundos.');
+    }
+  }, [markAllRead]);
 
   // Stage 5 · pagos del miembro: plan vigente + historial.
   const openPayments = useCallback(async () => {
@@ -158,6 +200,14 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
           {membership?.role !== 'professional' && (
             <ActionRow icon="card" label="Mis pagos y plan" onPress={openPayments} />
           )}
+          {membership?.role === 'member' && (
+            <ActionRow
+              icon="exit-outline"
+              label="Salir del gimnasio"
+              destructive
+              onPress={confirmLeaveGym}
+            />
+          )}
           <ActionRow
             icon="help-circle"
             label="Ayuda y soporte"
@@ -192,34 +242,43 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
         onRequestClose={() => setEditVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Editar perfil</Text>
-            <Text style={styles.modalLabel}>Nombre completo</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={nameInput}
-              onChangeText={setNameInput}
-              placeholder="Tu nombre"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="words"
-              maxLength={60}
-            />
-            <View style={styles.modalActions}>
-              <Button
-                title="Cancelar"
-                variant="ghost"
-                style={styles.modalButton}
-                onPress={() => setEditVisible(false)}
+          {/* ScrollView con acciones dentro: con el teclado abierto en iOS los
+              botones siguen alcanzables (sin KeyboardAvoidingView). */}
+          <ScrollView
+            style={styles.modalScroll}
+            contentContainerStyle={styles.modalScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Editar perfil</Text>
+              <Text style={styles.modalLabel}>Nombre completo</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={nameInput}
+                onChangeText={setNameInput}
+                placeholder="Tu nombre"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="words"
+                maxLength={60}
               />
-              <Button
-                title="Guardar"
-                variant="primary"
-                style={styles.modalButton}
-                loading={saving}
-                onPress={handleSaveProfile}
-              />
+              <View style={styles.modalActions}>
+                <Button
+                  title="Cancelar"
+                  variant="ghost"
+                  style={styles.modalButton}
+                  onPress={() => setEditVisible(false)}
+                />
+                <Button
+                  title="Guardar"
+                  variant="primary"
+                  style={styles.modalButton}
+                  loading={saving}
+                  onPress={handleSaveProfile}
+                />
+              </View>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -248,7 +307,12 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
               <ScrollView style={styles.notifList} showsVerticalScrollIndicator={false}>
                 {notifications.map((n) => (
                   <View key={n.id} style={styles.notifItem}>
-                    <Text style={styles.notifTitle}>{n.title}</Text>
+                    <View style={styles.notifTitleRow}>
+                      {!n.read && <View style={styles.notifDot} />}
+                      <Text style={[styles.notifTitle, n.read && styles.notifTitleRead]}>
+                        {n.title}
+                      </Text>
+                    </View>
                     <Text style={styles.notifBody}>{n.body}</Text>
                     <Text style={styles.notifDate}>
                       {new Date(n.created_at).toLocaleDateString('es-ES', {
@@ -260,6 +324,15 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
                   </View>
                 ))}
               </ScrollView>
+            )}
+
+            {unreadNotifications > 0 && (
+              <Button
+                title="Marcar todas como leídas"
+                loading={markingRead}
+                style={styles.modalButton}
+                onPress={() => void handleMarkAllRead()}
+              />
             )}
 
             <Button
@@ -357,15 +430,20 @@ function ActionRow({
   icon,
   label,
   onPress,
+  destructive,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
+  destructive?: boolean;
 }) {
+  const tint = destructive ? colors.textError : colors.azulNexo;
   return (
     <TouchableOpacity style={rowStyles.actionRow} onPress={onPress} activeOpacity={0.7}>
-      <Ionicons name={icon} size={20} color={colors.azulNexo} />
-      <Text style={rowStyles.actionLabel}>{label}</Text>
+      <Ionicons name={icon} size={20} color={tint} />
+      <Text style={[rowStyles.actionLabel, destructive && { color: colors.textError }]}>
+        {label}
+      </Text>
       <Text style={rowStyles.chevron}>›</Text>
     </TouchableOpacity>
   );
@@ -452,6 +530,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
+  modalScroll: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   modalCard: {
     backgroundColor: colors.crema,
     borderRadius: 16,
@@ -496,10 +581,24 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 4,
   },
+  notifTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  notifDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.turquesa,
+  },
   notifTitle: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 14,
     color: colors.azulNexo,
+  },
+  notifTitleRead: {
+    color: colors.textSecondary,
   },
   notifBody: {
     fontFamily: fonts.uiRegular,

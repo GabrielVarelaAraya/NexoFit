@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { getSupabase, type Database } from '@nexofit/core';
 import { holdLoading } from '../utils/loading';
+import { friendlyError } from '../utils/errors';
 import type { ExerciseLibraryItem, PersonalRecordItem, WorkoutLogItem } from '../types/screens';
 
 // Historial del miembro: sus logs con ejercicios y series anidados.
@@ -76,14 +77,14 @@ export function useWorkouts(profileId: string): UseWorkoutsResult {
       ]);
 
       if (logsRes.error) {
-        setError(logsRes.error.message);
+        setError(friendlyError(logsRes.error, 'No se pudo cargar tu historial de entrenamientos.'));
         setLogs([]);
       } else {
         setLogs((logsRes.data ?? []) as unknown as WorkoutLogItem[]);
       }
 
       if (recordsRes.error) {
-        setError(recordsRes.error.message);
+        setError(friendlyError(recordsRes.error, 'No se pudieron cargar tus récords personales.'));
       } else {
         setRecords((recordsRes.data ?? []) as unknown as PersonalRecordItem[]);
       }
@@ -114,7 +115,12 @@ export async function fetchExerciseLibrary(
     .eq('organization_id', organizationId)
     .order('name');
 
-  if (error) return { data: [], error: error.message };
+  if (error) {
+    return {
+      data: [],
+      error: friendlyError(error, 'No se pudo cargar la biblioteca de ejercicios.'),
+    };
+  }
   return { data: (data ?? []) as ExerciseLibraryItem[] };
 }
 
@@ -199,7 +205,11 @@ export async function saveWorkout(
     .select('id')
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    // Detalle crudo solo en consola; la pantalla muestra su propio copy.
+    console.warn('save workout log failed', error.message);
+    return { success: false };
+  }
 
   // Récords personales: mejor esfuerzo (best-effort). Un fallo aquí no
   // debe echar para atrás un entrenamiento ya guardado.

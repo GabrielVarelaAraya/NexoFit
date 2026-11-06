@@ -10,6 +10,7 @@ import {
   FlatList,
   TextInput,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
@@ -203,7 +204,7 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
       <Header
         title="Registrar entrenamiento"
         subtitle="Ejercicios, series y cargas"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
 
       <ScrollView
@@ -257,9 +258,11 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
                   </Text>
                   <TouchableOpacity
                     onPress={() => removeExercise(ex.key)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Eliminar ${ex.name}`}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   >
-                    <Text style={styles.removeExercise}>✕</Text>
+                    <Ionicons name="close" size={18} color={colors.textError} />
                   </TouchableOpacity>
                 </View>
 
@@ -291,9 +294,11 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
                     />
                     <TouchableOpacity
                       onPress={() => removeSet(ex.key, set.key)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Eliminar serie ${setIndex + 1}`}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                     >
-                      <Text style={styles.removeSet}>✕</Text>
+                      <Ionicons name="close" size={16} color={colors.textSecondary} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -320,8 +325,13 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Añadir ejercicio</Text>
-              <TouchableOpacity onPress={() => setPickerVisible(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <TouchableOpacity
+                onPress={() => setPickerVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar"
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -437,7 +447,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.azulNexo,
   },
-  removeExercise: { fontSize: 16, color: colors.textError },
   setRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,7 +479,6 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   setRemoveSpace: { width: 16 },
-  removeSet: { fontSize: 14, color: colors.textSecondary },
   addSetButton: { alignSelf: 'flex-start' },
   addSetText: {
     fontFamily: fonts.uiSemiBold,
@@ -496,7 +504,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalTitle: { fontFamily: fonts.uiSemiBold, fontSize: 18, color: colors.azulNexo },
-  modalClose: { fontSize: 20, color: colors.textSecondary },
   modalLoading: { height: 220 },
   libraryList: { maxHeight: 340 },
   libraryItem: {

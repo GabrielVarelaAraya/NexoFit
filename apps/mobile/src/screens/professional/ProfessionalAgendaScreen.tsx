@@ -4,6 +4,7 @@ import { getSupabase } from '@nexofit/core';
 import { Button, Card } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfessional } from '../../hooks/useProfessional';
+import { caughtError } from '../../utils/errors';
 import {
   APPOINTMENT_STATUS,
   updateProfessionalAppointment,
@@ -38,10 +39,7 @@ export function ProfessionalAgendaScreen() {
       );
       await refresh();
     } catch (cause) {
-      Alert.alert(
-        'No se pudo actualizar',
-        cause instanceof Error ? cause.message : 'Inténtalo de nuevo.'
-      );
+      Alert.alert('No se pudo actualizar', caughtError(cause, 'Inténtalo de nuevo.'));
     } finally {
       setPending(null);
     }

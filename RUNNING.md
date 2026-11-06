@@ -36,11 +36,12 @@ packages/db/migrations/000002_create_functions.sql
 packages/db/migrations/000003_create_rls_policies.sql
 packages/db/migrations/000004_check_email_exists.sql
 packages/db/migrations/000005_professional_access.sql
+packages/db/migrations/000006_realtime.sql
 ```
 
 Wait for each to complete before running the next. You should see "Success" after each.
 
-> **Idempotent:** the five files can be re-run on an existing project.
+> **Idempotent:** the six files can be re-run on an existing project.
 >
 > **Existing projects:** if you already applied `000001`, `000002` and `000003`,
 > run **`000004_check_email_exists.sql`** to enable the email check before registration.
@@ -56,11 +57,16 @@ Wait for each to complete before running the next. You should see "Success" afte
 | `000003`  | Enables RLS on every table and creates the 101 final policies                              |
 | `000004`  | Adds `email_exists` to reject existing emails before registration                          |
 | `000005`  | Provisions professional profiles and scopes appointment/availability access to their owner |
+| `000006`  | Publishes `bookings` and `notifications` to Supabase Realtime (live badge and class spots) |
 
 > **Professional workspace:** if `000001` through `000004` are already applied,
 > run **`000005_professional_access.sql`**. It creates missing professional
 > profiles while preserving existing data. Apply it after `000003` whenever
 > you re-run the policy migrations, because `000003` replaces every policy.
+>
+> **Realtime:** run **`000006_realtime.sql`** after the other migrations to
+> publish `bookings` and `notifications`. It is idempotent and safe to re-run;
+> without it the app keeps working (the badge syncs on app focus).
 
 ## 3. Configure Email Confirmation
 
@@ -161,6 +167,21 @@ You'll see a QR code in the terminal.
 
 > For web, the app runs at `http://localhost:8081`.
 
+### Admin web console
+
+```bash
+pnpm --filter @nexofit/admin start
+```
+
+Opens the **admin dashboard** at `http://localhost:8081` (Expo Web,
+landscape). Log in with a Supabase account that has an **admin**
+membership — any other account sees an "access not available" message
+with a sign-out button. The console shows the same real, RLS-scoped
+data as the mobile app: **Dashboard** (KPIs, recent activity, upcoming
+classes), **Miembros** (search + role management) and **Pagos**
+(month summary + last 50 payments). It reads the same `.env` as the
+mobile app.
+
 ## 7. Test the App
 
 ### Sign up
@@ -195,14 +216,17 @@ cancel after verifying the code, the app closes the local recovery session.
 
 ### Join or create a gym (real flow)
 
-After logging in without a gym, you land on **Home**. If your account does
-not belong to a gym yet, you get two options:
+After logging in without a gym, you land on **Home**. What you see depends
+on the role chosen in **Role selection**:
 
-- **Find a gym** → directory of organizations → _Join this gym_
-  enrolls you immediately as a `member` (client tabs).
-- **Register my gym** → creates the organization through the
-  `create_organization()` RPC, makes you its `admin`, and takes you directly
-  to the **admin panel** (Dashboard / Schedule / Clients / More).
+- **Client** (or professional) gets a single option: **Find a gym** →
+  directory of organizations → _Join this gym_ enrolls you immediately as a
+  `member` (client tabs). The client flow never offers "Register my gym".
+- **I represent a gym** signs up and lands on **Home** with **Register my
+  gym** as the primary action (plus _Find a gym_ as secondary): it creates
+  the organization through the `create_organization()` RPC, makes you its
+  `admin`, and takes you directly to the **admin panel** (Dashboard /
+  Schedule / Clients / More).
 
 Either action refreshes your membership immediately — no app restart needed.
 The role decides the tabs: `admin`/`coach` → admin tabs (create classes,
@@ -213,6 +237,21 @@ publish programs, notifications, payments); `professional` → professional tabs
 > stop as an admin is **More → Spaces and classes**: create a venue, its
 > spaces (with capacity), and your class types. Then use **New class**
 > to schedule a session. No SQL is needed.
+
+### Leave a gym (member self-service)
+
+Clients can leave their gym on their own: **Profile → Salir del gimnasio**.
+A confirmation explains that the account is kept, that they can rejoin any
+time, and that booking/payment history stays with the gym (and reappears if
+they rejoin). Confirming deletes the membership and routing takes them back
+to the _Find a gym_ screen automatically.
+
+- Only the `member` role sees the option: coaches, professionals and admins
+  are always removed by the gym's admin (policy `membership_delete` in
+  `000003` now allows self-deletion for members only).
+- **Existing projects:** re-run `000003_create_rls_policies.sql` (then
+  `000005_professional_access.sql`, since `000003` replaces every policy)
+  to pick up the updated delete policy.
 
 ### Professional workspace
 
@@ -263,6 +302,26 @@ tokens while the app is active. This requires no dashboard setting.
 Clearing app data, uninstalling the app, or signing out removes local session
 data. Use `pnpm test` to run the session restoration, logout, recovery, and
 professional RLS checks without sending emails or modifying hosted data.
+
+### Notifications (unread badge)
+
+1. Sign in as a member or professional. If there are unread notifications,
+   the **Perfil** tab shows a turquoise badge with the count (capped at
+   `99+`). The badge updates live through Supabase Realtime (migration
+   `000006`) and also refreshes when you return to the app.
+2. Open **Perfil → Notificaciones**: unread items show a turquoise dot and a
+   brighter title.
+3. Tap **Marcar todas como leídas**. The dots disappear and the tab badge
+   clears immediately; the update is confirmed with `.select('id')` so a
+   silent RLS denial is never reported as success.
+4. Notifications are created by the gym's admins (booking changes and
+   waitlist promotions). Only the recipient can read or update their own
+   rows (`notification_select` / `notification_update`).
+
+Unit tests cover the list helpers and the badge value:
+`notifications.test.ts`, `tabBadge.test.ts`, `loading.test.ts` and
+`usePayments.test.ts` (mobile), plus `date.test.ts`, `format.test.ts` and
+`loading.test.ts` (admin).
 
 ### Create test data (via SQL)
 
@@ -540,6 +599,10 @@ A single profile can't queue behind itself — a confirmed booking returns
    - _Create class type_ / _Create venues/spaces_ → open **Spaces and classes**
      with the relevant form ready. If no venue exists, the venue form opens;
      otherwise, the space form opens.
+7. **Web console** — `pnpm --filter @nexofit/admin start` → log in with the
+   admin account → **Dashboard** (KPIs, activity, upcoming classes),
+   **Miembros** (search + role changes) and **Pagos** (month summary +
+   history) in the browser, with the same RLS-scoped data as the app.
 
 ### Payments & scheduling intelligence (Stage 5)
 

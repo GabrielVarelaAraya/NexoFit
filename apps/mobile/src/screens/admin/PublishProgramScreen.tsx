@@ -13,6 +13,7 @@ import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Button, Card, Input } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
+import { friendlyError } from '../../utils/errors';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -64,7 +65,7 @@ export function PublishProgramScreen({ navigation }: Props) {
       if (cancelled) return;
 
       if (error) {
-        setLoadError(error.message);
+        setLoadError(friendlyError(error, 'No se pudieron cargar las clases.'));
         setSessions([]);
         await holdLoading(startedAt);
         setLoading(false);
@@ -143,7 +144,7 @@ export function PublishProgramScreen({ navigation }: Props) {
     setPublishing(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', friendlyError(error, 'No se pudo publicar el programa.'));
       return;
     }
 
@@ -159,7 +160,7 @@ export function PublishProgramScreen({ navigation }: Props) {
       <Header
         title="Programa de entreno"
         subtitle="Publica el WOD de una clase"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
 
       <ScrollView

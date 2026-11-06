@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert, TouchableOpacity, Modal } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
@@ -51,6 +52,8 @@ export function PaymentsScreen({ navigation }: Props) {
   const [planId, setPlanId] = useState<string | null>(null);
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [amount, setAmount] = useState('');
+  // Moneda del pago sin plan: CRC por defecto (gimnasio de Costa Rica).
+  const [paymentCurrency, setPaymentCurrency] = useState('CRC');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -82,6 +85,7 @@ export function PaymentsScreen({ navigation }: Props) {
     setPlanId(null);
     setMethod('cash');
     setAmount('');
+    setPaymentCurrency('CRC');
     setNotes('');
     setSearch('');
   };
@@ -93,7 +97,11 @@ export function PaymentsScreen({ navigation }: Props) {
     }
     setPlanId(id);
     const plan = plans.find((p) => p.id === id);
-    if (plan) setAmount((plan.priceCents / 100).toString());
+    if (plan) {
+      setAmount((plan.priceCents / 100).toString());
+      // El pago adopta la moneda del plan; los chips quedan sincronizados.
+      setPaymentCurrency(plan.currency);
+    }
   };
 
   const handleRegister = async () => {
@@ -114,7 +122,7 @@ export function PaymentsScreen({ navigation }: Props) {
       profileId: selectedMember.profileId,
       planId: plan?.id ?? null,
       amountCents: Math.round(parsed * 100),
-      currency: plan?.currency ?? 'USD',
+      currency: plan?.currency ?? paymentCurrency,
       method,
       notes,
       createdBy: user?.id ?? null,
@@ -197,7 +205,7 @@ export function PaymentsScreen({ navigation }: Props) {
       <View style={styles.container}>
         <Header
           title="Pagos"
-          leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+          leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
         />
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>Sin organización</Text>
@@ -211,7 +219,7 @@ export function PaymentsScreen({ navigation }: Props) {
       <Header
         title="Pagos"
         subtitle="Historial, planes y cobros"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
 
       {/* Selector de pestaña */}
@@ -312,6 +320,36 @@ export function PaymentsScreen({ navigation }: Props) {
                       </TouchableOpacity>
                     ))}
                   </View>
+
+                  <Text style={styles.fieldLabel}>Moneda</Text>
+                  <View style={styles.chips}>
+                    {CURRENCIES.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={[
+                          styles.chip,
+                          paymentCurrency === c && styles.chipActive,
+                          planId !== null && styles.chipDisabled,
+                        ]}
+                        onPress={() => setPaymentCurrency(c)}
+                        disabled={planId !== null}
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          selected: paymentCurrency === c,
+                          disabled: planId !== null,
+                        }}
+                      >
+                        <Text
+                          style={[styles.chipText, paymentCurrency === c && styles.chipTextActive]}
+                        >
+                          {c}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {planId !== null && (
+                    <Text style={styles.hint}>La moneda la define el plan seleccionado.</Text>
+                  )}
 
                   <Input
                     label="Monto"
@@ -478,8 +516,13 @@ export function PaymentsScreen({ navigation }: Props) {
           <View style={[styles.modalSheet, { paddingBottom: 16 + insets.bottom }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Seleccionar miembro</Text>
-              <TouchableOpacity onPress={() => setPickerOpen(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <TouchableOpacity
+                onPress={() => setPickerOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar"
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <Input
@@ -570,6 +613,7 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
   },
   chipActive: { backgroundColor: colors.azulNexo, borderColor: colors.azulNexo },
+  chipDisabled: { opacity: 0.5 },
   chipText: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 13,
@@ -672,11 +716,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.uiSemiBold,
     fontSize: 17,
     color: colors.azulNexo,
-  },
-  modalClose: {
-    fontSize: 18,
-    color: colors.textSecondary,
-    paddingHorizontal: 8,
   },
   modalList: { flexGrow: 0 },
   memberRow: {

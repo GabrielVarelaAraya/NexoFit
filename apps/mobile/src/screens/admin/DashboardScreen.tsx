@@ -9,6 +9,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, LoadingView } from '../../components/ui';
@@ -102,25 +103,25 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
                 : undefined
             }
             changePositive
-            icon="👥"
+            icon="people"
           />
           <MetricCard
             title="Ingresos del mes"
             value={formatMoney(safeStats.monthRevenueCents, safeStats.monthRevenueCurrency)}
-            icon="💰"
+            icon="cash"
           />
-          <MetricCard title="Clases hoy" value={String(safeStats.sessionsToday)} icon="📅" />
+          <MetricCard title="Clases hoy" value={String(safeStats.sessionsToday)} icon="calendar" />
           <MetricCard
             title="Ocupación media"
             value={safeStats.occupancy7d != null ? `${safeStats.occupancy7d}%` : '—'}
             change={safeStats.occupancy7d != null ? 'Próximos 7 días' : 'Sin clases programadas'}
             changePositive={safeStats.occupancy7d != null}
-            icon="📊"
+            icon="stats-chart"
           />
           <MetricCard
             title="Reservas este mes"
             value={String(safeStats.bookingsThisMonth)}
-            icon="🎟️"
+            icon="ticket"
           />
         </View>
 
@@ -129,7 +130,7 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
           <Text style={styles.sectionTitle}>Acciones rápidas</Text>
           <View style={styles.actionsGrid}>
             <ActionButton
-              icon="➕"
+              icon="add"
               label="Nueva clase"
               color={colors.turquesa}
               onPress={() =>
@@ -137,32 +138,32 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
               }
             />
             <ActionButton
-              icon="📋"
+              icon="clipboard"
               label="Publicar programa"
               color={colors.limaProgreso}
               textColor={colors.azulNexo}
               onPress={() => navigation.navigate('PublishProgram')}
             />
             <ActionButton
-              icon="🔔"
+              icon="notifications"
               label="Enviar notificación"
               color={colors.azulNexo}
               onPress={() => navigation.navigate('SendNotification')}
             />
             <ActionButton
-              icon="💰"
+              icon="cash"
               label="Pagos"
               color={colors.mentaActiva}
               onPress={() => navigation.navigate('Payments')}
             />
             <ActionButton
-              icon="🎨"
+              icon="color-palette"
               label="Crear tipo de clase"
               color="#8B5CF6"
               onPress={() => navigation.navigate('GymContent', { form: 'classType' })}
             />
             <ActionButton
-              icon="🏟️"
+              icon="business"
               label="Crear sedes/espacios"
               color="#F59E0B"
               onPress={() => navigation.navigate('GymContent', { form: 'spaces' })}
@@ -225,11 +226,11 @@ function MetricCard({
   value: string;
   change?: string;
   changePositive?: boolean;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
 }) {
   return (
     <View style={styles.metricCard}>
-      <Text style={styles.metricIcon}>{icon}</Text>
+      <Ionicons name={icon} size={24} color={colors.azulNexo} />
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricTitle}>{title}</Text>
       {change !== undefined && (
@@ -253,7 +254,7 @@ function ActionButton({
   textColor = colors.azulNexo,
   onPress,
 }: {
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   label: string;
   color: string;
   textColor?: string;
@@ -265,16 +266,27 @@ function ActionButton({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Text style={[styles.actionIcon, { color }]}>{icon}</Text>
+      <Ionicons name={icon} size={20} color={color} />
       <Text style={[styles.actionLabel, { color: textColor }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
+// Colores semánticos para el feed de actividad.
+const ACTIVITY_ICON_COLORS: Partial<Record<keyof typeof Ionicons.glyphMap, string>> = {
+  'checkmark-circle': '#10B981',
+  'close-circle': colors.textError ?? '#EF4444',
+  person: colors.azulNexo,
+};
+
 function ActivityRow({ item }: { item: ActivityItem }) {
   return (
     <View style={styles.activityItem}>
-      <Text style={styles.activityIcon}>{item.icon}</Text>
+      <Ionicons
+        name={item.icon}
+        size={20}
+        color={ACTIVITY_ICON_COLORS[item.icon] ?? colors.azulNexo}
+      />
       <View style={styles.activityContent}>
         <Text style={styles.activityText}>{item.text}</Text>
         <Text style={styles.activityTime}>{item.time}</Text>
@@ -325,7 +337,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  metricIcon: { fontSize: 24 },
   metricValue: {
     fontFamily: fonts.brand,
     fontSize: 26,
@@ -379,7 +390,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  actionIcon: { fontSize: 20 },
   actionLabel: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 13,
@@ -391,7 +401,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 8,
   },
-  activityIcon: { fontSize: 20 },
   activityContent: { flex: 1, gap: 2 },
   activityText: {
     fontFamily: fonts.uiRegular,

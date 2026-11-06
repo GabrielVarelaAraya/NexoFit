@@ -133,7 +133,7 @@ describe('email registration', () => {
     expect(await registerWithEmail(client, input)).toEqual({ needsConfirmation: false });
   });
 
-  it('preserves other signup errors without calling them duplicate emails', async () => {
+  it('hides unexpected signup errors behind a friendly message', async () => {
     const client = createClientMock();
     client.auth.signUp.mockResolvedValue({
       data: { user: null, session: null },
@@ -141,10 +141,23 @@ describe('email registration', () => {
     });
 
     expect(await registerWithEmail(client, input)).toEqual({
-      error: 'Unable to send confirmation email',
+      error: 'No se pudo crear la cuenta. Inténtalo de nuevo.',
       code: 'unexpected_failure',
       needsConfirmation: false,
     });
+  });
+
+  it('explains a weak password without leaking the raw Auth message', async () => {
+    const client = createClientMock();
+    client.auth.signUp.mockResolvedValue({
+      data: { user: null, session: null },
+      error: new AuthApiError('Password should be at least 6 characters', 422, 'weak_password'),
+    });
+
+    const result = await registerWithEmail(client, input);
+
+    expect(result.error).toContain('contraseña');
+    expect(result.code).toBe('weak_password');
   });
 
   it('does not open confirmation when signup returned no user', async () => {

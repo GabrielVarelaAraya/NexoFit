@@ -1,0 +1,13 @@
+"Desinformación","Contagio emocional","Algoritmo recom.","Tiempo permanencia","Cámara de eco","Sesgo confirmación","Polarización política","Confianza social","Alfabetización","Fact-checking","Regulación","Deepfakes"
+"Desinformación",0,0.6,0,0,0.6,0,-0.6,-0.6,-0.6,-0.6,0,0.6
+"Contagio emocional",0.6,0,0,0,0,0,0,0,0,0,0,0
+"Algoritmo recom.",0,0,0,0.3,0,0,0,0,0,0,-0.6,0
+"Tiempo permanencia",0.6,0,0,0,0,0,0,0,0,0,0,0
+"Cámara de eco",0,0,0.6,0,0,0,0.6,0,0,0,0,0
+"Sesgo confirmación",0,0,0,0,0.6,0,0,0,0,0,0,0
+"Polarización política",0.3,0,0,0,0,1,0,0,0,0,0,0
+"Confianza social",0,0,0,0,0,0,-1,0,0,0,0,0
+"Alfabetización",0.3,0,0,0,0,0,0,0,0,0,0,0
+"Fact-checking",0.3,0,0,0,0,0,0,0,0,0,0,0
+"Regulación",0.3,0,0,0,0,0,0,0,0,0,0,0
+"Deepfakes",0,0,0,0.3,0,0,0,0,0,0,0,0

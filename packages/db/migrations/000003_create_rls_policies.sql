@@ -229,8 +229,14 @@ CREATE POLICY "membership_insert" ON public.memberships
 CREATE POLICY "membership_update" ON public.memberships
   FOR UPDATE USING (public.is_org_admin(organization_id));
 
+-- Admins remove members from their gym; members may leave on their own.
+-- Self-deletion is limited to role='member': coaches, professionals and
+-- admins are always removed by the gym (never self-delete staff).
 CREATE POLICY "membership_delete" ON public.memberships
-  FOR DELETE USING (public.is_org_admin(organization_id));
+  FOR DELETE USING (
+    public.is_org_admin(organization_id)
+    OR (profile_id = auth.uid() AND role = 'member')
+  );
 
 -- ============================================================
 -- CLASS TYPES

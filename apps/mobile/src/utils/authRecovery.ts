@@ -1,4 +1,5 @@
 import type { AuthChangeEvent, Session, SupabaseClient } from '@supabase/supabase-js';
+import { friendlyError } from './errors';
 
 export type EmailVerificationType = 'signup' | 'recovery';
 export type RecoveryAuthClient = Pick<
@@ -49,7 +50,8 @@ export function getAuthDestination(
 }
 
 export function authErrorMessage(
-  error: { code?: string; message: string } | null
+  error: { code?: string } | null,
+  fallback: string
 ): string | undefined {
   if (!error) return undefined;
   switch (error.code) {
@@ -66,7 +68,8 @@ export function authErrorMessage(
     case 'refresh_token_not_found':
       return 'Tu sesión de recuperación ha caducado. Solicita un código nuevo.';
     default:
-      return error.message;
+      // Detalle crudo (inglés técnico de Auth) solo en consola.
+      return friendlyError(error, fallback);
   }
 }
 
@@ -74,7 +77,12 @@ export async function requestPasswordRecovery(auth: RecoveryAuthClient, email: s
   const { error } = await auth.resetPasswordForEmail(email.trim().toLowerCase(), {
     redirectTo: 'nexofit://auth/reset-password',
   });
-  return { error: authErrorMessage(error) };
+  return {
+    error: authErrorMessage(
+      error,
+      'No se pudo enviar el correo de recuperación. Inténtalo de nuevo.'
+    ),
+  };
 }
 
 export async function verifyEmailCode(
@@ -94,7 +102,7 @@ export async function verifyEmailCode(
   });
   return {
     error:
-      authErrorMessage(error) ??
+      authErrorMessage(error, 'No se pudo verificar el código. Inténtalo de nuevo.') ??
       (!data.session
         ? 'No se pudo crear la sesión. Solicita otro código e inténtalo de nuevo.'
         : undefined),
@@ -113,7 +121,9 @@ export async function updateRecoveryPassword(
     return { error: 'La contraseña debe tener al menos 8 caracteres y una mayúscula.' };
   }
   const { error } = await auth.updateUser({ password });
-  return { error: authErrorMessage(error) };
+  return {
+    error: authErrorMessage(error, 'No se pudo actualizar la contraseña. Inténtalo de nuevo.'),
+  };
 }
 
 export type AuthLink =
@@ -140,10 +150,10 @@ export function parseAuthLink(url: string): AuthLink | null {
   if (param('error') || errorCode) {
     return {
       kind: 'error',
-      error: authErrorMessage({
-        code: errorCode ?? undefined,
-        message: 'No se pudo verificar el enlace. Solicita un correo nuevo e inténtalo de nuevo.',
-      })!,
+      error: authErrorMessage(
+        { code: errorCode ?? undefined },
+        'No se pudo verificar el enlace. Solicita un correo nuevo e inténtalo de nuevo.'
+      )!,
     };
   }
   const rawType = param('type');

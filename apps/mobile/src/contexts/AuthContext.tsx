@@ -12,6 +12,7 @@ import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { getSupabase } from '@nexofit/core';
 import type { RoleType } from '@nexofit/core';
 import { recoverySessionStore } from '../utils/authStorage';
+import { friendlyError } from '../utils/errors';
 import { registerWithEmail } from '../utils/registerWithEmail';
 import type { RegistrationResult } from '../utils/registerWithEmail';
 import {
@@ -160,7 +161,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error || !data.session) {
           Alert.alert(
             'No se pudo verificar',
-            authErrorMessage(error) ?? 'Solicita un correo nuevo e inténtalo de nuevo.'
+            authErrorMessage(error, 'Solicita un correo nuevo e inténtalo de nuevo.') ??
+              'Solicita un correo nuevo e inténtalo de nuevo.'
           );
         } else {
           if (link.type === 'recovery') await recoverySessionStore.setUserId(data.session.user.id);
@@ -260,7 +262,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message, code: error?.code };
+    if (!error) return {};
+    if (error.code === 'invalid_credentials') {
+      return { error: 'Correo o contraseña incorrectos.', code: error.code };
+    }
+    return {
+      error: friendlyError(error, 'No se pudo iniciar sesión. Inténtalo de nuevo.'),
+      code: error.code,
+    };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -282,13 +291,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error:
         error?.code === 'over_email_send_rate_limit'
           ? 'Se alcanzó el límite de envío de correos. Inténtalo más tarde.'
-          : error?.message,
+          : friendlyError(error, 'No se pudo reenviar el correo. Inténtalo de nuevo.'),
     };
   };
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) Alert.alert('No se pudo cerrar sesión', error.message);
+    if (error) {
+      Alert.alert('No se pudo cerrar sesión', friendlyError(error, 'Inténtalo de nuevo.'));
+    }
   };
 
   const resetPassword = async (email: string) => requestPasswordRecovery(supabase.auth, email);
@@ -316,7 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const cancelPasswordRecovery = async () => {
     const { error } = await supabase.auth.signOut({ scope: 'local' });
-    return { error: authErrorMessage(error) };
+    return { error: authErrorMessage(error, 'No se pudo cancelar la recuperación.') };
   };
 
   // La membresía (y con ella el rol) debe estar resuelta ANTES de montar el

@@ -6,5 +6,15 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true
-  }
+  },
+  // expo/tsconfig.base excluye metro.config.js; aquí se vuelve a incluir para
+  // que ESLint (projectService) pueda analizarlo. Se redeclara todo el exclude
+  // porque tsconfig no fusiona la lista heredada.
+  "exclude": [
+    "${configDir}/node_modules",
+    "${configDir}/babel.config.js",
+    "${configDir}/jest.config.js",
+    "${configDir}/android",
+    "${configDir}/ios"
+  ]
 }

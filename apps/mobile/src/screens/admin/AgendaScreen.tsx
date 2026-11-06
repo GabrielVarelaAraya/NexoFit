@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, fonts, type SessionPublic } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
@@ -184,8 +185,11 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('CreateSession', { defaultDate: selectedDate })}
+        accessibilityRole="button"
+        accessibilityLabel="Crear clase"
+        activeOpacity={0.8}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Ionicons name="add" size={30} color={colors.white} />
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -289,5 +293,4 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  fabText: { fontFamily: fonts.brand, fontSize: 28, color: colors.white },
 });

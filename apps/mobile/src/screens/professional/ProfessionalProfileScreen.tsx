@@ -5,6 +5,7 @@ import { Button, Card, Input } from '../../components/ui';
 import { ProfileScreen } from '../client/ProfileScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfessional } from '../../hooks/useProfessional';
+import { caughtError } from '../../utils/errors';
 import { saveProfessionalProfile } from '../../utils/professional';
 import { professionalStyles as styles } from './ProfessionalLayout';
 
@@ -33,10 +34,7 @@ function ProfessionalDetails() {
       await refresh();
       Alert.alert('Ficha actualizada', 'Tu información profesional se guardó.');
     } catch (cause) {
-      Alert.alert(
-        'No se pudo guardar',
-        cause instanceof Error ? cause.message : 'Inténtalo de nuevo.'
-      );
+      Alert.alert('No se pudo guardar', caughtError(cause, 'Inténtalo de nuevo.'));
     } finally {
       setSaving(false);
     }

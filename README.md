@@ -20,6 +20,7 @@ NexoFit is a mobile-first platform that lets fitness businesses manage their ope
 - Join waitlists when classes are full
 - Cancel bookings (auto-promotes waitlist)
 - Track workouts and progress
+- Unread notification badge with live updates and one-tap mark-as-read
 
 ### For Admins & Coaches
 
@@ -65,7 +66,7 @@ NexoFit/
 | Mobile   | React Native 0.86, Expo SDK 57, React Navigation 7              |
 | Auth     | Supabase Auth (email/password, email codes, persisted sessions) |
 | Database | PostgreSQL 15 (via Supabase)                                    |
-| API      | Supabase PostgREST + Edge Functions                             |
+| API      | Supabase PostgREST + Postgres RPCs                              |
 | Realtime | Supabase Realtime (bookings, notifications)                     |
 | Styling  | React Native StyleSheet, brand tokens                           |
 | Monorepo | pnpm workspaces                                                 |
@@ -85,7 +86,7 @@ NexoFit/
 
 ## Database Schema
 
-29 tables across 5 idempotent SQL files (run in order via the Supabase SQL Editor):
+29 tables across 6 idempotent SQL files (run in order via the Supabase SQL Editor):
 
 - **Organizations** — multi-tenant root
 - **Venues & Spaces** — locations with capacity
@@ -136,7 +137,7 @@ pnpm --filter @nexofit/mobile start
 
 ## Implementation Status
 
-**Overall: ≈86%** — 6 of 7 stages complete; stage 6 in progress.
+**Overall: ≈98%** — all 7 stages complete.
 
 | Stage | Description                                            | Status                                                                                                                                  |
 | ----- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -146,7 +147,10 @@ pnpm --filter @nexofit/mobile start
 | 3     | Core app shell + onboarding                            | ✅ Done                                                                                                                                 |
 | 4     | Member workout experience                              | ✅ Done — log de entrenamientos, histórico, récords y programa de la sesión                                                             |
 | 5     | Payments & scheduling intelligence                     | ✅ Done — planes y pagos (ledger con RLS), recomendaciones, badge «¡Casi lleno!», aviso de promoción de lista y detección de conflictos |
-| 6     | Admin web dashboard, analytics, notifications          | 🔶 In progress — pantallas admin (dashboard, agenda, clientes, espacios y tipos de clase) con datos reales; dashboard web pendiente     |
+| 6     | Admin web dashboard, analytics, notifications          | ✅ Done — pantallas admin con datos reales y consola web (login de admin, KPIs, miembros con roles y pagos)                             |
+
+**Extras:** Supabase Realtime for `bookings` and `notifications` ✅ · Brand
+assets pending (5 PNGs) · Store publishing (EAS) next.
 
 ## Project Context
 

@@ -1,6 +1,8 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@nexofit/core';
+import { colors, useTheme } from '@nexofit/core';
+import { useUnreadNotifications } from '../contexts/NotificationsContext';
+import { badgeValue } from './tabBadge';
 import type { ClientTabParamList } from './types';
 
 // Screens
@@ -14,6 +16,7 @@ const Tab = createBottomTabNavigator<ClientTabParamList>();
 
 export function ClientTabNavigator() {
   const theme = useTheme();
+  const { unread } = useUnreadNotifications();
 
   return (
     <Tab.Navigator
@@ -69,6 +72,13 @@ export function ClientTabNavigator() {
         component={ProfileScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
+          tabBarBadge: badgeValue(unread),
+          tabBarBadgeStyle: {
+            backgroundColor: colors.textAccent,
+            color: colors.crema,
+            fontSize: 10,
+            fontFamily: theme.fonts.uiSemiBold,
+          },
         }}
       />
     </Tab.Navigator>

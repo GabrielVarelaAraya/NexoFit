@@ -3,6 +3,8 @@ import { View, Text, TextInput, StyleSheet, Alert, Keyboard } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
+import { setSignupIntent } from '../../utils/signupIntent';
+import { friendlyError } from '../../utils/errors';
 import { Header, Button } from '../../components/ui';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
@@ -54,7 +56,7 @@ export function CreateGymScreen({ navigation }: Props) {
     setCreating(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', friendlyError(error, 'No se pudo crear el gimnasio.'));
       return;
     }
 
@@ -70,6 +72,8 @@ export function CreateGymScreen({ navigation }: Props) {
       return;
     }
 
+    // El gimnasio ya existe: la intención de alta ya no aplica.
+    setSignupIntent('client');
     await refreshMembership();
     Alert.alert(
       '¡Gimnasio creado!',
@@ -90,7 +94,7 @@ export function CreateGymScreen({ navigation }: Props) {
       <Header
         title="Crear gimnasio"
         subtitle="Registra tu establecimiento y empieza a ofrecerlo"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
 
       <View style={[styles.content, { paddingBottom: 40 + insets.bottom }]}>

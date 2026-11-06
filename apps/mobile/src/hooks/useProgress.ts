@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { getSupabase } from '@nexofit/core';
 import type { MeasurementRow, MeasurementValueRow } from '@nexofit/core';
 import { holdLoading } from '../utils/loading';
+import { friendlyError } from '../utils/errors';
 
 export type BodyMetric = {
   name: string;
@@ -58,7 +59,7 @@ export function useBodyMetrics(profileId: string, organizationId?: string): UseB
         .order('measured_at', { ascending: false });
 
       if (fetchErr) {
-        setError(fetchErr.message);
+        setError(friendlyError(fetchErr, 'No se pudieron cargar tus medidas.'));
       } else {
         setMeasurements((data as unknown as MeasurementWithValues[]) ?? []);
       }
@@ -110,7 +111,8 @@ export function useBodyMetrics(profileId: string, organizationId?: string): UseB
 
         return { success: true };
       } catch (err) {
-        return { success: false, error: err instanceof Error ? err.message : 'Error al guardar' };
+        console.warn('add measurement failed', err);
+        return { success: false };
       }
     },
     [profileId, organizationId, fetchMeasurements]
@@ -127,7 +129,8 @@ export function useBodyMetrics(profileId: string, organizationId?: string): UseB
 
         return { success: true };
       } catch (err) {
-        return { success: false, error: err instanceof Error ? err.message : 'Error al eliminar' };
+        console.warn('delete measurement failed', err);
+        return { success: false };
       }
     },
     [fetchMeasurements]
@@ -192,7 +195,7 @@ export function useSettings(profileId: string): UseSettingsResult {
     ]);
 
     if (rowErr) {
-      setError(rowErr.message);
+      setError(friendlyError(rowErr, 'No se pudo cargar tu perfil.'));
     } else {
       setProfile({
         full_name: rowData?.full_name ?? undefined,
@@ -216,10 +219,8 @@ export function useSettings(profileId: string): UseSettingsResult {
         await fetchProfile();
         return { success: true };
       } catch (err) {
-        return {
-          success: false,
-          error: err instanceof Error ? err.message : 'Error al actualizar',
-        };
+        console.warn('update profile failed', err);
+        return { success: false };
       }
     },
     [profileId, fetchProfile]
@@ -234,10 +235,8 @@ export function useSettings(profileId: string): UseSettingsResult {
       if (error) throw error;
       return { success: true };
     } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Error al cambiar contraseña',
-      };
+      console.warn('change password failed', err);
+      return { success: false };
     }
   }, []);
 
@@ -247,10 +246,8 @@ export function useSettings(profileId: string): UseSettingsResult {
       if (error) throw error;
       return { success: true };
     } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Error al eliminar cuenta',
-      };
+      console.warn('delete account failed', err);
+      return { success: false };
     }
   }, [profileId]);
 

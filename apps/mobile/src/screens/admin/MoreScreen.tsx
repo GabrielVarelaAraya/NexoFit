@@ -8,12 +8,13 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { colors, fonts } from '@nexofit/core';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card } from '../../components/ui';
 import type { NavigationProp } from '../../types/screens';
 
 type MenuItemType = {
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle: string;
   onPress: () => void;
@@ -25,45 +26,45 @@ type MenuItemType = {
 function buildMenuItems(navigation: NavigationProp, isAdmin: boolean): MenuItemType[] {
   return [
     {
-      icon: '📋',
+      icon: 'barbell',
       title: 'Programas de entreno',
       subtitle: 'Publica el WOD de una clase',
       onPress: () => navigation.navigate('PublishProgram'),
     },
     {
-      icon: '🔔',
+      icon: 'notifications',
       title: 'Notificaciones',
       subtitle: 'Enviar avisos a miembros',
       onPress: () => navigation.navigate('SendNotification'),
     },
     {
-      icon: '➕',
+      icon: 'add',
       title: 'Nueva clase',
       subtitle: 'Programar una clase en la agenda',
       onPress: () => navigation.navigate('CreateSession'),
     },
     {
-      icon: '🏟️',
+      icon: 'business',
       title: 'Espacios y clases',
       subtitle: 'Tipos de clase, sedes y espacios',
       onPress: () => navigation.navigate('GymContent'),
     },
     ...(isAdmin
-      ? [
+      ? ([
           {
-            icon: '💰',
+            icon: 'cash',
             title: 'Pagos',
             subtitle: 'Historial, planes y registrar cobros',
             onPress: () => navigation.navigate('Payments'),
           },
-        ]
+        ] satisfies MenuItemType[])
       : []),
   ];
 }
 
 const dangerItems: MenuItemType[] = [
   {
-    icon: '🚪',
+    icon: 'log-out',
     title: 'Cerrar sesión',
     subtitle: 'Salir de tu cuenta',
     onPress: () => {},
@@ -132,7 +133,12 @@ export function MoreScreen({ navigation }: { navigation: NavigationProp }) {
 function MenuItem({ item }: { item: MenuItemType }) {
   return (
     <TouchableOpacity style={styles.menuItem} onPress={item.onPress} activeOpacity={0.7}>
-      <Text style={styles.menuIcon}>{item.icon}</Text>
+      <Ionicons
+        name={item.icon}
+        size={22}
+        color={item.destructive ? colors.textError : colors.azulNexo}
+        style={styles.menuIcon}
+      />
       <View style={styles.menuText}>
         <Text style={[styles.menuTitle, item.destructive && { color: colors.textError }]}>
           {item.title}
@@ -157,7 +163,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
     gap: 16,
   },
-  menuIcon: { fontSize: 24, width: 40, textAlign: 'center' },
+  menuIcon: { width: 40, textAlign: 'center' },
   menuText: { flex: 1, gap: 2 },
   menuTitle: { fontFamily: fonts.uiSemiBold, fontSize: 15, color: colors.azulNexo },
   menuSubtitle: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },

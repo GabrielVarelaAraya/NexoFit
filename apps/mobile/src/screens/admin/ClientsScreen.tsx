@@ -70,6 +70,19 @@ export function ClientsScreen() {
     }
   };
 
+  const confirmRole = (member: OrgMember, role: RoleType) => {
+    // Segundo paso: el rol administrador otorga acceso total, así que nunca
+    // se aplica de forma implícita desde el primer toque.
+    Alert.alert(
+      `Cambiar a ${roleLabels[role]}`,
+      `${member.fullName ?? 'Este miembro'} pasará a ser ${roleLabels[role].toLowerCase()}. Puedes revertirlo desde la lista.`,
+      [
+        { text: 'Volver', style: 'cancel' },
+        { text: 'Cambiar rol', onPress: () => applyRole(member, role) },
+      ]
+    );
+  };
+
   const requestRoleChange = (member: OrgMember) => {
     if (!isAdmin) {
       Alert.alert('Sin permiso', 'Solo el administrador del gimnasio puede cambiar roles.');
@@ -84,7 +97,7 @@ export function ClientsScreen() {
     Alert.alert('Cambiar rol', `Selecciona el nuevo rol de ${member.fullName ?? 'este miembro'}:`, [
       ...options.map((role) => ({
         text: roleLabels[role],
-        onPress: () => applyRole(member, role),
+        onPress: () => confirmRole(member, role),
       })),
       { text: 'Cancelar', style: 'cancel' as const },
     ]);

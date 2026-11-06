@@ -5,6 +5,7 @@ import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
+import { friendlyError } from '../../utils/errors';
 
 interface Appointment {
   id: string;
@@ -73,7 +74,7 @@ export function AppointmentsScreen() {
         .order('starts_at', { ascending: false });
 
       if (fetchErr) {
-        setError(fetchErr.message);
+        setError(friendlyError(fetchErr, 'No se pudieron cargar tus citas.'));
         setAppointments([]);
       } else {
         setAppointments(
@@ -118,7 +119,7 @@ export function AppointmentsScreen() {
           setCancellingId(null);
 
           if (cancelErr) {
-            Alert.alert('Error', cancelErr.message);
+            Alert.alert('Error', friendlyError(cancelErr, 'No se pudo cancelar la cita.'));
           } else {
             fetchAppointments();
           }

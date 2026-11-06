@@ -11,6 +11,7 @@ import {
   Keyboard,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
@@ -352,26 +353,36 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Registrar medidas</Text>
-              <TouchableOpacity onPress={closeModal}>
-                <Text style={styles.modalClose}>✕</Text>
+              <TouchableOpacity
+                onPress={closeModal}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar"
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalLabel}>Fecha (AAAA-MM-DD)</Text>
-            <TextInput
-              style={styles.modalDateInput}
-              value={selectedDate}
-              onChangeText={setSelectedDate}
-              placeholder="AAAA-MM-DD"
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
-              placeholderTextColor={colors.textSecondary}
-            />
-
+            {/* Todo el contenido (incluidas las acciones) vive dentro del
+                scroll: con el teclado abierto el botón Guardar sigue
+                alcanzable, sin KeyboardAvoidingView. */}
             <ScrollView
-              contentContainerStyle={styles.modalMetricsContainer}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
+              <Text style={styles.modalLabel}>Fecha (AAAA-MM-DD)</Text>
+              <TextInput
+                style={styles.modalDateInput}
+                value={selectedDate}
+                onChangeText={setSelectedDate}
+                placeholder="AAAA-MM-DD"
+                keyboardType="numbers-and-punctuation"
+                maxLength={10}
+                placeholderTextColor={colors.textSecondary}
+                autoCorrect={false}
+              />
+
               {METRIC_DEFINITIONS.map((def) => (
                 <View key={def.name} style={styles.modalMetricRow}>
                   <Text style={styles.modalMetricLabel}>
@@ -389,16 +400,16 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
                   />
                 </View>
               ))}
-            </ScrollView>
 
-            <View style={styles.modalActions}>
-              <Button title="Cancelar" variant="ghost" onPress={closeModal} />
-              <Button
-                title={saving ? 'Guardando...' : 'Guardar'}
-                loading={saving}
-                onPress={handleAddMeasurement}
-              />
-            </View>
+              <View style={styles.modalActions}>
+                <Button title="Cancelar" variant="ghost" onPress={closeModal} />
+                <Button
+                  title={saving ? 'Guardando...' : 'Guardar'}
+                  loading={saving}
+                  onPress={handleAddMeasurement}
+                />
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -826,7 +837,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   modalTitle: { fontFamily: fonts.uiSemiBold, fontSize: 18, color: colors.azulNexo },
-  modalClose: { fontSize: 24, color: colors.textSecondary },
   modalLabel: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 13,
@@ -845,7 +855,7 @@ const styles = StyleSheet.create({
     color: colors.azulNexo,
     marginBottom: 8,
   },
-  modalMetricsContainer: { gap: 12, marginVertical: 8 },
+  modalScrollContent: { gap: 12, paddingBottom: 4 },
   modalMetricRow: {
     flexDirection: 'row',
     alignItems: 'center',

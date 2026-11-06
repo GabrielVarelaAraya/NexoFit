@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@nexofit/core';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
+import { setSignupIntent } from '../../utils/signupIntent';
 
 interface Props {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'RoleSelection'>;
@@ -15,21 +17,21 @@ const roles = [
     id: 'professional' as Role,
     title: 'Soy profesional',
     description: 'Tu agenda, disponibilidad y perfil',
-    icon: '🩺',
+    icon: 'pulse' as const,
     iconBg: '#CFFAFE',
   },
   {
     id: 'client' as Role,
     title: 'Soy cliente',
     description: 'Reservas, progreso y citas',
-    icon: '👤',
+    icon: 'person' as const,
     iconBg: '#A9F56F',
   },
   {
     id: 'gym_owner' as Role,
     title: 'Represento un gimnasio',
     description: 'Administra tu establecimiento',
-    icon: '🏢',
+    icon: 'business' as const,
     iconBg: '#E5E7EB',
   },
 ];
@@ -40,8 +42,10 @@ export function RoleSelectionScreen({ navigation }: Props) {
 
   const handleContinue = () => {
     if (selectedRole === 'client' || selectedRole === 'professional') {
+      setSignupIntent('client');
       navigation.navigate('Login');
     } else if (selectedRole === 'gym_owner') {
+      setSignupIntent('gym_owner');
       navigation.navigate('SignUp');
     }
   };
@@ -76,7 +80,7 @@ export function RoleSelectionScreen({ navigation }: Props) {
                   </Text>
                 </View>
                 <View style={[styles.roleIcon, { backgroundColor: role.iconBg }]}>
-                  <Text style={styles.roleIconText}>{role.icon}</Text>
+                  <Ionicons name={role.icon} size={24} color={theme.azulNexo} />
                 </View>
               </View>
             </TouchableOpacity>
@@ -88,14 +92,18 @@ export function RoleSelectionScreen({ navigation }: Props) {
         style={[
           styles.button,
           {
-            backgroundColor: selectedRole ? theme.turquesa : theme.turquesa + '60',
+            backgroundColor: selectedRole ? theme.textAccent : '#E5E7EB',
           },
         ]}
         onPress={handleContinue}
         disabled={!selectedRole}
         activeOpacity={0.8}
       >
-        <Text style={[styles.buttonText, { color: theme.azulNexo }]}>Continuar</Text>
+        <Text
+          style={[styles.buttonText, { color: selectedRole ? theme.crema : theme.textSecondary }]}
+        >
+          Continuar
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -153,9 +161,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  roleIconText: {
-    fontSize: 24,
   },
   button: {
     borderRadius: 12,

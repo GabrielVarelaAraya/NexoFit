@@ -80,7 +80,8 @@ export function SendNotificationScreen({ navigation }: Props) {
     setSending(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      console.warn('send notification failed', error.message);
+      Alert.alert('No se pudo enviar', 'Revisa tu conexión e inténtalo de nuevo.');
       return;
     }
 
@@ -91,12 +92,29 @@ export function SendNotificationScreen({ navigation }: Props) {
     );
   };
 
+  const confirmSend = () => {
+    const trimmedTitle = title.trim();
+    const trimmedBody = body.trim();
+    const recipients = recipientIds ?? [];
+
+    // Confirmación previa: el aviso llega a todo el gimnasio y, una vez
+    // enviado, no se puede deshacer.
+    Alert.alert(
+      `Enviar a ${recipients.length} ${recipients.length === 1 ? 'miembro' : 'miembros'}`,
+      `«${trimmedTitle}»\n\n${trimmedBody}\n\nEsta acción no se puede deshacer.`,
+      [
+        { text: 'Volver', style: 'cancel' },
+        { text: 'Enviar', onPress: () => void handleSend() },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Header
         title="Enviar notificación"
         subtitle="Aviso interno para tus miembros"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
 
       <ScrollView
@@ -138,7 +156,7 @@ export function SendNotificationScreen({ navigation }: Props) {
           fullWidth
           loading={sending}
           disabled={recipientIds === null || recipientIds.length === 0}
-          onPress={handleSend}
+          onPress={confirmSend}
         />
       </ScrollView>
     </View>

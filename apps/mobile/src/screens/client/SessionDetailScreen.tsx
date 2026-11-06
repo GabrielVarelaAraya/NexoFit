@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { bookSession } from '../../hooks/useBooking';
@@ -136,11 +137,11 @@ export function SessionDetailScreen({ route, navigation }: Props) {
     <View style={styles.container}>
       <Header
         title="Detalle de clase"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}>
-        <View style={styles.emojiBanner}>
-          <Text style={styles.emoji}>🏋️</Text>
+        <View style={styles.heroBanner}>
+          <Ionicons name="barbell" size={40} color={colors.turquesa} />
         </View>
 
         <Text style={styles.className}>{sessionData.class_types?.name ?? 'Clase'}</Text>
@@ -271,14 +272,13 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   logWorkoutButton: { marginTop: 4 },
-  emojiBanner: {
+  heroBanner: {
     height: 80,
     borderRadius: 12,
     backgroundColor: colors.turquesa + '15',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: { fontSize: 40 },
   className: {
     fontFamily: fonts.brand,
     fontSize: 24,

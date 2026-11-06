@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { friendlyError } from './errors';
 
 export interface RegistrationClient {
   rpc: (
@@ -58,7 +59,20 @@ export async function registerWithEmail(
     if (error.code === 'user_already_exists' || error.code === 'email_exists') {
       return { error: duplicateEmailMessage, code: 'email_exists', needsConfirmation: false };
     }
-    return { error: error.message, code: error.code, needsConfirmation: false };
+    if (error.code === 'weak_password') {
+      return {
+        error:
+          'La contraseña no cumple los requisitos de seguridad. Usa una contraseña más segura.',
+        code: error.code,
+        needsConfirmation: false,
+      };
+    }
+    // Detalle crudo de Auth solo en consola; el copy de la pantalla es genérico.
+    return {
+      error: friendlyError(error, 'No se pudo crear la cuenta. Inténtalo de nuevo.'),
+      code: error.code,
+      needsConfirmation: false,
+    };
   }
 
   // Auth can hide a duplicate registration behind a successful response.

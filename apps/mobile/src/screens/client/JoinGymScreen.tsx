@@ -5,6 +5,7 @@ import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
+import { friendlyError } from '../../utils/errors';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -35,7 +36,7 @@ export function JoinGymScreen({ navigation }: Props) {
         .order('name');
 
       if (fetchErr) {
-        setError(fetchErr.message);
+        setError(friendlyError(fetchErr, 'No se pudieron cargar los gimnasios.'));
         setGyms([]);
       } else {
         setGyms(data ?? []);
@@ -65,7 +66,7 @@ export function JoinGymScreen({ navigation }: Props) {
     // 23505 = UNIQUE(organization_id, profile_id): ya era miembro → éxito.
     if (insertErr && insertErr.code !== '23505') {
       setJoiningId(null);
-      Alert.alert('Error', insertErr.message);
+      Alert.alert('Error', friendlyError(insertErr, 'No se pudo completar la inscripción.'));
       return;
     }
 
@@ -99,7 +100,7 @@ export function JoinGymScreen({ navigation }: Props) {
       <Header
         title="Buscar gimnasio"
         subtitle="Elige el gimnasio al que quieres inscribirte"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
 
       <TextInput

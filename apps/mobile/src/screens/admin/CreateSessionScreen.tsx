@@ -124,6 +124,10 @@ export function CreateSessionScreen({ route, navigation }: Props) {
       capacityOverride = parsed;
     }
 
+    // El bloqueo se activa ANTES de la primera consulta: durante el chequeo de
+    // solape el botón sigue habilitado y un doble toque crearía dos clases.
+    setSaving(true);
+
     // Stage 5 · Detección de conflictos: una clase no puede solapar otra en
     // el mismo espacio. (Las clases creadas aquí no llevan coach asignado,
     // así que no existe conflicto de entrenador que verificar.)
@@ -136,10 +140,16 @@ export function CreateSessionScreen({ route, navigation }: Props) {
       .gt('ends_at', endsAt.toISOString());
 
     if (overlapErr) {
-      Alert.alert('Error', `No se pudo verificar la disponibilidad: ${overlapErr.message}`);
+      console.warn('overlap check failed', overlapErr.message);
+      setSaving(false);
+      Alert.alert(
+        'No se pudo verificar la disponibilidad',
+        'Revisa tu conexión e inténtalo de nuevo.'
+      );
       return;
     }
     if (overlaps && overlaps.length > 0) {
+      setSaving(false);
       Alert.alert(
         'Espacio ocupado',
         'Ya hay otra clase en ese espacio que se cruza con el horario elegido.'
@@ -147,7 +157,6 @@ export function CreateSessionScreen({ route, navigation }: Props) {
       return;
     }
 
-    setSaving(true);
     const { error } = await supabase.from('sessions').insert({
       class_type_id: classTypeId,
       space_id: spaceId,
@@ -158,7 +167,8 @@ export function CreateSessionScreen({ route, navigation }: Props) {
     setSaving(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      console.warn('create session failed', error.message);
+      Alert.alert('No se pudo crear la clase', 'Revisa tu conexión e inténtalo de nuevo.');
       return;
     }
 
@@ -172,7 +182,7 @@ export function CreateSessionScreen({ route, navigation }: Props) {
       <View style={styles.container}>
         <Header
           title="Nueva clase"
-          leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+          leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
         />
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>Sin organización</Text>
@@ -186,7 +196,7 @@ export function CreateSessionScreen({ route, navigation }: Props) {
       <Header
         title="Nueva clase"
         subtitle="Tipo, espacio y horario"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
 
       <ScrollView

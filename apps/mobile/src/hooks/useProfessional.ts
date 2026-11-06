@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { getSupabase } from '@nexofit/core';
 import { useAuth } from '../contexts/AuthContext';
+import { caughtError } from '../utils/errors';
 import { fetchProfessionalWorkspace, type ProfessionalWorkspace } from '../utils/professional';
 
 export function useProfessional(includeSchedule = true) {
@@ -17,9 +18,19 @@ export function useProfessional(includeSchedule = true) {
     const request = ++requestId.current;
     setLoading(true);
     setError(null);
+
+    // Error de negocio (copy propio): se muestra tal cual, sin pasar por
+    // friendlyError, que lo sustituiría por un genérico.
+    if (!membershipId || !organizationId || role !== 'professional') {
+      if (request === requestId.current) {
+        setWorkspace(null);
+        setError('No tienes una membresía profesional activa.');
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
-      if (!membershipId || !organizationId || role !== 'professional')
-        throw new Error('No tienes una membresía profesional activa.');
       const data = await fetchProfessionalWorkspace(
         getSupabase(),
         membershipId,
@@ -30,9 +41,7 @@ export function useProfessional(includeSchedule = true) {
     } catch (cause) {
       if (request === requestId.current) {
         setWorkspace(null);
-        setError(
-          cause instanceof Error ? cause.message : 'No pudimos cargar tu información profesional.'
-        );
+        setError(caughtError(cause, 'No pudimos cargar tu información profesional.'));
       }
     } finally {
       if (request === requestId.current) setLoading(false);

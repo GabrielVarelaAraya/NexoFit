@@ -107,7 +107,7 @@ export function MyBookingsScreen({ navigation }: Props) {
       <Header
         title="Mis reservas"
         subtitle="Próximas sesiones"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
       {error && (
         <View style={styles.errorBox}>

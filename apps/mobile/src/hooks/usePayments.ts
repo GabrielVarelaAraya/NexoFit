@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { getSupabase } from '@nexofit/core';
 import { holdLoading } from '../utils/loading';
+import { friendlyError } from '../utils/errors';
 
 // ============================================================
 // Stage 5 · Pagos: planes de membresía + libro de cobros.
@@ -179,7 +180,7 @@ export function usePayments(organizationId: string): UsePaymentsResult {
           .from('payments')
           .select(
             `id, amount_cents, currency, method, status, paid_at, notes,
-             profiles ( full_name ),
+             profiles!payments_profile_id_fkey ( full_name ),
              membership_plans ( name )`
           )
           .eq('organization_id', organizationId)
@@ -202,10 +203,10 @@ export function usePayments(organizationId: string): UsePaymentsResult {
 
       if (paymentsRes.error || plansRes.error || monthRes.error) {
         setError(
-          paymentsRes.error?.message ??
-            plansRes.error?.message ??
-            monthRes.error?.message ??
-            'Error al cargar pagos.'
+          friendlyError(
+            paymentsRes.error ?? plansRes.error ?? monthRes.error,
+            'No se pudieron cargar los pagos.'
+          )
         );
         return;
       }
@@ -243,7 +244,10 @@ export function usePayments(organizationId: string): UsePaymentsResult {
         status: 'paid',
       });
 
-      if (insertErr) return { success: false, error: insertErr.message };
+      if (insertErr) {
+        console.warn('register payment failed', insertErr.message);
+        return { success: false };
+      }
       await fetchData();
       return { success: true };
     },
@@ -267,7 +271,8 @@ export function usePayments(organizationId: string): UsePaymentsResult {
         if (insertErr.code === '23505') {
           return { success: false, error: 'Ya existe un plan con ese nombre.' };
         }
-        return { success: false, error: insertErr.message };
+        console.warn('create plan failed', insertErr.message);
+        return { success: false };
       }
       await fetchData();
       return { success: true };
@@ -285,7 +290,10 @@ export function usePayments(organizationId: string): UsePaymentsResult {
         .eq('id', planId)
         .eq('organization_id', organizationId);
 
-      if (updateErr) return { success: false, error: updateErr.message };
+      if (updateErr) {
+        console.warn('archive plan failed', updateErr.message);
+        return { success: false };
+      }
       await fetchData();
       return { success: true };
     },
@@ -361,7 +369,13 @@ export async function fetchMyPayments(profileId: string): Promise<{
     .order('paid_at', { ascending: false })
     .limit(30);
 
-  if (error) return { payments: [], currentPlan: null, error: error.message };
+  if (error) {
+    return {
+      payments: [],
+      currentPlan: null,
+      error: friendlyError(error, 'No se pudo cargar tu historial de pagos.'),
+    };
+  }
 
   const rows = (data ?? []) as unknown as MyPaymentRow[];
   const payments: MyPayment[] = rows.map((r) => ({

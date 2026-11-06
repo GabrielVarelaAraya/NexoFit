@@ -1,5 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { AuthProvider } from '../contexts/AuthContext';
+import { NotificationsProvider } from '../contexts/NotificationsContext';
+import { useRealtimeBookings } from '../hooks/useRealtimeBookings';
 import { ThemeProvider } from '@nexofit/core';
 import { RootNavigator } from '../navigation/RootNavigator';
 import { setSupabaseConfig } from '@nexofit/core';
@@ -28,14 +30,24 @@ if (supabaseUrl && supabaseAnonKey) {
   );
 }
 
+// Puente sin UI: mantiene los cupos y reservas en vivo mientras haya sesión
+// con un gimnasio (Realtime sobre bookings).
+function RealtimeBridge() {
+  useRealtimeBookings();
+  return null;
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-      </ThemeProvider>
+      <NotificationsProvider>
+        <RealtimeBridge />
+        <ThemeProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </ThemeProvider>
+      </NotificationsProvider>
     </AuthProvider>
   );
 }

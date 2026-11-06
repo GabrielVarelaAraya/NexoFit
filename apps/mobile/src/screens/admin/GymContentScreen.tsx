@@ -202,7 +202,7 @@ export function GymContentScreen({ route, navigation }: Props) {
       <View style={styles.container}>
         <Header
           title="Espacios y clases"
-          leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+          leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
         />
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>Sin organización</Text>
@@ -216,7 +216,7 @@ export function GymContentScreen({ route, navigation }: Props) {
       <Header
         title="Espacios y clases"
         subtitle="Tipos de clase, sedes y espacios"
-        leftAction={{ label: '← Volver', onPress: () => navigation.goBack() }}
+        leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
 
       {loading ? (

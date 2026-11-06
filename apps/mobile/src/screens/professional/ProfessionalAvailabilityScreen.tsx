@@ -3,6 +3,7 @@ import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { getSupabase } from '@nexofit/core';
 import { Button, Card, Input } from '../../components/ui';
 import { useProfessional } from '../../hooks/useProfessional';
+import { caughtError } from '../../utils/errors';
 import {
   addProfessionalAvailability,
   deleteProfessionalAvailability,
@@ -31,10 +32,7 @@ export function ProfessionalAvailabilityScreen() {
       );
       await refresh();
     } catch (cause) {
-      Alert.alert(
-        'No se pudo guardar',
-        cause instanceof Error ? cause.message : 'Inténtalo de nuevo.'
-      );
+      Alert.alert('No se pudo guardar', caughtError(cause, 'Inténtalo de nuevo.'));
     } finally {
       setPending(false);
     }
@@ -46,10 +44,7 @@ export function ProfessionalAvailabilityScreen() {
       await deleteProfessionalAvailability(getSupabase(), workspace.professional.id, block.id);
       await refresh();
     } catch (cause) {
-      Alert.alert(
-        'No se pudo eliminar',
-        cause instanceof Error ? cause.message : 'Inténtalo de nuevo.'
-      );
+      Alert.alert('No se pudo eliminar', caughtError(cause, 'Inténtalo de nuevo.'));
     } finally {
       setPending(false);
     }

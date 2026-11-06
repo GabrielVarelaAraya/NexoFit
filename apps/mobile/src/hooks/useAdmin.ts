@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { getSupabase, type RoleType } from '@nexofit/core';
 import { toLocalDateStr, startOfLocalDay, endOfLocalDay } from '../utils/date';
 import { holdLoading } from '../utils/loading';
+import { friendlyError } from '../utils/errors';
 
 // ============================================================
 // Stage 6 · Datos reales para las pantallas de administración
@@ -62,7 +64,11 @@ async function updateMemberRole(
     .eq('id', membershipId)
     .select('id');
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    // Detalle crudo solo en consola; el call site muestra su propio copy.
+    console.warn('update member role failed', error.message);
+    return { success: false };
+  }
   if (!data || data.length === 0) {
     return { success: false, error: 'No tienes permiso para cambiar roles.' };
   }
@@ -107,7 +113,7 @@ export function useOrgMembers(organizationId: string): UseOrgMembersResult {
         .order('created_at', { ascending: false });
 
       if (fetchErr) {
-        setError(fetchErr.message);
+        setError(friendlyError(fetchErr, 'No se pudieron cargar los miembros.'));
         setMembers([]);
         return;
       }
@@ -158,7 +164,9 @@ export async function fetchClassTypes(
     .eq('organization_id', organizationId)
     .order('name');
 
-  if (error) return { data: [], error: error.message };
+  if (error) {
+    return { data: [], error: friendlyError(error, 'No se pudieron cargar los tipos de clase.') };
+  }
   return { data: data ?? [] };
 }
 
@@ -189,7 +197,9 @@ export async function fetchSpaces(
     .eq('venues.organization_id', organizationId)
     .order('name');
 
-  if (error) return { data: [], error: error.message };
+  if (error) {
+    return { data: [], error: friendlyError(error, 'No se pudieron cargar los espacios.') };
+  }
 
   return {
     data: ((data ?? []) as unknown as SpaceRow[]).map((s) => ({
@@ -219,7 +229,7 @@ export interface DashboardStats {
 
 export interface ActivityItem {
   id: string;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   text: string;
   time: string;
 }
@@ -399,7 +409,7 @@ export function useDashboard(organizationId: string): UseDashboardResult {
         recentCancelledRes.error?.message,
         newMembersRes.error?.message,
       ].find(Boolean);
-      if (firstError) setError(firstError);
+      if (firstError) setError(friendlyError(firstError, 'No se pudo cargar el resumen.'));
 
       const weekRows = (weekSessionsRes.data ?? []) as unknown as WeekSessionRow[];
 
@@ -453,7 +463,7 @@ export function useDashboard(organizationId: string): UseDashboardResult {
       for (const b of (recentConfirmedRes.data ?? []) as unknown as RecentBookingRow[]) {
         feed.push({
           id: `booking-${b.id}`,
-          icon: '✅',
+          icon: 'checkmark-circle',
           text: `${b.profiles?.full_name ?? 'Alguien'} reservó «${b.sessions?.class_types?.name ?? 'una clase'}»`,
           time: '',
           iso: b.created_at,
@@ -463,7 +473,7 @@ export function useDashboard(organizationId: string): UseDashboardResult {
         if (!b.cancelled_at) continue;
         feed.push({
           id: `cancel-${b.id}`,
-          icon: '❌',
+          icon: 'close-circle',
           text: `${b.profiles?.full_name ?? 'Alguien'} canceló «${b.sessions?.class_types?.name ?? 'una clase'}»`,
           time: '',
           iso: b.cancelled_at,
@@ -472,7 +482,7 @@ export function useDashboard(organizationId: string): UseDashboardResult {
       for (const m of (newMembersRes.data ?? []) as unknown as NewMemberRow[]) {
         feed.push({
           id: `member-${m.id}`,
-          icon: '👤',
+          icon: 'person',
           text: `Nuevo miembro: ${m.profiles?.full_name ?? 'sin nombre'}`,
           time: '',
           iso: m.created_at,
@@ -621,7 +631,7 @@ export function useGymContent(organizationId: string): UseGymContentResult {
       const firstError =
         classTypesRes.error?.message ?? venuesRes.error?.message ?? spacesRes.error?.message;
       if (firstError) {
-        setError(firstError);
+        setError(friendlyError(firstError, 'No se pudo cargar el contenido.'));
         return;
       }
 
@@ -656,7 +666,10 @@ export function useGymContent(organizationId: string): UseGymContentResult {
         description: input.description?.trim() ? input.description.trim() : null,
       });
 
-      if (insertErr) return { success: false, error: insertErr.message };
+      if (insertErr) {
+        console.warn('create class type failed', insertErr.message);
+        return { success: false };
+      }
       await fetchData();
       return { success: true };
     },
@@ -687,7 +700,10 @@ export function useGymContent(organizationId: string): UseGymContentResult {
         .eq('id', id)
         .eq('organization_id', organizationId);
 
-      if (deleteErr) return { success: false, error: deleteErr.message };
+      if (deleteErr) {
+        console.warn('delete class type failed', deleteErr.message);
+        return { success: false };
+      }
       await fetchData();
       return { success: true };
     },
@@ -703,7 +719,10 @@ export function useGymContent(organizationId: string): UseGymContentResult {
         address: input.address?.trim() ? input.address.trim() : null,
       });
 
-      if (insertErr) return { success: false, error: insertErr.message };
+      if (insertErr) {
+        console.warn('create venue failed', insertErr.message);
+        return { success: false };
+      }
       await fetchData();
       return { success: true };
     },
@@ -719,7 +738,10 @@ export function useGymContent(organizationId: string): UseGymContentResult {
         capacity: input.capacity,
       });
 
-      if (insertErr) return { success: false, error: insertErr.message };
+      if (insertErr) {
+        console.warn('create space failed', insertErr.message);
+        return { success: false };
+      }
       await fetchData();
       return { success: true };
     },
@@ -750,7 +772,10 @@ export function useGymContent(organizationId: string): UseGymContentResult {
         .eq('id', id)
         .select('id');
 
-      if (deleteErr) return { success: false, error: deleteErr.message };
+      if (deleteErr) {
+        console.warn('delete space failed', deleteErr.message);
+        return { success: false };
+      }
       if (!deleted || deleted.length === 0) {
         return { success: false, error: 'No tienes permiso para eliminar espacios.' };
       }

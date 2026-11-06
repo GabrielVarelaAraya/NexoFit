@@ -5,6 +5,7 @@ import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookings, useSchedule, useRecommendations } from '../../hooks/useBooking';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
+import { getSignupIntent } from '../../utils/signupIntent';
 import type { BookingWithSession, SessionWithType, NavigationProp } from '../../types/screens';
 
 function formatTime(iso: string) {
@@ -56,27 +57,42 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
     upcomingBookings.length === 0 && todaySessions.length === 0 && recommended.length === 0;
 
   if (!orgId) {
+    // «Registrar mi gimnasio» es solo del rol de gimnasio (selección de rol
+    // → SignUp); el cliente únicamente se inscribe en gimnasios existentes.
+    const isGymOwner = getSignupIntent() === 'gym_owner';
     return (
       <View style={styles.container}>
         <Header title="Inicio" subtitle="Empieza eligiendo tu gimnasio" />
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>Sin gimnasio</Text>
           <Text style={styles.emptyText}>
-            Inscríbete en un gimnasio existente o registra el tuyo para ver clases, reservas y
-            progreso.
+            {isGymOwner
+              ? 'Registra tu gimnasio para empezar a gestionar sus clases, espacios y miembros.'
+              : 'Inscríbete en un gimnasio existente para ver clases, reservas y progreso.'}
           </Text>
-          <Button
-            title="Buscar un gimnasio"
-            variant="primary"
-            fullWidth
-            onPress={() => navigation.navigate('JoinGym')}
-          />
-          <Button
-            title="Registrar mi gimnasio"
-            variant="ghost"
-            fullWidth
-            onPress={() => navigation.navigate('CreateGym')}
-          />
+          {isGymOwner ? (
+            <>
+              <Button
+                title="Registrar mi gimnasio"
+                variant="primary"
+                fullWidth
+                onPress={() => navigation.navigate('CreateGym')}
+              />
+              <Button
+                title="Buscar un gimnasio"
+                variant="ghost"
+                fullWidth
+                onPress={() => navigation.navigate('JoinGym')}
+              />
+            </>
+          ) : (
+            <Button
+              title="Buscar un gimnasio"
+              variant="primary"
+              fullWidth
+              onPress={() => navigation.navigate('JoinGym')}
+            />
+          )}
         </View>
       </View>
     );

@@ -116,31 +116,6 @@ export function LoginScreen({ navigation }: Props) {
             {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
           </Text>
         </TouchableOpacity>
-
-        <View style={styles.dividerContainer}>
-          <View style={[styles.divider, { backgroundColor: theme.azulNexo + '20' }]} />
-          <Text style={[styles.dividerText, { color: theme.textSecondary }]}>o</Text>
-          <View style={[styles.divider, { backgroundColor: theme.azulNexo + '20' }]} />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.socialButton,
-            { backgroundColor: theme.white, borderColor: theme.azulNexo + '20' },
-          ]}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.socialButtonText, { color: theme.azulNexo }]}>
-            Continuar con Google
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.socialButton, { backgroundColor: theme.azulNexo }]}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.socialButtonText, { color: theme.white }]}>Continuar con Apple</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>
@@ -208,30 +183,6 @@ const baseStyles = StyleSheet.create({
     marginTop: 8,
   },
   loginButtonText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 16,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 14,
-    marginHorizontal: 16,
-  },
-  socialButton: {
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  socialButtonText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
   },
