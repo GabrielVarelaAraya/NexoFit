@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, getSupabase } from '@nexofit/core';
@@ -59,6 +60,12 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
   const [leavingGym, setLeavingGym] = useState(false);
 
   const handleSignOut = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('¿Cerrar sesión?')) {
+        void signOut();
+      }
+      return;
+    }
     Alert.alert('Cerrar sesión', '¿Estás seguro?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Cerrar sesión', style: 'destructive', onPress: signOut },
@@ -82,10 +89,15 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
     setLeavingGym(false);
 
     if (error || !data || data.length === 0) {
-      Alert.alert(
-        'No se pudo salir',
-        friendlyError(error, 'No tienes permiso para darte de baja. Habla con tu gimnasio.')
+      const msg = friendlyError(
+        error,
+        'No tienes permiso para darte de baja. Habla con tu gimnasio.'
       );
+      if (Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert('No se pudo salir', msg);
+      }
       return;
     }
 
@@ -95,18 +107,23 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
 
   const confirmLeaveGym = () => {
     if (!membership?.id || leavingGym) return;
-    Alert.alert(
-      `Salir de ${membership.organization_name ?? 'tu gimnasio'}`,
-      'Tu cuenta se conserva y podrás inscribirte de nuevo cuando quieras. El historial de reservas y pagos se queda con el gimnasio y volverá a verse si te reinscribes.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Salir del gimnasio',
-          style: 'destructive',
-          onPress: () => void handleLeaveGym(),
-        },
-      ]
-    );
+    const title = `Salir de ${membership.organization_name ?? 'tu gimnasio'}`;
+    const message =
+      'Tu cuenta se conserva y podrás inscribirte de nuevo cuando quieras. El historial de reservas y pagos se queda con el gimnasio y volverá a verse si te reinscribes.';
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${message}`)) {
+        void handleLeaveGym();
+      }
+      return;
+    }
+    Alert.alert(title, message, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Salir del gimnasio',
+        style: 'destructive',
+        onPress: () => void handleLeaveGym(),
+      },
+    ]);
   };
 
   const openEdit = () => {
