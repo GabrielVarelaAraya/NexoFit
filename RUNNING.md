@@ -37,11 +37,13 @@ packages/db/migrations/000003_create_rls_policies.sql
 packages/db/migrations/000004_check_email_exists.sql
 packages/db/migrations/000005_professional_access.sql
 packages/db/migrations/000006_realtime.sql
+packages/db/migrations/000007_appointment_booking.sql
+packages/db/migrations/000008_appointment_security.sql
 ```
 
 Wait for each to complete before running the next. You should see "Success" after each.
 
-> **Idempotent:** the six files can be re-run on an existing project.
+> **Idempotent:** the eight files can be re-run on an existing project.
 >
 > **Existing projects:** if you already applied `000001`, `000002` and `000003`,
 > run **`000004_check_email_exists.sql`** to enable the email check before registration.
@@ -50,14 +52,16 @@ Wait for each to complete before running the next. You should see "Success" afte
 
 ### What each migration does
 
-| Migration | Purpose                                                                                    |
-| --------- | ------------------------------------------------------------------------------------------ |
-| `000001`  | Creates all 29 tables, 7 enums, 23 indexes, and the timestamp/user triggers                |
-| `000002`  | Creates RPCs: `book_session`, `cancel_booking`, `create_organization`, and RLS helpers     |
-| `000003`  | Enables RLS on every table and creates the 101 final policies                              |
-| `000004`  | Adds `email_exists` to reject existing emails before registration                          |
-| `000005`  | Provisions professional profiles and scopes appointment/availability access to their owner |
-| `000006`  | Publishes `bookings` and `notifications` to Supabase Realtime (live badge and class spots) |
+| Migration | Purpose                                                                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `000001`  | Creates all 29 tables, 7 enums, 23 indexes, and the timestamp/user triggers                                                                    |
+| `000002`  | Creates RPCs: `book_session`, `cancel_booking`, `create_organization`, and RLS helpers                                                         |
+| `000003`  | Enables RLS on every table and creates the 101 final policies                                                                                  |
+| `000004`  | Adds `email_exists` to reject existing emails before registration                                                                              |
+| `000005`  | Provisions professional profiles and scopes appointment/availability access to their owner                                                     |
+| `000006`  | Publishes `bookings` and `notifications` to Supabase Realtime (live badge and class spots)                                                     |
+| `000007`  | Adds `book_appointment` (member booking of 1-on-1 slots) and service ownership for professionals                                               |
+| `000008`  | Appointment security: no direct member writes, immutable appointment columns, `cancel_appointment`, `get_busy_slots`, `list_org_professionals` |
 
 > **Professional workspace:** if `000001` through `000004` are already applied,
 > run **`000005_professional_access.sql`**. It creates missing professional

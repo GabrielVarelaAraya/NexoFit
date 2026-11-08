@@ -20,6 +20,7 @@ NexoFit is a mobile-first platform that lets fitness businesses manage their ope
 - Join waitlists when classes are full
 - Cancel bookings (auto-promotes waitlist)
 - Track workouts and progress
+- Book, view and cancel 1-on-1 appointments with professionals
 - Unread notification badge with live updates and one-tap mark-as-read
 
 ### For Admins & Coaches
@@ -86,7 +87,7 @@ NexoFit/
 
 ## Database Schema
 
-29 tables across 6 idempotent SQL files (run in order via the Supabase SQL Editor):
+29 tables across 8 idempotent SQL files (run in order via the Supabase SQL Editor):
 
 - **Organizations** — multi-tenant root
 - **Venues & Spaces** — locations with capacity
