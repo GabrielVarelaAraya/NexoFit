@@ -18,6 +18,12 @@ Database layer: Supabase (PostgreSQL) schema, functions, RLS policies, and seed 
   5. `000005_professional_access.sql` — create professional profiles when roles
      are assigned, backfill existing professional memberships, and restrict
      appointment/availability management to the owning professional or org admin
+  6. `000006_realtime.sql` — publish `bookings` and `notifications` to Realtime
+  7. `000007_appointment_booking.sql` — `book_appointment` RPC (availability and
+     conflict checks, serialized per professional) and service ownership
+  8. `000008_appointment_security.sql` — closes direct appointment INSERT/UPDATE
+     for members, makes appointment time/member columns immutable, and adds
+     `cancel_appointment`, `get_busy_slots` and `list_org_professionals`
 
 - `src/` — TS helpers and migration tests.
 
@@ -29,8 +35,8 @@ Supabase Auth schema. Queries run as the `authenticated` role to exercise RLS,
 including peer access, organization boundaries, profile assignment, and role
 revocation. They do not connect to or change your hosted Supabase database.
 
-Apply all five migrations in order. Migration `000003` recreates every policy,
-so always apply `000005` afterward when re-running earlier migrations.
+Apply all eight migrations in order. Migration `000003` recreates every policy,
+so after re-running it also re-run `000005`, `000007` and `000008`.
 
 ## Conventions
 

@@ -1147,6 +1147,28 @@ export interface Database {
         Args: { p_session_id: string };
         Returns: Json;
       };
+      book_appointment: {
+        Args: { p_professional_id: string; p_service_id: string; p_starts_at: string };
+        Returns: Json;
+      };
+      cancel_appointment: {
+        Args: { p_appointment_id: string };
+        Returns: Json;
+      };
+      get_busy_slots: {
+        Args: { p_professional_id: string; p_from: string; p_to: string };
+        Returns: { busy_start: string; busy_end: string }[];
+      };
+      list_org_professionals: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          professional_id: string;
+          org_id: string;
+          full_name: string | null;
+          specialization: string;
+          bio: string | null;
+        }[];
+      };
     };
     Views: {};
   };
