@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Platform,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
@@ -14,6 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Header, Button, Card, Input } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
 import { friendlyError } from '../../utils/errors';
+import { notify } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -118,14 +120,11 @@ export function PublishProgramScreen({ navigation }: Props) {
   const handlePublish = async () => {
     const trimmed = content.trim();
     if (!selectedSessionId) {
-      Alert.alert('Faltan datos', 'Selecciona la clase para la que quieres publicar.');
+      notify('Selecciona la clase para la que quieres publicar.', 'Faltan datos');
       return;
     }
     if (trimmed.length < 10) {
-      Alert.alert(
-        'Contenido muy corto',
-        'Escribe el entrenamiento completo (mínimo 10 caracteres).'
-      );
+      notify('Escribe el entrenamiento completo (mínimo 10 caracteres).', 'Contenido muy corto');
       return;
     }
     if (!user?.id) return;
@@ -144,15 +143,23 @@ export function PublishProgramScreen({ navigation }: Props) {
     setPublishing(false);
 
     if (error) {
-      Alert.alert('Error', friendlyError(error, 'No se pudo publicar el programa.'));
+      notify(friendlyError(error, 'No se pudo publicar el programa.'), 'Error');
       return;
     }
 
-    Alert.alert(
-      'Programa publicado',
-      'Los miembros ya ven el entrenamiento en el detalle de la clase.',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
+    if (Platform.OS === 'web') {
+      notify(
+        'Los miembros ya ven el entrenamiento en el detalle de la clase.',
+        'Programa publicado'
+      );
+      navigation.goBack();
+    } else {
+      Alert.alert(
+        'Programa publicado',
+        'Los miembros ya ven el entrenamiento en el detalle de la clase.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    }
   };
 
   return (

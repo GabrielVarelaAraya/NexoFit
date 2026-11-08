@@ -137,6 +137,9 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
         data={dates}
         horizontal
         showsHorizontalScrollIndicator={false}
+        // RN-Web da a los ScrollView flexGrow:1 por defecto: sin acotar la
+        // altura, la tira de días estira los chips hasta pillar gigantes.
+        style={styles.dateBarScroll}
         contentContainerStyle={styles.dateBar}
         keyExtractor={(d) => d}
         renderItem={({ item: dateStr }) => {
@@ -201,6 +204,7 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
   dateBar: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  dateBarScroll: { flexGrow: 0, flexShrink: 0 },
   dateItem: {
     width: 52,
     alignItems: 'center',

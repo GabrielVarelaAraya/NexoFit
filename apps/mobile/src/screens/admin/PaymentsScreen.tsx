@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Button, Card, Input, LoadingView } from '../../components/ui';
+import { confirmAction, notify } from '../../utils/alerts';
 import {
   usePayments,
   formatMoney,
@@ -106,12 +107,12 @@ export function PaymentsScreen({ navigation }: Props) {
 
   const handleRegister = async () => {
     if (!selectedMember) {
-      Alert.alert('Faltan datos', 'Selecciona el miembro que realiza el pago.');
+      notify('Selecciona el miembro que realiza el pago.', 'Faltan datos');
       return;
     }
     const parsed = Number(amount.replace(',', '.'));
     if (!Number.isFinite(parsed) || parsed < 0) {
-      Alert.alert('Error', 'El monto debe ser un número válido (mínimo 0).');
+      notify('El monto debe ser un número válido (mínimo 0).', 'Error');
       return;
     }
 
@@ -130,15 +131,12 @@ export function PaymentsScreen({ navigation }: Props) {
     setSaving(false);
 
     if (!result.success) {
-      Alert.alert('Error', result.error ?? 'No se pudo registrar el pago.');
+      notify(result.error ?? 'No se pudo registrar el pago.', 'Error');
       return;
     }
 
     resetPaymentForm();
-    Alert.alert(
-      'Pago registrado',
-      `Se registró el pago de ${selectedMember.fullName ?? 'miembro'}.`
-    );
+    notify(`Se registró el pago de ${selectedMember.fullName ?? 'miembro'}.`, 'Pago registrado');
   };
 
   const resetPlanForm = () => {
@@ -153,17 +151,17 @@ export function PaymentsScreen({ navigation }: Props) {
   const handleCreatePlan = async () => {
     const name = planName.trim();
     if (!name) {
-      Alert.alert('Faltan datos', 'Escribe un nombre para el plan.');
+      notify('Escribe un nombre para el plan.', 'Faltan datos');
       return;
     }
     const price = Number(planPrice.replace(',', '.'));
     if (!Number.isFinite(price) || price < 0) {
-      Alert.alert('Error', 'El precio debe ser un número válido (mínimo 0).');
+      notify('El precio debe ser un número válido (mínimo 0).', 'Error');
       return;
     }
     const days = Number(planDays);
     if (!Number.isInteger(days) || days <= 0) {
-      Alert.alert('Error', 'La duración debe ser un número entero de días (mínimo 1).');
+      notify('La duración debe ser un número entero de días (mínimo 1).', 'Error');
       return;
     }
 
@@ -179,25 +177,24 @@ export function PaymentsScreen({ navigation }: Props) {
     setSavingPlan(false);
 
     if (!result.success) {
-      Alert.alert('Error', result.error ?? 'No se pudo crear el plan.');
+      notify(result.error ?? 'No se pudo crear el plan.', 'Error');
       return;
     }
     resetPlanForm();
-    Alert.alert('Plan creado', `El plan "${name}" ya está disponible.`);
+    notify(`El plan "${name}" ya está disponible.`, 'Plan creado');
   };
 
   const handleArchive = (id: string, name: string) => {
-    Alert.alert('Archivar plan', `¿Archivar "${name}"? Los pagos registrados lo conservan.`, [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, archivar',
-        style: 'destructive',
-        onPress: async () => {
-          const result = await archivePlan(id);
-          if (!result.success) Alert.alert('Error', result.error ?? 'No se pudo archivar.');
-        },
+    confirmAction({
+      title: 'Archivar plan',
+      message: `¿Archivar "${name}"? Los pagos registrados lo conservan.`,
+      confirmLabel: 'Sí, archivar',
+      cancelLabel: 'No',
+      onConfirm: async () => {
+        const result = await archivePlan(id);
+        if (!result.success) notify(result.error ?? 'No se pudo archivar.', 'Error');
       },
-    ]);
+    });
   };
 
   if (!orgId) {

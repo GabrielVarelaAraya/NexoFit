@@ -1,16 +1,9 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { colors, fonts } from '@nexofit/core';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card } from '../../components/ui';
+import { confirmAction } from '../../utils/alerts';
 import type { NavigationProp } from '../../types/screens';
 
 type MenuItemType = {
@@ -77,10 +70,12 @@ export function MoreScreen({ navigation }: { navigation: NavigationProp }) {
   const orgId = membership?.organization_id ?? '';
 
   const handleSignOut = () => {
-    Alert.alert('Cerrar sesión', '¿Estás seguro?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cerrar sesión', style: 'destructive', onPress: signOut },
-    ]);
+    confirmAction({
+      title: 'Cerrar sesión',
+      message: '¿Estás seguro?',
+      confirmLabel: 'Cerrar sesión',
+      onConfirm: signOut,
+    });
   };
 
   if (!orgId) {

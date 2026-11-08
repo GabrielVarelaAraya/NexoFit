@@ -7,7 +7,6 @@ import {
   Modal,
   TouchableOpacity,
   TextInput,
-  Alert,
   Keyboard,
   ActivityIndicator,
 } from 'react-native';
@@ -19,6 +18,7 @@ import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { useBodyMetrics, type MeasurementWithValues } from '../../hooks/useProgress';
 import { useWorkouts } from '../../hooks/useWorkout';
 import { toLocalDateStr } from '../../utils/date';
+import { confirmAction, notify } from '../../utils/alerts';
 import type { NavigationProp, WorkoutLogItem } from '../../types/screens';
 
 const METRIC_DEFINITIONS = [
@@ -34,6 +34,21 @@ const METRIC_DEFINITIONS = [
 ];
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+// Dirección en la que un cambio cuenta como mejora. Bajar peso, grasa o
+// cintura es avanzar; subir masa muscular también. Sin esta guía, el rojo/verde
+// invertía el mensaje (p. ej. «Peso −4.0 vs anterior» en rojo justo cuando
+// bajar es el objetivo). Las métricas ambiguas (Cadera, Pecho…) van en neutro.
+const LOWER_IS_BETTER = new Set(['Peso', 'Grasa corporal', 'Cintura']);
+const HIGHER_IS_BETTER = new Set(['Masa muscular']);
+
+function trendColorFor(label: string, trend: string | null): string {
+  if (trend == null || trend === '0') return colors.textSecondary;
+  const isDown = trend.startsWith('-');
+  if (LOWER_IS_BETTER.has(label)) return isDown ? colors.textSuccess : colors.textError;
+  if (HIGHER_IS_BETTER.has(label)) return isDown ? colors.textError : colors.textSuccess;
+  return colors.textSecondary;
+}
 
 function toMetricList(measurement?: MeasurementWithValues) {
   if (!measurement) return [];
@@ -96,7 +111,7 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
 
   const handleAddMeasurement = async () => {
     if (!DATE_REGEX.test(selectedDate) || Number.isNaN(Date.parse(selectedDate))) {
-      Alert.alert('Error', 'Fecha no válida. Usa el formato AAAA-MM-DD');
+      notify('Fecha no válida. Usa el formato AAAA-MM-DD', 'Error');
       return;
     }
 
@@ -110,7 +125,7 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
       .filter((m) => !Number.isNaN(m.value));
 
     if (metrics.length === 0) {
-      Alert.alert('Error', 'Ingresa al menos una medida');
+      notify('Ingresa al menos una medida', 'Error');
       return;
     }
 
@@ -127,24 +142,22 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
       setMetricInputs({});
       setSelectedDate(toLocalDateStr());
     } else {
-      Alert.alert('Error', result.error ?? 'No se pudo guardar');
+      notify(result.error ?? 'No se pudo guardar', 'Error');
     }
   };
 
   const handleDeleteMeasurement = (id: string) => {
-    Alert.alert('Eliminar', '¿Estás seguro de eliminar esta medición?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          const result = await deleteMeasurement(id);
-          if (!result.success) {
-            Alert.alert('Error', result.error ?? 'No se pudo eliminar');
-          }
-        },
+    confirmAction({
+      title: 'Eliminar',
+      message: '¿Estás seguro de eliminar esta medición?',
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        const result = await deleteMeasurement(id);
+        if (!result.success) {
+          notify(result.error ?? 'No se pudo eliminar', 'Error');
+        }
       },
-    ]);
+    });
   };
 
   const openModal = () => {
@@ -528,12 +541,7 @@ function MetricItem({
   unit: string;
   trend: string | null;
 }) {
-  const trendColor =
-    trend == null || trend === '0'
-      ? colors.textSecondary
-      : trend.startsWith('-')
-        ? colors.textError
-        : colors.textSuccess;
+  const trendColor = trendColorFor(label, trend);
   return (
     <View style={styles.metricItem}>
       <Text style={styles.metricLabel}>{label}</Text>
@@ -745,7 +753,9 @@ const styles = StyleSheet.create({
   historyDelete: {
     fontFamily: fonts.uiRegular,
     fontSize: 11,
-    color: colors.textError,
+    // Pista neutra (antes rojo, que gritaba "peligro" en cada fila); el
+    // aviso destructivo vive en el diálogo de confirmación.
+    color: colors.textSecondary,
   },
   noHistory: {
     textAlign: 'center',

@@ -238,6 +238,7 @@ function BookingCard({ booking, index }: { booking: BookingWithSession; index: n
       subtitle={`${formatDate(session?.starts_at ?? '')} · ${formatTime(session?.starts_at ?? '')} – ${formatTime(session?.ends_at ?? '')}`}
       badge={isWaitlisted ? `Lista #${booking.position ?? ''}` : 'Confirmada'}
       badgeColor={isWaitlisted ? '#F59E0B' : colors.turquesa}
+      chevron
     />
   );
 }
@@ -263,6 +264,7 @@ function SessionCard({ session }: { session: SessionWithType }) {
             : `${spotsLeft} cupos`
       }
       badgeColor={isFull ? '#EF4444' : isNearlyFull ? '#F59E0B' : colors.turquesa}
+      chevron
     >
       {coachName && <Text style={styles.coach}>Coach: {coachName}</Text>}
     </Card>

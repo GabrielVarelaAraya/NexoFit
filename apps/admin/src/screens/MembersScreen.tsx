@@ -79,7 +79,15 @@ export function MembersScreen({ organizationId }: { organizationId: string }) {
         </View>
 
         {filtered.length === 0 ? (
-          <EmptyState title="Sin miembros" subtitle="Aún no hay miembros en esta organización." />
+          // La búsqueda vacía no significa que la organización no tenga miembros.
+          query.trim() ? (
+            <EmptyState
+              title="Sin resultados"
+              subtitle={`No encontramos miembros que coincidan con «${query.trim()}».`}
+            />
+          ) : (
+            <EmptyState title="Sin miembros" subtitle="Aún no hay miembros en esta organización." />
+          )
         ) : (
           filtered.map((member) => (
             <View key={member.membershipId} style={styles.row}>

@@ -8,7 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
-  Alert,
+  Modal,
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
@@ -16,7 +16,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, fonts, type RoleType } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrgMembers, type OrgMember } from '../../hooks/useAdmin';
-import { Header, Card } from '../../components/ui';
+import { Header, Card, Button } from '../../components/ui';
+import { notify } from '../../utils/alerts';
 
 const roleLabels: Record<string, string> = {
   admin: 'Admin',
@@ -32,6 +33,8 @@ const roleColors: Record<string, string> = {
   member: colors.turquesa,
 };
 
+const ALL_ROLES: RoleType[] = ['member', 'coach', 'professional', 'admin'];
+
 export function ClientsScreen() {
   const { user, membership } = useAuth();
   const orgId = membership?.organization_id ?? '';
@@ -40,6 +43,11 @@ export function ClientsScreen() {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'member' | 'coach' | 'professional'>('all');
   const [changingId, setChangingId] = useState<string | null>(null);
+  // Modal de cambio de rol: Alert.alert es no-op en RN-Web, así que el
+  // selector vive en un modal in-app (funciona en web y en nativo).
+  const [roleModal, setRoleModal] = useState<{ member: OrgMember; role: RoleType | null } | null>(
+    null
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -64,43 +72,25 @@ export function ClientsScreen() {
     setChangingId(member.membershipId);
     const result = await updateRole(member.membershipId, role);
     setChangingId(null);
+    setRoleModal(null);
 
     if (!result.success) {
-      Alert.alert('No se pudo cambiar el rol', result.error ?? 'Inténtalo de nuevo.');
+      notify(result.error ?? 'Inténtalo de nuevo.', 'No se pudo cambiar el rol');
     }
-  };
-
-  const confirmRole = (member: OrgMember, role: RoleType) => {
-    // Segundo paso: el rol administrador otorga acceso total, así que nunca
-    // se aplica de forma implícita desde el primer toque.
-    Alert.alert(
-      `Cambiar a ${roleLabels[role]}`,
-      `${member.fullName ?? 'Este miembro'} pasará a ser ${roleLabels[role].toLowerCase()}. Puedes revertirlo desde la lista.`,
-      [
-        { text: 'Volver', style: 'cancel' },
-        { text: 'Cambiar rol', onPress: () => applyRole(member, role) },
-      ]
-    );
   };
 
   const requestRoleChange = (member: OrgMember) => {
     if (!isAdmin) {
-      Alert.alert('Sin permiso', 'Solo el administrador del gimnasio puede cambiar roles.');
+      notify('Solo el administrador del gimnasio puede cambiar roles.', 'Sin permiso');
       return;
     }
     if (member.profileId === user?.id) {
-      Alert.alert('Atención', 'No puedes cambiar tu propio rol.');
+      notify('No puedes cambiar tu propio rol.', 'Atención');
       return;
     }
-
-    const options: RoleType[] = ['member', 'coach', 'professional', 'admin'];
-    Alert.alert('Cambiar rol', `Selecciona el nuevo rol de ${member.fullName ?? 'este miembro'}:`, [
-      ...options.map((role) => ({
-        text: roleLabels[role],
-        onPress: () => confirmRole(member, role),
-      })),
-      { text: 'Cancelar', style: 'cancel' as const },
-    ]);
+    // Segundo paso en el modal: el rol administrador otorga acceso total,
+    // así que nunca se aplica de forma implícita desde el primer toque.
+    setRoleModal({ member, role: null });
   };
 
   const renderMember = ({ item }: { item: OrgMember }) => {
@@ -228,6 +218,83 @@ export function ClientsScreen() {
           )
         }
       />
+
+      {/* Selector de rol (in-app: funciona en web y nativo) */}
+      <Modal
+        visible={roleModal !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRoleModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            {roleModal && (
+              <>
+                <Text style={styles.modalTitle}>
+                  {roleModal.role === null
+                    ? `Cambiar rol de ${roleModal.member.fullName ?? 'este miembro'}`
+                    : `Cambiar a ${roleLabels[roleModal.role]}`}
+                </Text>
+
+                {roleModal.role === null ? (
+                  <>
+                    <Text style={styles.modalHint}>Selecciona el nuevo rol:</Text>
+                    {ALL_ROLES.map((role) => (
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        key={role}
+                        style={styles.roleOption}
+                        onPress={() => setRoleModal({ ...roleModal, role })}
+                        accessibilityLabel={`Rol ${roleLabels[role]}`}
+                      >
+                        <View
+                          style={[styles.roleDot, { backgroundColor: roleColors[role] + '30' }]}
+                        >
+                          <Text style={[styles.roleDotText, { color: roleColors[role] }]}>
+                            {roleLabels[role].charAt(0)}
+                          </Text>
+                        </View>
+                        <Text style={styles.roleOptionText}>{roleLabels[role]}</Text>
+                        {roleModal.member.role === role && (
+                          <Text style={styles.roleCurrent}>Actual</Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                    <Button
+                      title="Cancelar"
+                      variant="ghost"
+                      fullWidth
+                      onPress={() => setRoleModal(null)}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.modalHint}>
+                      {roleModal.member.fullName ?? 'Este miembro'} pasará a ser{' '}
+                      {roleLabels[roleModal.role].toLowerCase()}. Puedes revertirlo desde la lista.
+                    </Text>
+                    <View style={styles.modalActions}>
+                      <Button
+                        title="Volver"
+                        variant="ghost"
+                        onPress={() => setRoleModal({ ...roleModal, role: null })}
+                      />
+                      <Button
+                        title="Cambiar rol"
+                        loading={changingId === roleModal.member.membershipId}
+                        onPress={() => {
+                          const chosen = roleModal.role;
+                          if (chosen) void applyRole(roleModal.member, chosen);
+                        }}
+                      />
+                    </View>
+                  </>
+                )}
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -302,4 +369,52 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // Modal de cambio de rol
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 20,
+    gap: 12,
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+  },
+  modalTitle: { fontFamily: fonts.uiSemiBold, fontSize: 17, color: colors.azulNexo },
+  modalHint: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textSecondary },
+  roleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
+  },
+  roleDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleDotText: { fontFamily: fonts.uiSemiBold, fontSize: 14 },
+  roleOptionText: { flex: 1, fontFamily: fonts.uiSemiBold, fontSize: 14, color: colors.azulNexo },
+  roleCurrent: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 11,
+    color: colors.textAccent,
+    backgroundColor: colors.textAccent + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  modalActions: { flexDirection: 'row', gap: 12, justifyContent: 'flex-end' },
 });

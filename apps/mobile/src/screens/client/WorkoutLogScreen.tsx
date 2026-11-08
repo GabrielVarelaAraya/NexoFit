@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  Platform,
   TouchableOpacity,
   FlatList,
   TextInput,
@@ -18,6 +19,7 @@ import { Header, Button, Card, Input, LoadingView } from '../../components/ui';
 import { fetchExerciseLibrary, saveWorkout, type WorkoutSetInput } from '../../hooks/useWorkout';
 import { holdLoading } from '../../utils/loading';
 import { toLocalDateStr } from '../../utils/date';
+import { notify } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 import type { ExerciseLibraryItem } from '../../types/screens';
@@ -138,11 +140,11 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
 
   const handleSave = async () => {
     if (!DATE_REGEX.test(date) || Number.isNaN(Date.parse(date))) {
-      Alert.alert('Error', 'Fecha no válida. Usa el formato AAAA-MM-DD');
+      notify('Fecha no válida. Usa el formato AAAA-MM-DD', 'Error');
       return;
     }
     if (!user?.id || !orgId) {
-      Alert.alert('Error', 'No hay una organización asociada a tu perfil.');
+      notify('No hay una organización asociada a tu perfil.', 'Error');
       return;
     }
 
@@ -161,9 +163,9 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
       .filter((ex) => ex.sets.length > 0);
 
     if (validExercises.length === 0) {
-      Alert.alert(
-        'Faltan datos',
-        'Añade al menos un ejercicio con una serie que tenga repeticiones o peso.'
+      notify(
+        'Añade al menos un ejercicio con una serie que tenga repeticiones o peso.',
+        'Faltan datos'
       );
       return;
     }
@@ -181,11 +183,16 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
     setSaving(false);
 
     if (result.success) {
-      Alert.alert('Entrenamiento guardado', 'Tu registro ya aparece en Progreso.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      if (Platform.OS === 'web') {
+        notify('Tu registro ya aparece en Progreso.', 'Entrenamiento guardado');
+        navigation.goBack();
+      } else {
+        Alert.alert('Entrenamiento guardado', 'Tu registro ya aparece en Progreso.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      }
     } else {
-      Alert.alert('Error', result.error ?? 'No se pudo guardar el entrenamiento.');
+      notify(result.error ?? 'No se pudo guardar el entrenamiento.', 'Error');
     }
   };
 

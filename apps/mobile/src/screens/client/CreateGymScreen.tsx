@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, Keyboard } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, Platform, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { setSignupIntent } from '../../utils/signupIntent';
 import { friendlyError } from '../../utils/errors';
+import { notify } from '../../utils/alerts';
 import { Header, Button } from '../../components/ui';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
@@ -42,7 +43,7 @@ export function CreateGymScreen({ navigation }: Props) {
   const handleCreate = async () => {
     const trimmed = name.trim();
     if (trimmed.length < 3) {
-      Alert.alert('Nombre muy corto', 'El nombre del gimnasio debe tener al menos 3 caracteres.');
+      notify('El nombre del gimnasio debe tener al menos 3 caracteres.', 'Nombre muy corto');
       return;
     }
     if (creating) return;
@@ -56,7 +57,7 @@ export function CreateGymScreen({ navigation }: Props) {
     setCreating(false);
 
     if (error) {
-      Alert.alert('Error', friendlyError(error, 'No se pudo crear el gimnasio.'));
+      notify(friendlyError(error, 'No se pudo crear el gimnasio.'), 'Error');
       return;
     }
 
@@ -68,25 +69,25 @@ export function CreateGymScreen({ navigation }: Props) {
     };
 
     if (result?.status !== 'created') {
-      Alert.alert('Error', result?.message ?? 'No se pudo crear el gimnasio.');
+      notify(result?.message ?? 'No se pudo crear el gimnasio.', 'Error');
       return;
     }
 
     // El gimnasio ya existe: la intención de alta ya no aplica.
     setSignupIntent('client');
     await refreshMembership();
-    Alert.alert(
-      '¡Gimnasio creado!',
-      `"${result.name}" ya está disponible en NexoFit (/${result.slug}).`,
-      // Como admin, entrar directo al panel de gestión: volver atrás dejaría
-      // al usuario en la app de cliente con la que llegó a esta pantalla.
-      [
-        {
-          text: 'Gestionar gimnasio',
-          onPress: () => navigation.reset({ index: 0, routes: [{ name: 'AdminTabs' }] }),
-        },
-      ]
-    );
+    // Como admin, entrar directo al panel de gestión: volver atrás dejaría
+    // al usuario en la app de cliente con la que llegó a esta pantalla.
+    const goToAdmin = () => navigation.reset({ index: 0, routes: [{ name: 'AdminTabs' }] });
+    const message = `"${result.name}" ya está disponible en NexoFit (/${result.slug}).`;
+    if (Platform.OS === 'web') {
+      notify(message, '¡Gimnasio creado!');
+      goToAdmin();
+    } else {
+      Alert.alert('¡Gimnasio creado!', message, [
+        { text: 'Gestionar gimnasio', onPress: goToAdmin },
+      ]);
+    }
   };
 
   return (

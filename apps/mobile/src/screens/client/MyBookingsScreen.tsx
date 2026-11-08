@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookings, cancelBooking, cancelWaitlistEntry } from '../../hooks/useBooking';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
+import { confirmAction, notify } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 import type { BookingWithSession } from '../../types/screens';
@@ -43,32 +44,26 @@ export function MyBookingsScreen({ navigation }: Props) {
 
   const handleCancel = (item: BookingWithSession) => {
     const isWaitlisted = item.status === 'waitlist';
-    const title = isWaitlisted ? 'Salir de la lista de espera' : 'Cancelar reserva';
-    const message = '¿Estás seguro?';
-    const run = async () => {
-      setCancellingId(item.id);
-      const result = isWaitlisted
-        ? await cancelWaitlistEntry(item.id, user?.id ?? '')
-        : await cancelBooking(item.id, user?.id ?? '');
-      if (result.success) {
-        await refresh();
-      } else {
-        if (Platform.OS === 'web') {
-          window.alert(result.error ?? 'No se pudo cancelar.');
+    confirmAction({
+      title: isWaitlisted ? 'Salir de la lista de espera' : 'Cancelar reserva',
+      message: '¿Estás seguro?',
+      confirmLabel: 'Sí, cancelar',
+      cancelLabel: 'No',
+      onConfirm: async () => {
+        setCancellingId(item.id);
+        const result = isWaitlisted
+          ? await cancelWaitlistEntry(item.id, user?.id ?? '')
+          : await cancelBooking(item.id, user?.id ?? '');
+        if (result.success) {
+          // La lista refresca con transición (≥ MIN_LOADING_MS) y, en
+          // paralelo, useSchedule ya recalculó los cupos libres vía eventos.
+          await refresh();
         } else {
-          Alert.alert('Error', result.error ?? 'No se pudo cancelar.');
+          notify(result.error ?? 'No se pudo cancelar.', 'Error');
         }
-      }
-      setCancellingId(null);
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm(`${title}\n\n${message}`)) void run();
-      return;
-    }
-    Alert.alert(title, message, [
-      { text: 'No', style: 'cancel' },
-      { text: 'Sí, cancelar', style: 'destructive', onPress: () => void run() },
-    ]);
+        setCancellingId(null);
+      },
+    });
   };
 
   const renderBooking = ({ item }: { item: BookingWithSession }) => {

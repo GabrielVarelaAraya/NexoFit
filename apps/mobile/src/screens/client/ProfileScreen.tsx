@@ -3,20 +3,19 @@ import {
   View,
   Text,
   StyleSheet,
-  Alert,
   Image,
   ScrollView,
   TouchableOpacity,
   Modal,
   TextInput,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../hooks/useProgress';
 import { friendlyError } from '../../utils/errors';
+import { confirmAction, notify } from '../../utils/alerts';
 import {
   fetchMyPayments,
   formatMoney,
@@ -60,16 +59,12 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
   const [leavingGym, setLeavingGym] = useState(false);
 
   const handleSignOut = () => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('¿Cerrar sesión?')) {
-        void signOut();
-      }
-      return;
-    }
-    Alert.alert('Cerrar sesión', '¿Estás seguro?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cerrar sesión', style: 'destructive', onPress: signOut },
-    ]);
+    confirmAction({
+      title: 'Cerrar sesión',
+      message: '¿Estás seguro?',
+      confirmLabel: 'Cerrar sesión',
+      onConfirm: signOut,
+    });
   };
 
   // Baja voluntaria: disponible solo para rol 'member' (la RLS 000003 lo
@@ -89,15 +84,10 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
     setLeavingGym(false);
 
     if (error || !data || data.length === 0) {
-      const msg = friendlyError(
-        error,
-        'No tienes permiso para darte de baja. Habla con tu gimnasio.'
+      notify(
+        friendlyError(error, 'No tienes permiso para darte de baja. Habla con tu gimnasio.'),
+        'No se pudo salir'
       );
-      if (Platform.OS === 'web') {
-        window.alert(msg);
-      } else {
-        Alert.alert('No se pudo salir', msg);
-      }
       return;
     }
 
@@ -107,23 +97,13 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
 
   const confirmLeaveGym = () => {
     if (!membership?.id || leavingGym) return;
-    const title = `Salir de ${membership.organization_name ?? 'tu gimnasio'}`;
-    const message =
-      'Tu cuenta se conserva y podrás inscribirte de nuevo cuando quieras. El historial de reservas y pagos se queda con el gimnasio y volverá a verse si te reinscribes.';
-    if (Platform.OS === 'web') {
-      if (window.confirm(`${title}\n\n${message}`)) {
-        void handleLeaveGym();
-      }
-      return;
-    }
-    Alert.alert(title, message, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Salir del gimnasio',
-        style: 'destructive',
-        onPress: () => void handleLeaveGym(),
-      },
-    ]);
+    confirmAction({
+      title: `Salir de ${membership.organization_name ?? 'tu gimnasio'}`,
+      message:
+        'Tu cuenta se conserva y podrás inscribirte de nuevo cuando quieras. El historial de reservas y pagos se queda con el gimnasio y volverá a verse si te reinscribes.',
+      confirmLabel: 'Salir del gimnasio',
+      onConfirm: () => void handleLeaveGym(),
+    });
   };
 
   const openEdit = () => {
@@ -139,7 +119,7 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
     if (result.success) {
       setEditVisible(false);
     } else {
-      Alert.alert('Error', result.error ?? 'No se pudo actualizar el perfil.');
+      notify(result.error ?? 'No se pudo actualizar el perfil.', 'Error');
     }
   };
 
@@ -151,7 +131,7 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
   const handleMarkAllRead = useCallback(async () => {
     const result = await markAllRead();
     if (!result.ok) {
-      Alert.alert('No se pudo actualizar', 'Inténtalo de nuevo en unos segundos.');
+      notify('Inténtalo de nuevo en unos segundos.', 'No se pudo actualizar');
     }
   }, [markAllRead]);
 
@@ -229,9 +209,9 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
             icon="help-circle"
             label="Ayuda y soporte"
             onPress={() =>
-              Alert.alert(
-                'Ayuda y soporte',
-                'Si tienes problemas con tu cuenta, tus reservas o tus citas, contacta con tu gimnasio: el equipo del centro puede gestionar tu membresía y tus clases.'
+              notify(
+                'Si tienes problemas con tu cuenta, tus reservas o tus citas, contacta con tu gimnasio: el equipo del centro puede gestionar tu membresía y tus clases.',
+                'Ayuda y soporte'
               )
             }
           />
@@ -239,9 +219,9 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
             icon="information-circle"
             label="Acerca de NexoFit"
             onPress={() =>
-              Alert.alert(
-                'Acerca de NexoFit',
-                'NexoFit es la app para reservar clases, gestionar tus citas, seguir tu progreso y consultar tus reservas en tu gimnasio.'
+              notify(
+                'NexoFit es la app para reservar clases, gestionar tus citas, seguir tu progreso y consultar tus reservas en tu gimnasio.',
+                'Acerca de NexoFit'
               )
             }
           />

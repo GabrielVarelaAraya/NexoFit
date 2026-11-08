@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Button, Card, Input, LoadingView } from '../../components/ui';
+import { confirmAction, notify } from '../../utils/alerts';
 import { useGymContent, type ClassTypeItem, type SpaceItem } from '../../hooks/useAdmin';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
@@ -88,7 +89,7 @@ export function GymContentScreen({ route, navigation }: Props) {
   const handleCreateClassType = async () => {
     const name = ctName.trim();
     if (name.length < 2) {
-      Alert.alert('Faltan datos', 'Escribe un nombre de al menos 2 caracteres.');
+      notify('Escribe un nombre de al menos 2 caracteres.', 'Faltan datos');
       return;
     }
 
@@ -97,27 +98,26 @@ export function GymContentScreen({ route, navigation }: Props) {
     setSavingCt(false);
 
     if (!result.success) {
-      Alert.alert('Error', result.error ?? 'No se pudo crear el tipo de clase.');
+      notify(result.error ?? 'No se pudo crear el tipo de clase.', 'Error');
       return;
     }
     resetCtForm();
-    Alert.alert('Tipo creado', `"${name}" ya está disponible en Nueva clase.`);
+    notify(`"${name}" ya está disponible en Nueva clase.`, 'Tipo creado');
   };
 
   const handleDeleteClassType = (ct: ClassTypeItem) => {
-    Alert.alert('Eliminar tipo', `¿Eliminar "${ct.name}"?`, [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          const result = await deleteClassType(ct.id);
-          if (!result.success) {
-            Alert.alert('No se pudo eliminar', result.error ?? 'Inténtalo de nuevo.');
-          }
-        },
+    confirmAction({
+      title: 'Eliminar tipo',
+      message: `¿Eliminar "${ct.name}"?`,
+      confirmLabel: 'Sí, eliminar',
+      cancelLabel: 'No',
+      onConfirm: async () => {
+        const result = await deleteClassType(ct.id);
+        if (!result.success) {
+          notify(result.error ?? 'Inténtalo de nuevo.', 'No se pudo eliminar');
+        }
       },
-    ]);
+    });
   };
 
   const resetVenueForm = () => {
@@ -129,7 +129,7 @@ export function GymContentScreen({ route, navigation }: Props) {
   const handleCreateVenue = async () => {
     const name = venueName.trim();
     if (name.length < 2) {
-      Alert.alert('Faltan datos', 'Escribe un nombre de sede de al menos 2 caracteres.');
+      notify('Escribe un nombre de sede de al menos 2 caracteres.', 'Faltan datos');
       return;
     }
 
@@ -138,12 +138,12 @@ export function GymContentScreen({ route, navigation }: Props) {
     setSavingVenue(false);
 
     if (!result.success) {
-      Alert.alert('Error', result.error ?? 'No se pudo crear la sede.');
+      notify(result.error ?? 'No se pudo crear la sede.', 'Error');
       return;
     }
     resetVenueForm();
     setSpaceVenueId(null); // que el selector de espacio tome la sede nueva
-    Alert.alert('Sede creada', `La sede "${name}" ya está disponible.`);
+    notify(`La sede "${name}" ya está disponible.`, 'Sede creada');
   };
 
   const resetSpaceForm = () => {
@@ -155,17 +155,17 @@ export function GymContentScreen({ route, navigation }: Props) {
 
   const handleCreateSpace = async () => {
     if (!effectiveVenueId) {
-      Alert.alert('Faltan datos', 'Crea primero una sede con «＋ Sede».');
+      notify('Crea primero una sede con «＋ Sede».', 'Faltan datos');
       return;
     }
     const name = spaceName.trim();
     if (name.length < 2) {
-      Alert.alert('Faltan datos', 'Escribe un nombre de espacio de al menos 2 caracteres.');
+      notify('Escribe un nombre de espacio de al menos 2 caracteres.', 'Faltan datos');
       return;
     }
     const capacity = Number(spaceCapacity);
     if (!Number.isInteger(capacity) || capacity <= 0) {
-      Alert.alert('Error', 'El cupo debe ser un número entero positivo.');
+      notify('El cupo debe ser un número entero positivo.', 'Error');
       return;
     }
 
@@ -174,27 +174,26 @@ export function GymContentScreen({ route, navigation }: Props) {
     setSavingSpace(false);
 
     if (!result.success) {
-      Alert.alert('Error', result.error ?? 'No se pudo crear el espacio.');
+      notify(result.error ?? 'No se pudo crear el espacio.', 'Error');
       return;
     }
     resetSpaceForm();
-    Alert.alert('Espacio creado', `"${name}" (cupo ${capacity}) ya está disponible.`);
+    notify(`"${name}" (cupo ${capacity}) ya está disponible.`, 'Espacio creado');
   };
 
   const handleDeleteSpace = (space: SpaceItem) => {
-    Alert.alert('Eliminar espacio', `¿Eliminar "${space.name}"?`, [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          const result = await deleteSpace(space.id);
-          if (!result.success) {
-            Alert.alert('No se pudo eliminar', result.error ?? 'Inténtalo de nuevo.');
-          }
-        },
+    confirmAction({
+      title: 'Eliminar espacio',
+      message: `¿Eliminar "${space.name}"?`,
+      confirmLabel: 'Sí, eliminar',
+      cancelLabel: 'No',
+      onConfirm: async () => {
+        const result = await deleteSpace(space.id);
+        if (!result.success) {
+          notify(result.error ?? 'Inténtalo de nuevo.', 'No se pudo eliminar');
+        }
       },
-    ]);
+    });
   };
 
   if (!orgId) {

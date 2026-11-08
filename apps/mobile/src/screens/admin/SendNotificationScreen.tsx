@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Button, Card, Input } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
+import { confirmAction, notify } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -55,14 +56,14 @@ export function SendNotificationScreen({ navigation }: Props) {
     const trimmedBody = body.trim();
 
     if (!trimmedTitle || !trimmedBody) {
-      Alert.alert('Faltan datos', 'Escribe un título y un mensaje.');
+      notify('Escribe un título y un mensaje.', 'Faltan datos');
       return;
     }
     if (!orgId) return;
 
     const recipients = recipientIds ?? [];
     if (recipients.length === 0) {
-      Alert.alert('Sin destinatarios', 'No hay miembros a quien enviar el aviso.');
+      notify('No hay miembros a quien enviar el aviso.', 'Sin destinatarios');
       return;
     }
 
@@ -81,15 +82,19 @@ export function SendNotificationScreen({ navigation }: Props) {
 
     if (error) {
       console.warn('send notification failed', error.message);
-      Alert.alert('No se pudo enviar', 'Revisa tu conexión e inténtalo de nuevo.');
+      notify('Revisa tu conexión e inténtalo de nuevo.', 'No se pudo enviar');
       return;
     }
 
-    Alert.alert(
-      'Notificación enviada',
-      `Se envió a ${recipients.length} ${recipients.length === 1 ? 'miembro' : 'miembros'}.`,
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
+    const successMessage = `Se envió a ${recipients.length} ${recipients.length === 1 ? 'miembro' : 'miembros'}.`;
+    if (Platform.OS === 'web') {
+      notify(successMessage, 'Notificación enviada');
+      navigation.goBack();
+    } else {
+      Alert.alert('Notificación enviada', successMessage, [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    }
   };
 
   const confirmSend = () => {
@@ -99,14 +104,14 @@ export function SendNotificationScreen({ navigation }: Props) {
 
     // Confirmación previa: el aviso llega a todo el gimnasio y, una vez
     // enviado, no se puede deshacer.
-    Alert.alert(
-      `Enviar a ${recipients.length} ${recipients.length === 1 ? 'miembro' : 'miembros'}`,
-      `«${trimmedTitle}»\n\n${trimmedBody}\n\nEsta acción no se puede deshacer.`,
-      [
-        { text: 'Volver', style: 'cancel' },
-        { text: 'Enviar', onPress: () => void handleSend() },
-      ]
-    );
+    confirmAction({
+      title: `Enviar a ${recipients.length} ${recipients.length === 1 ? 'miembro' : 'miembros'}`,
+      message: `«${trimmedTitle}»\n\n${trimmedBody}\n\nEsta acción no se puede deshacer.`,
+      confirmLabel: 'Enviar',
+      cancelLabel: 'Volver',
+      destructive: false,
+      onConfirm: () => void handleSend(),
+    });
   };
 
   return (

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, FlatList, StyleSheet, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
 import { friendlyError } from '../../utils/errors';
+import { notify } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -66,15 +67,21 @@ export function JoinGymScreen({ navigation }: Props) {
     // 23505 = UNIQUE(organization_id, profile_id): ya era miembro → éxito.
     if (insertErr && insertErr.code !== '23505') {
       setJoiningId(null);
-      Alert.alert('Error', friendlyError(insertErr, 'No se pudo completar la inscripción.'));
+      notify(friendlyError(insertErr, 'No se pudo completar la inscripción.'), 'Error');
       return;
     }
 
     await refreshMembership();
     setJoiningId(null);
-    Alert.alert('¡Inscripción completa!', `Ya eres miembro de ${gym.name}.`, [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+    const message = `Ya eres miembro de ${gym.name}.`;
+    if (Platform.OS === 'web') {
+      notify(message, '¡Inscripción completa!');
+      navigation.goBack();
+    } else {
+      Alert.alert('¡Inscripción completa!', message, [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    }
   };
 
   const term = search.trim().toLowerCase();

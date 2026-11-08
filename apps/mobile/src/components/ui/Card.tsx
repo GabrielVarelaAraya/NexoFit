@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, type ViewProps } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '@nexofit/core';
 
 interface CardProps extends ViewProps {
@@ -6,6 +7,8 @@ interface CardProps extends ViewProps {
   subtitle?: string;
   badge?: string;
   badgeColor?: string;
+  /** Muestra «›» a la derecha: la tarjeta entera es tocable (afordancia web/nativo). */
+  chevron?: boolean;
   children?: React.ReactNode;
 }
 
@@ -14,6 +17,7 @@ export function Card({
   subtitle,
   badge,
   badgeColor = colors.turquesa,
+  chevron = false,
   children,
   style,
   ...rest
@@ -30,6 +34,14 @@ export function Card({
             <View style={[styles.badge, { backgroundColor: badgeColor + '20' }]}>
               <Text style={[styles.badgeText, { color: colors.azulNexo }]}>{badge}</Text>
             </View>
+          )}
+          {chevron && (
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.textSecondary}
+              style={styles.chevron}
+            />
           )}
         </View>
       )}
@@ -75,5 +87,10 @@ const styles = StyleSheet.create({
   badgeText: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 12,
+  },
+  chevron: {
+    marginLeft: 4,
+    // Alineado con la línea del título (el header usa alignItems flex-start).
+    marginTop: 2,
   },
 });

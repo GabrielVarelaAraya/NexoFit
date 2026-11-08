@@ -7,12 +7,13 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Alert, AppState, Linking, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { getSupabase } from '@nexofit/core';
 import type { RoleType } from '@nexofit/core';
 import { recoverySessionStore } from '../utils/authStorage';
 import { friendlyError } from '../utils/errors';
+import { notify } from '../utils/alerts';
 import { registerWithEmail } from '../utils/registerWithEmail';
 import type { RegistrationResult } from '../utils/registerWithEmail';
 import {
@@ -150,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const link = parseAuthLink(url);
       if (!active || !link || processing || handledLinks.has(url)) return;
       if (link.kind === 'error') {
-        Alert.alert('No se pudo verificar', link.error);
+        notify(link.error, 'No se pudo verificar');
         return;
       }
       processing = true;
@@ -159,10 +160,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await authenticateAuthLink(supabase.auth, link);
         if (!active) return;
         if (error || !data.session) {
-          Alert.alert(
-            'No se pudo verificar',
+          notify(
             authErrorMessage(error, 'Solicita un correo nuevo e inténtalo de nuevo.') ??
-              'Solicita un correo nuevo e inténtalo de nuevo.'
+              'Solicita un correo nuevo e inténtalo de nuevo.',
+            'No se pudo verificar'
           );
         } else {
           if (link.type === 'recovery') await recoverySessionStore.setUserId(data.session.user.id);
@@ -176,8 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } catch {
-        if (active)
-          Alert.alert('Sin conexión', 'No pudimos verificar el enlace. Inténtalo de nuevo.');
+        if (active) notify('No pudimos verificar el enlace. Inténtalo de nuevo.', 'Sin conexión');
       } finally {
         processing = false;
         if (active) setAuthLinkLoading(false);
@@ -298,7 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      Alert.alert('No se pudo cerrar sesión', friendlyError(error, 'Inténtalo de nuevo.'));
+      notify(friendlyError(error, 'Inténtalo de nuevo.'), 'No se pudo cerrar sesión');
     }
   };
 
@@ -318,9 +318,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await recoverySessionStore.clear();
       dispatchAuth({ type: 'recoveryFinished' });
     } catch {
-      Alert.alert(
-        'No se pudo continuar',
-        'No pudimos guardar el final de la recuperación. Inténtalo de nuevo.'
+      notify(
+        'No pudimos guardar el final de la recuperación. Inténtalo de nuevo.',
+        'No se pudo continuar'
       );
     }
   };

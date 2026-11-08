@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Platform,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
@@ -20,6 +21,7 @@ import {
 } from '../../hooks/useAdmin';
 import { holdLoading } from '../../utils/loading';
 import { toLocalDateStr } from '../../utils/date';
+import { notify } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -87,30 +89,30 @@ export function CreateSessionScreen({ route, navigation }: Props) {
     const spaceId = selectedSpaceId;
 
     if (!classTypeId) {
-      Alert.alert('Faltan datos', 'Selecciona un tipo de clase.');
+      notify('Selecciona un tipo de clase.', 'Faltan datos');
       return;
     }
     if (!spaceId) {
-      Alert.alert('Faltan datos', 'Selecciona un espacio.');
+      notify('Selecciona un espacio.', 'Faltan datos');
       return;
     }
     if (!DATE_REGEX.test(date) || Number.isNaN(Date.parse(date))) {
-      Alert.alert('Error', 'Fecha no válida. Usa el formato AAAA-MM-DD');
+      notify('Fecha no válida. Usa el formato AAAA-MM-DD', 'Error');
       return;
     }
     if (!TIME_REGEX.test(startTime) || !TIME_REGEX.test(endTime)) {
-      Alert.alert('Error', 'Horas no válidas. Usa el formato HH:MM (24 h).');
+      notify('Horas no válidas. Usa el formato HH:MM (24 h).', 'Error');
       return;
     }
 
     const startsAt = new Date(`${date}T${startTime}:00`);
     const endsAt = new Date(`${date}T${endTime}:00`);
     if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
-      Alert.alert('Error', 'No se pudo leer la fecha y hora.');
+      notify('No se pudo leer la fecha y hora.', 'Error');
       return;
     }
     if (endsAt.getTime() <= startsAt.getTime()) {
-      Alert.alert('Error', 'La hora de fin debe ser posterior a la de inicio.');
+      notify('La hora de fin debe ser posterior a la de inicio.', 'Error');
       return;
     }
 
@@ -118,7 +120,7 @@ export function CreateSessionScreen({ route, navigation }: Props) {
     if (capacity.trim()) {
       const parsed = Number(capacity.replace(',', '.'));
       if (!Number.isInteger(parsed) || parsed <= 0) {
-        Alert.alert('Error', 'El cupo debe ser un número entero positivo.');
+        notify('El cupo debe ser un número entero positivo.', 'Error');
         return;
       }
       capacityOverride = parsed;
@@ -142,17 +144,14 @@ export function CreateSessionScreen({ route, navigation }: Props) {
     if (overlapErr) {
       console.warn('overlap check failed', overlapErr.message);
       setSaving(false);
-      Alert.alert(
-        'No se pudo verificar la disponibilidad',
-        'Revisa tu conexión e inténtalo de nuevo.'
-      );
+      notify('Revisa tu conexión e inténtalo de nuevo.', 'No se pudo verificar la disponibilidad');
       return;
     }
     if (overlaps && overlaps.length > 0) {
       setSaving(false);
-      Alert.alert(
-        'Espacio ocupado',
-        'Ya hay otra clase en ese espacio que se cruza con el horario elegido.'
+      notify(
+        'Ya hay otra clase en ese espacio que se cruza con el horario elegido.',
+        'Espacio ocupado'
       );
       return;
     }
@@ -168,13 +167,18 @@ export function CreateSessionScreen({ route, navigation }: Props) {
 
     if (error) {
       console.warn('create session failed', error.message);
-      Alert.alert('No se pudo crear la clase', 'Revisa tu conexión e inténtalo de nuevo.');
+      notify('Revisa tu conexión e inténtalo de nuevo.', 'No se pudo crear la clase');
       return;
     }
 
-    Alert.alert('Clase creada', 'La nueva clase ya aparece en la agenda.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+    if (Platform.OS === 'web') {
+      notify('La nueva clase ya aparece en la agenda.', 'Clase creada');
+      navigation.goBack();
+    } else {
+      Alert.alert('Clase creada', 'La nueva clase ya aparece en la agenda.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    }
   };
 
   if (!orgId) {
