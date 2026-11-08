@@ -7,6 +7,7 @@ import { badgeValue } from './tabBadge';
 import type { ProfessionalTabParamList } from './types';
 import { ProfessionalAgendaScreen } from '../screens/professional/ProfessionalAgendaScreen';
 import { ProfessionalAvailabilityScreen } from '../screens/professional/ProfessionalAvailabilityScreen';
+import { ProfessionalServicesScreen } from '../screens/professional/ProfessionalServicesScreen';
 import { ProfessionalProfileScreen } from '../screens/professional/ProfessionalProfileScreen';
 
 const Tab = createBottomTabNavigator<ProfessionalTabParamList>();
@@ -43,6 +44,13 @@ export function ProfessionalTabNavigator() {
         component={ProfessionalAvailabilityScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="time" color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Servicios"
+        component={ProfessionalServicesScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="pricetags" color={color} size={size} />,
         }}
       />
       <Tab.Screen

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text } from 'react-native';
+import { ActivityIndicator, Text } from 'react-native';
 import { getSupabase, colors } from '@nexofit/core';
 import { Button, Card, Input } from '../../components/ui';
 import { ProfileScreen } from '../client/ProfileScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfessional } from '../../hooks/useProfessional';
 import { caughtError } from '../../utils/errors';
+import { notify } from '../../utils/alerts';
 import { saveProfessionalProfile } from '../../utils/professional';
 import { professionalStyles as styles } from './ProfessionalLayout';
 
@@ -32,9 +33,9 @@ function ProfessionalDetails() {
         bio
       );
       await refresh();
-      Alert.alert('Ficha actualizada', 'Tu información profesional se guardó.');
+      notify('Tu información profesional se guardó.', 'Ficha actualizada');
     } catch (cause) {
-      Alert.alert('No se pudo guardar', caughtError(cause, 'Inténtalo de nuevo.'));
+      notify(caughtError(cause, 'Inténtalo de nuevo.'), 'No se pudo guardar');
     } finally {
       setSaving(false);
     }

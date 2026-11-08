@@ -1,11 +1,23 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
 import { friendlyError } from '../../utils/errors';
+import { confirmAction, notify } from '../../utils/alerts';
+import { useRealtimeAppointments } from '../../hooks/useRealtimeAppointments';
+import type { NavigationProp } from '../../types/screens';
+import {
+  appointmentBadge,
+  cancelAppointment,
+  canCancelAppointment,
+  fetchProfessionalDirectory,
+  formatGymDate,
+  formatGymTime,
+  type AppointmentTone,
+} from '../../utils/appointments';
 
 interface Appointment {
   id: string;
@@ -16,7 +28,14 @@ interface Appointment {
   status: string;
 }
 
-export function AppointmentsScreen() {
+const TONE_COLORS: Record<AppointmentTone, string> = {
+  upcoming: colors.turquesa,
+  done: '#9CA3AF',
+  cancelled: '#EF4444',
+  warning: '#F59E0B',
+};
+
+export function AppointmentsScreen({ navigation }: { navigation: NavigationProp }) {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,112 +54,109 @@ export function AppointmentsScreen() {
     });
   }, [appointments]);
 
-  const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-  };
-
-  const fetchAppointments = useCallback(async () => {
-    const startedAt = Date.now();
-    if (!user?.id) {
-      setAppointments([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const supabase = getSupabase();
-      const { data, error: fetchErr } = await supabase
-        .from('appointments')
-        .select(
-          `
-        id,
-        starts_at,
-        ends_at,
-        status,
-        services ( name ),
-        professionals ( memberships ( profiles ( full_name ) ) )
-      `
-        )
-        .eq('profile_id', user.id)
-        .order('starts_at', { ascending: false });
-
-      if (fetchErr) {
-        setError(friendlyError(fetchErr, 'No se pudieron cargar tus citas.'));
+  // `silent`: refresco en vivo, sin spinner ni parpadeo de la lista.
+  const fetchAppointments = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent === true;
+      const startedAt = Date.now();
+      if (!user?.id) {
         setAppointments([]);
-      } else {
-        setAppointments(
-          (data ?? []).map((a) => ({
-            id: a.id,
-            starts_at: a.starts_at,
-            ends_at: a.ends_at,
-            status: a.status,
-            service_name: a.services?.name ?? 'Servicio',
-            professional_name: a.professionals?.memberships?.profiles?.full_name ?? 'Profesional',
-          }))
-        );
+        setLoading(false);
+        return;
       }
-    } finally {
-      // Transición suave: el spinner se ve siempre al menos MIN_LOADING_MS.
-      await holdLoading(startedAt);
-      setLoading(false);
-    }
-  }, [user?.id]);
+
+      if (!silent) setLoading(true);
+      setError(null);
+
+      try {
+        const supabase = getSupabase();
+        const [appointmentsResult, directory] = await Promise.all([
+          supabase
+            .from('appointments')
+            .select('id, starts_at, ends_at, status, professional_id, services ( name )')
+            .eq('profile_id', user.id)
+            .order('starts_at', { ascending: false }),
+          // Los nombres vienen de un RPC: RLS no deja leer el perfil de otros miembros.
+          fetchProfessionalDirectory(supabase).catch(() => []),
+        ]);
+
+        if (appointmentsResult.error) {
+          // Un refresco en vivo que falla conserva la lista que ya se ve.
+          if (!silent) {
+            setError(friendlyError(appointmentsResult.error, 'No se pudieron cargar tus citas.'));
+            setAppointments([]);
+          }
+        } else {
+          const names = new Map(directory.map((item) => [item.professionalId, item.fullName]));
+          setAppointments(
+            (appointmentsResult.data ?? []).map((a) => ({
+              id: a.id,
+              starts_at: a.starts_at,
+              ends_at: a.ends_at,
+              status: a.status,
+              service_name: a.services?.name ?? 'Servicio',
+              professional_name: names.get(a.professional_id) ?? 'Profesional',
+            }))
+          );
+        }
+      } finally {
+        if (!silent) {
+          // Transición suave: el spinner se ve siempre al menos MIN_LOADING_MS.
+          await holdLoading(startedAt);
+          setLoading(false);
+        }
+      }
+    },
+    [user?.id]
+  );
 
   useFocusEffect(
     useCallback(() => {
-      fetchAppointments();
+      void fetchAppointments();
     }, [fetchAppointments])
   );
 
-  const handleCancel = (id: string) => {
-    Alert.alert('Cancelar cita', '¿Estás seguro?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, cancelar',
-        style: 'destructive',
-        onPress: async () => {
-          setCancellingId(id);
-          const supabase = getSupabase();
-          const { error: cancelErr } = await supabase
-            .from('appointments')
-            .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
-            .eq('id', id)
-            .eq('profile_id', user?.id ?? '')
-            .neq('status', 'cancelled');
-          setCancellingId(null);
+  useRealtimeAppointments('profile_id', user?.id, () => {
+    void fetchAppointments({ silent: true });
+  });
 
-          if (cancelErr) {
-            Alert.alert('Error', friendlyError(cancelErr, 'No se pudo cancelar la cita.'));
-          } else {
-            fetchAppointments();
-          }
-        },
+  const handleCancel = (id: string) => {
+    confirmAction({
+      title: 'Cancelar cita',
+      message: '¿Seguro que quieres cancelar esta cita?',
+      confirmLabel: 'Sí, cancelar',
+      cancelLabel: 'No',
+      onConfirm: async () => {
+        setCancellingId(id);
+        const outcome = await cancelAppointment(getSupabase(), id);
+        setCancellingId(null);
+
+        if (!outcome.success) {
+          notify(outcome.error ?? 'No se pudo cancelar la cita.', 'Error');
+        }
+        // Recarga siempre: la cita pudo cambiar de estado mientras tanto.
+        void fetchAppointments();
       },
-    ]);
+    });
   };
 
+  const goBook = () => navigation.navigate('BookAppointment');
+
   const renderAppointment = ({ item }: { item: Appointment }) => {
-    const isPast = new Date(item.ends_at) < new Date();
-    const isCancelled = item.status === 'cancelled';
+    const badge = appointmentBadge(item.status, item.ends_at);
+    const start = new Date(item.starts_at);
+    const end = new Date(item.ends_at);
+    const cancellable = canCancelAppointment(item.status, item.starts_at);
 
     return (
       <Card
         title={item.service_name}
-        subtitle={`${formatDate(item.starts_at)} · ${formatTime(item.starts_at)} – ${formatTime(item.ends_at)}`}
-        badge={isCancelled ? 'Cancelada' : isPast ? 'Finalizada' : 'Confirmada'}
-        badgeColor={isCancelled ? '#EF4444' : isPast ? '#9CA3AF' : colors.turquesa}
+        subtitle={`${formatGymDate(start)} · ${formatGymTime(start)} – ${formatGymTime(end)}`}
+        badge={badge.label}
+        badgeColor={TONE_COLORS[badge.tone]}
       >
         <Text style={styles.professional}>Profesional: {item.professional_name}</Text>
-        {!isPast && !isCancelled && (
+        {cancellable && (
           <Button
             title="Cancelar cita"
             variant="danger"
@@ -150,19 +166,21 @@ export function AppointmentsScreen() {
             onPress={() => handleCancel(item.id)}
           />
         )}
-        {isCancelled && <Text style={styles.pastText}>Cita cancelada</Text>}
-        {isPast && !isCancelled && <Text style={styles.pastText}>Cita finalizada</Text>}
       </Card>
     );
   };
 
   return (
     <View style={styles.container}>
-      <Header title="Citas" subtitle="Tus citas 1-a-1" />
+      <Header
+        title="Citas"
+        subtitle="Tus citas 1-a-1"
+        rightAction={{ label: 'Reservar', onPress: goBook }}
+      />
       {error && (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{error}</Text>
-          <Button title="Reintentar" variant="ghost" onPress={fetchAppointments} />
+          <Button title="Reintentar" variant="ghost" onPress={() => void fetchAppointments()} />
         </View>
       )}
       <FlatList
@@ -170,7 +188,9 @@ export function AppointmentsScreen() {
         keyExtractor={(a) => a.id}
         renderItem={renderAppointment}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchAppointments} />}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={() => void fetchAppointments()} />
+        }
         ListEmptyComponent={
           loading ? (
             <LoadingView label="Cargando tus citas…" style={styles.center} />
@@ -178,8 +198,9 @@ export function AppointmentsScreen() {
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>Sin citas</Text>
               <Text style={styles.emptyHint}>
-                Cuando reserves una sesión 1-a-1 con un profesional, aparecerá aquí.
+                Reserva una sesión 1-a-1 con un profesional de tu gimnasio y aparecerá aquí.
               </Text>
+              <Button title="Reservar una cita" onPress={goBook} />
             </View>
           ) : null
         }
@@ -215,13 +236,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     marginBottom: 8,
-  },
-  pastText: {
-    fontFamily: fonts.uiRegular,
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 8,
   },
   errorBox: {
     margin: 16,

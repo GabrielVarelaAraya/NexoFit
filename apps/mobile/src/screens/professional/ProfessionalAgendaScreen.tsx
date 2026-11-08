@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { getSupabase } from '@nexofit/core';
 import { Button, Card } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfessional } from '../../hooks/useProfessional';
+import { useRealtimeAppointments } from '../../hooks/useRealtimeAppointments';
 import { caughtError } from '../../utils/errors';
+import { confirmAction, notify } from '../../utils/alerts';
 import {
   APPOINTMENT_STATUS,
   updateProfessionalAppointment,
@@ -15,6 +17,9 @@ import { ProfessionalLayout, professionalStyles as styles } from './Professional
 export function ProfessionalAgendaScreen() {
   const { membership } = useAuth();
   const { workspace, loading, error, refresh } = useProfessional();
+  useRealtimeAppointments('professional_id', workspace?.professional.id, () => {
+    void refresh(true);
+  });
   const [history, setHistory] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const now = Date.now();
@@ -39,20 +44,19 @@ export function ProfessionalAgendaScreen() {
       );
       await refresh();
     } catch (cause) {
-      Alert.alert('No se pudo actualizar', caughtError(cause, 'Inténtalo de nuevo.'));
+      notify(caughtError(cause, 'Inténtalo de nuevo.'), 'No se pudo actualizar');
     } finally {
       setPending(null);
     }
   };
   const cancel = (appointment: Appointment) =>
-    Alert.alert('Cancelar cita', 'El paciente verá esta cita como cancelada.', [
-      { text: 'Volver', style: 'cancel' },
-      {
-        text: 'Cancelar cita',
-        style: 'destructive',
-        onPress: () => void update(appointment, 'cancelled'),
-      },
-    ]);
+    confirmAction({
+      title: 'Cancelar cita',
+      message: 'El paciente verá esta cita como cancelada.',
+      confirmLabel: 'Cancelar cita',
+      cancelLabel: 'Volver',
+      onConfirm: () => void update(appointment, 'cancelled'),
+    });
 
   return (
     <ProfessionalLayout title="Mi agenda" loading={loading} error={error} refresh={refresh}>

@@ -4,6 +4,7 @@ import type { Database } from '@nexofit/core';
 type Client = SupabaseClient<Database>;
 export type Professional = Database['public']['Tables']['professionals']['Row'];
 export type Availability = Database['public']['Tables']['availability']['Row'];
+export type Service = Database['public']['Tables']['services']['Row'];
 export type Appointment = Database['public']['Tables']['appointments']['Row'] & {
   patient: { full_name: string | null; phone: string | null } | null;
   services: { name: string; duration_minutes: number } | null;
@@ -12,6 +13,7 @@ export interface ProfessionalWorkspace {
   professional: Professional;
   appointments: Appointment[];
   availability: Availability[];
+  services: Service[];
 }
 export const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 export const APPOINTMENT_STATUS = {
@@ -51,6 +53,14 @@ export function availabilityError(
   return undefined;
 }
 
+export function serviceError(name: string, durationMinutes: number): string | undefined {
+  if (name.trim().length < 2) return 'Escribe un nombre de servicio de al menos 2 caracteres.';
+  if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 1440) {
+    return 'La duración debe estar entre 1 y 1440 minutos.';
+  }
+  return undefined;
+}
+
 export function appointmentActionError(
   appointment: Pick<Appointment, 'status' | 'starts_at' | 'ends_at'>,
   status: 'cancelled' | 'attended' | 'no_show',
@@ -84,8 +94,18 @@ export async function fetchProfessionalWorkspace(
     throw new Error(
       'No encontramos tu ficha profesional. Contacta al administrador del gimnasio para completar tu acceso.'
     );
-  if (!includeSchedule) return { professional, appointments: [], availability: [] };
-  const [appointments, availability] = await Promise.all([
+  const servicesPromise = client
+    .from('services')
+    .select('*')
+    .eq('professional_id', professional.id)
+    .order('name');
+  if (!includeSchedule) {
+    const services = await servicesPromise;
+    if (services.error) throw services.error;
+    return { professional, appointments: [], availability: [], services: services.data };
+  }
+  const [services, appointments, availability] = await Promise.all([
+    servicesPromise,
     client
       .from('appointments')
       .select(
@@ -101,12 +121,14 @@ export async function fetchProfessionalWorkspace(
       .order('day_of_week')
       .order('start_time'),
   ]);
+  if (services.error) throw services.error;
   if (appointments.error) throw appointments.error;
   if (availability.error) throw availability.error;
   return {
     professional,
     appointments: appointments.data as Appointment[],
     availability: availability.data,
+    services: services.data,
   };
 }
 
@@ -166,6 +188,46 @@ export async function deleteProfessionalAvailability(
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error('No se pudo eliminar el horario. Recarga la disponibilidad.');
+}
+
+export async function addProfessionalService(
+  client: Client,
+  professionalId: string,
+  organizationId: string,
+  name: string,
+  durationMinutes: number
+) {
+  const validation = serviceError(name, durationMinutes);
+  if (validation) throw new Error(validation);
+  const { error } = await client.from('services').insert({
+    organization_id: organizationId,
+    professional_id: professionalId,
+    name: name.trim(),
+    duration_minutes: durationMinutes,
+  });
+  if (error) throw error;
+}
+
+export async function deleteProfessionalService(
+  client: Client,
+  professionalId: string,
+  id: string
+) {
+  const { data, error } = await client
+    .from('services')
+    .delete()
+    .eq('id', id)
+    .eq('professional_id', professionalId)
+    .select('id')
+    .maybeSingle();
+  if (error) {
+    // 23503 = appointments.service_id restringe el borrado (hay citas).
+    if (error.code === '23503') {
+      throw new Error('No puedes eliminar un servicio que ya tiene citas registradas.');
+    }
+    throw error;
+  }
+  if (!data) throw new Error('No se pudo eliminar el servicio. Recarga la lista.');
 }
 
 export async function saveProfessionalProfile(

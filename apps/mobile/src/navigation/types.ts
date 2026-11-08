@@ -30,6 +30,7 @@ export type AdminTabParamList = {
 export type ProfessionalTabParamList = {
   AgendaProfesional: undefined;
   Disponibilidad: undefined;
+  Servicios: undefined;
   PerfilProfesional: undefined;
 };
 
@@ -63,7 +64,7 @@ export type MainStackParamList = {
   WorkoutDetail: { programId: string };
   ExerciseDetail: { exerciseId: string };
   CompareMetrics: undefined;
-  AppointmentConfirm: { specialistId: string };
+  BookAppointment: undefined;
   Payments: undefined;
   Notifications: undefined;
   Chat: { coachId: string };

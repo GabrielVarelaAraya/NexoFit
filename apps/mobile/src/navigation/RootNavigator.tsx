@@ -26,6 +26,7 @@ import { MyBookingsScreen } from '../screens/client/MyBookingsScreen';
 import { JoinGymScreen } from '../screens/client/JoinGymScreen';
 import { CreateGymScreen } from '../screens/client/CreateGymScreen';
 import { WorkoutLogScreen } from '../screens/client/WorkoutLogScreen';
+import { BookAppointmentScreen } from '../screens/client/BookAppointmentScreen';
 
 // Admin screens (from admin tabs)
 import { CreateSessionScreen } from '../screens/admin/CreateSessionScreen';
@@ -82,6 +83,7 @@ function MainNavigator() {
           <MainStack.Screen name="JoinGym" component={JoinGymScreen} />
           <MainStack.Screen name="CreateGym" component={CreateGymScreen} />
           <MainStack.Screen name="WorkoutLog" component={WorkoutLogScreen} />
+          <MainStack.Screen name="BookAppointment" component={BookAppointmentScreen} />
           {access === 'staff' && (
             <>
               <MainStack.Screen name="CreateSession" component={CreateSessionScreen} />

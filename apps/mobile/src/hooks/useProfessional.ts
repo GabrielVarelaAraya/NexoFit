@@ -14,39 +14,44 @@ export function useProfessional(includeSchedule = true) {
   const [workspace, setWorkspace] = useState<ProfessionalWorkspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const refresh = useCallback(async () => {
-    const request = ++requestId.current;
-    setLoading(true);
-    setError(null);
+  // `silent`: refresco en vivo; no oculta el contenido con el spinner.
+  const refresh = useCallback(
+    async (silent = false) => {
+      const request = ++requestId.current;
+      if (!silent) setLoading(true);
+      setError(null);
 
-    // Error de negocio (copy propio): se muestra tal cual, sin pasar por
-    // friendlyError, que lo sustituiría por un genérico.
-    if (!membershipId || !organizationId || role !== 'professional') {
-      if (request === requestId.current) {
-        setWorkspace(null);
-        setError('No tienes una membresía profesional activa.');
-        setLoading(false);
+      // Error de negocio (copy propio): se muestra tal cual, sin pasar por
+      // friendlyError, que lo sustituiría por un genérico.
+      if (!membershipId || !organizationId || role !== 'professional') {
+        if (request === requestId.current) {
+          setWorkspace(null);
+          setError('No tienes una membresía profesional activa.');
+          setLoading(false);
+        }
+        return;
       }
-      return;
-    }
 
-    try {
-      const data = await fetchProfessionalWorkspace(
-        getSupabase(),
-        membershipId,
-        organizationId,
-        includeSchedule
-      );
-      if (request === requestId.current) setWorkspace(data);
-    } catch (cause) {
-      if (request === requestId.current) {
-        setWorkspace(null);
-        setError(caughtError(cause, 'No pudimos cargar tu información profesional.'));
+      try {
+        const data = await fetchProfessionalWorkspace(
+          getSupabase(),
+          membershipId,
+          organizationId,
+          includeSchedule
+        );
+        if (request === requestId.current) setWorkspace(data);
+      } catch (cause) {
+        // Un refresco en vivo que falla conserva lo que ya se ve.
+        if (request === requestId.current && !silent) {
+          setWorkspace(null);
+          setError(caughtError(cause, 'No pudimos cargar tu información profesional.'));
+        }
+      } finally {
+        if (request === requestId.current) setLoading(false);
       }
-    } finally {
-      if (request === requestId.current) setLoading(false);
-    }
-  }, [membershipId, organizationId, role, includeSchedule]);
+    },
+    [membershipId, organizationId, role, includeSchedule]
+  );
   useFocusEffect(
     useCallback(() => {
       void refresh();

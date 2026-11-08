@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { getRoleAccess, getRoleTab } from './roleAccess';
-import { appointmentActionError, availabilityError, parseClockTime } from './professional';
+import {
+  appointmentActionError,
+  availabilityError,
+  parseClockTime,
+  serviceError,
+} from './professional';
 
 describe('professional access and scheduling', () => {
   it.each([
@@ -61,5 +66,13 @@ describe('professional access and scheduling', () => {
     expect(
       appointmentActionError({ ...appointment, status: 'cancelled' }, 'attended')
     ).toBeTruthy();
+  });
+  it('requires a meaningful service name and a whole duration', () => {
+    expect(serviceError('', 45)).toContain('nombre');
+    expect(serviceError('  a  ', 45)).toContain('nombre');
+    expect(serviceError('Nutrición', 0)).toContain('duración');
+    expect(serviceError('Nutrición', 30.5)).toContain('duración');
+    expect(serviceError('Nutrición', 1441)).toContain('duración');
+    expect(serviceError(' Nutrición ', 45)).toBeUndefined();
   });
 });

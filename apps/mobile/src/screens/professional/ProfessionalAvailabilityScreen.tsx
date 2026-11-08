@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { getSupabase } from '@nexofit/core';
 import { Button, Card, Input } from '../../components/ui';
 import { useProfessional } from '../../hooks/useProfessional';
 import { caughtError } from '../../utils/errors';
+import { confirmAction, notify } from '../../utils/alerts';
 import {
   addProfessionalAvailability,
   deleteProfessionalAvailability,
@@ -32,7 +33,7 @@ export function ProfessionalAvailabilityScreen() {
       );
       await refresh();
     } catch (cause) {
-      Alert.alert('No se pudo guardar', caughtError(cause, 'Inténtalo de nuevo.'));
+      notify(caughtError(cause, 'Inténtalo de nuevo.'), 'No se pudo guardar');
     } finally {
       setPending(false);
     }
@@ -44,16 +45,19 @@ export function ProfessionalAvailabilityScreen() {
       await deleteProfessionalAvailability(getSupabase(), workspace.professional.id, block.id);
       await refresh();
     } catch (cause) {
-      Alert.alert('No se pudo eliminar', caughtError(cause, 'Inténtalo de nuevo.'));
+      notify(caughtError(cause, 'Inténtalo de nuevo.'), 'No se pudo eliminar');
     } finally {
       setPending(false);
     }
   };
   const confirmRemove = (block: Availability) =>
-    Alert.alert('Eliminar horario', 'Este cambio no cancela las citas que ya tienes asignadas.', [
-      { text: 'Volver', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => void remove(block) },
-    ]);
+    confirmAction({
+      title: 'Eliminar horario',
+      message: 'Este cambio no cancela las citas que ya tienes asignadas.',
+      confirmLabel: 'Eliminar',
+      cancelLabel: 'Volver',
+      onConfirm: () => void remove(block),
+    });
   return (
     <ProfessionalLayout title="Mi disponibilidad" loading={loading} error={error} refresh={refresh}>
       <Text style={styles.text}>Define los horarios semanales en los que puedes atender.</Text>
