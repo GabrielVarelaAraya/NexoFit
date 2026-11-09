@@ -1,5 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import { endOfLocalDay, startOfLocalDay, toLocalDateStr } from './date';
+import {
+  dayLabel,
+  endOfLocalDay,
+  previousMonthToDate,
+  startOfLocalDay,
+  toLocalDateStr,
+} from './date';
+
+describe('previousMonthToDate', () => {
+  it('covers the same stretch of the previous month', () => {
+    const { start, end } = previousMonthToDate(new Date(2026, 10, 8, 14, 30));
+    expect(new Date(start)).toEqual(new Date(2026, 9, 1));
+    expect(new Date(end)).toEqual(new Date(2026, 9, 8, 14, 30));
+  });
+
+  it('clamps to the last day of a shorter previous month', () => {
+    const { end } = previousMonthToDate(new Date(2026, 2, 31, 9, 0));
+    expect(new Date(end)).toEqual(new Date(2026, 1, 28, 9, 0));
+  });
+});
+
+describe('dayLabel', () => {
+  const now = new Date(2026, 10, 8, 10, 0);
+  it('labels today and tomorrow, otherwise null', () => {
+    expect(dayLabel(new Date(2026, 10, 8, 20, 0).toISOString(), now)).toBe('Hoy');
+    expect(dayLabel(new Date(2026, 10, 9, 7, 0).toISOString(), now)).toBe('Mañana');
+    expect(dayLabel(new Date(2026, 10, 12, 7, 0).toISOString(), now)).toBeNull();
+  });
+});
 
 describe('admin local date helpers', () => {
   it('formats dates as YYYY-MM-DD with zero padding', () => {

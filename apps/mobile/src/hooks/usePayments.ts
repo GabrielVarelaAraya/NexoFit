@@ -51,7 +51,11 @@ export interface PaymentItem {
 export function formatMoney(cents: number, currency: string | null): string {
   const amount = cents / 100;
   const symbol = currency === 'CRC' ? '₡' : currency === 'EUR' ? '€' : '$';
-  const formatted = amount.toLocaleString('es-CR', { maximumFractionDigits: 2 });
+  // Con céntimos, siempre 2 decimales («15 000,50», no «15 000,5»).
+  const formatted = amount.toLocaleString('es-CR', {
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
   return `${symbol}${formatted}`;
 }
 

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getSupabase, type RoleType } from '@nexofit/core';
+import { colors, getSupabase, type RoleType } from '@nexofit/core';
 import type { Session } from '@supabase/supabase-js';
-import { toLocalDateStr, startOfLocalDay, endOfLocalDay } from '../utils/date';
+import { toLocalDateStr, startOfLocalDay, endOfLocalDay, previousMonthToDate } from '../utils/date';
 import { holdLoading } from '../utils/loading';
 import { friendlyError } from '../utils/errors';
+import { formatMoney } from '../utils/format';
 
 // ============================================================
 // Consola web de administración — datos reales de Supabase.
@@ -115,11 +116,15 @@ export interface DashboardStats {
   bookingsThisMonth: number;
   monthRevenueCents: number;
   monthCurrency: string | null;
+  /** Mismo periodo del mes anterior (día 1 → hoy), para comparar. */
+  prevNewMembers: number;
+  prevBookings: number;
+  prevRevenueCents: number;
 }
 
 export interface ActivityItem {
   id: string;
-  kind: 'booked' | 'cancelled' | 'joined';
+  kind: 'booked' | 'cancelled' | 'joined' | 'payment' | 'appointment';
   text: string;
   iso: string;
 }
@@ -128,7 +133,7 @@ export interface UpcomingClass {
   id: string;
   name: string;
   color: string;
-  time: string;
+  startsAt: string;
   coach: string;
   spots: string;
 }
@@ -171,6 +176,7 @@ export interface DashboardData {
   upcoming: UpcomingClass[];
   loading: boolean;
   error: string | null;
+  updatedAt: string | null;
   refresh: () => Promise<void>;
 }
 
@@ -180,6 +186,7 @@ export function useDashboard(organizationId: string): DashboardData {
   const [upcoming, setUpcoming] = useState<UpcomingClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const startedAt = Date.now();
@@ -197,6 +204,7 @@ export function useDashboard(organizationId: string): DashboardData {
       const supabase = getSupabase();
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const { start: prevStart, end: prevEnd } = previousMonthToDate(now);
       const nowISO = now.toISOString();
       const weekEnd = new Date(now.getTime() + 7 * 24 * 3600 * 1000).toISOString();
       const today = toLocalDateStr();
@@ -213,6 +221,11 @@ export function useDashboard(organizationId: string): DashboardData {
         recentConfirmedRes,
         recentCancelledRes,
         newMembersRes,
+        prevMembersRes,
+        prevBookingsRes,
+        prevRevenueRes,
+        recentPaymentsRes,
+        recentAppointmentsRes,
       ] = await Promise.all([
         supabase
           .from('memberships')
@@ -269,6 +282,42 @@ export function useDashboard(organizationId: string): DashboardData {
           .eq('organization_id', organizationId)
           .order('created_at', { ascending: false })
           .limit(2),
+        // Comparativa: mismo tramo del mes anterior (día 1 → día de hoy).
+        supabase
+          .from('memberships')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organizationId)
+          .gte('created_at', prevStart)
+          .lt('created_at', prevEnd),
+        supabase
+          .from('bookings')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', prevStart)
+          .lt('created_at', prevEnd),
+        supabase
+          .from('payments')
+          .select('amount_cents')
+          .eq('organization_id', organizationId)
+          .eq('status', 'paid')
+          .gte('paid_at', prevStart)
+          .lt('paid_at', prevEnd),
+        // Actividad: últimos pagos y citas 1-a-1 (antes solo clases y altas).
+        supabase
+          .from('payments')
+          .select(
+            'id, amount_cents, currency, paid_at, profiles!payments_profile_id_fkey ( full_name )'
+          )
+          .eq('organization_id', organizationId)
+          .order('paid_at', { ascending: false })
+          .limit(3),
+        supabase
+          .from('appointments')
+          .select(
+            'id, status, created_at, cancelled_at, services ( name ), patient:profiles!appointments_profile_id_fkey ( full_name )'
+          )
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .limit(3),
       ]);
 
       const firstError = [
@@ -349,6 +398,27 @@ export function useDashboard(organizationId: string): DashboardData {
         });
       }
 
+      for (const p of (recentPaymentsRes.data ?? []) as unknown as RecentPaymentRow[]) {
+        feed.push({
+          id: `payment-${p.id}`,
+          kind: 'payment',
+          text: `${p.profiles?.full_name ?? 'Alguien'} pagó ${formatMoney(p.amount_cents, p.currency)}`,
+          iso: p.paid_at,
+          sortDate: new Date(p.paid_at),
+        });
+      }
+      for (const a of (recentAppointmentsRes.data ?? []) as unknown as RecentAppointmentRow[]) {
+        const cancelled = a.status === 'cancelled' && a.cancelled_at;
+        const iso = cancelled ? (a.cancelled_at as string) : a.created_at;
+        feed.push({
+          id: `appointment-${a.id}`,
+          kind: cancelled ? 'cancelled' : 'appointment',
+          text: `${a.patient?.full_name ?? 'Alguien'} ${cancelled ? 'canceló' : 'reservó'} la cita «${a.services?.name ?? 'cita'}»`,
+          iso,
+          sortDate: new Date(iso),
+        });
+      }
+
       setActivity(
         feed
           .sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime())
@@ -362,10 +432,7 @@ export function useDashboard(organizationId: string): DashboardData {
           id: s.id,
           name: s.class_types?.name ?? 'Clase',
           color: s.class_types?.color ?? '#0B9B91',
-          time: new Date(s.starts_at).toLocaleTimeString('es-ES', {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
+          startsAt: s.starts_at,
           coach: s.coaches?.memberships?.profiles?.full_name ?? 'Sin coach',
           spots: `${counts[s.id] ?? 0}/${sessionCapacity(s)}`,
         }))
@@ -384,7 +451,14 @@ export function useDashboard(organizationId: string): DashboardData {
         bookingsThisMonth: bookingsMonthRes.count ?? 0,
         monthRevenueCents: monthRows.reduce((sum, r) => sum + r.amount_cents, 0),
         monthCurrency: monthRows[0]?.currency ?? null,
+        prevNewMembers: prevMembersRes.count ?? 0,
+        prevBookings: prevBookingsRes.count ?? 0,
+        prevRevenueCents: ((prevRevenueRes.data ?? []) as { amount_cents: number }[]).reduce(
+          (sum, r) => sum + r.amount_cents,
+          0
+        ),
       });
+      setUpdatedAt(new Date().toISOString());
     } catch {
       setError('No pudimos cargar el dashboard. Revisa tu conexión.');
     } finally {
@@ -398,7 +472,190 @@ export function useDashboard(organizationId: string): DashboardData {
     fetchData();
   }, [fetchData]);
 
-  return { stats, activity, upcoming, loading, error, refresh: fetchData };
+  return { stats, activity, upcoming, loading, error, updatedAt, refresh: fetchData };
+}
+
+interface RecentPaymentRow {
+  id: string;
+  amount_cents: number;
+  currency: string;
+  paid_at: string;
+  profiles: { full_name: string | null } | null;
+}
+
+interface RecentAppointmentRow {
+  id: string;
+  status: string;
+  created_at: string;
+  cancelled_at: string | null;
+  services: { name: string } | null;
+  patient: { full_name: string | null } | null;
+}
+
+// ------------------------------------------------------------
+// Agenda del día: clases (con quién reservó) y citas 1-a-1
+// ------------------------------------------------------------
+
+export interface AgendaClass {
+  id: string;
+  name: string;
+  color: string;
+  startsAt: string;
+  endsAt: string;
+  coach: string;
+  location: string;
+  capacity: number;
+  attendees: { bookingId: string; name: string; status: string }[];
+}
+
+export interface AgendaAppointment {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  service: string;
+  client: string;
+  phone: string | null;
+  professional: string;
+}
+
+interface AgendaSessionRow {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  capacity_override: number | null;
+  class_types: { name: string; color: string } | null;
+  spaces: { name: string; capacity: number; venues: { name: string } | null } | null;
+  coaches: { memberships: { profiles: { full_name: string | null } | null } | null } | null;
+  bookings: { id: string; status: string; profiles: { full_name: string | null } | null }[];
+}
+
+interface AgendaAppointmentRow {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  professional_id: string;
+  services: { name: string } | null;
+  patient: { full_name: string | null; phone: string | null } | null;
+}
+
+export function useAgenda(organizationId: string, date: string) {
+  const [classes, setClasses] = useState<AgendaClass[]>([]);
+  const [appointments, setAppointments] = useState<AgendaAppointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!organizationId) return;
+    setLoading(true);
+    setError(null);
+    const supabase = getSupabase();
+    const from = startOfLocalDay(date).toISOString();
+    const to = endOfLocalDay(date).toISOString();
+    try {
+      const [sessionsRes, appointmentsRes, directoryRes] = await Promise.all([
+        supabase
+          .from('sessions')
+          .select(
+            `id, starts_at, ends_at, capacity_override,
+             class_types!inner ( name, color, organization_id ),
+             spaces ( name, capacity, venues ( name ) ),
+             coaches ( memberships ( profiles ( full_name ) ) ),
+             bookings ( id, status, profiles ( full_name ) )`
+          )
+          .eq('class_types.organization_id', organizationId)
+          .gte('starts_at', from)
+          .lt('starts_at', to)
+          .order('starts_at'),
+        supabase
+          .from('appointments')
+          .select(
+            `id, starts_at, ends_at, status, professional_id, services ( name ),
+             patient:profiles!appointments_profile_id_fkey ( full_name, phone )`
+          )
+          .eq('organization_id', organizationId)
+          .gte('starts_at', from)
+          .lt('starts_at', to)
+          .order('starts_at'),
+        // Nombres de profesionales (RPC: el perfil de otros no siempre es legible).
+        supabase.rpc('list_org_professionals'),
+      ]);
+      if (sessionsRes.error || appointmentsRes.error) {
+        setError(
+          friendlyError(sessionsRes.error ?? appointmentsRes.error, 'No se pudo cargar la agenda.')
+        );
+        return;
+      }
+      const names = new Map(
+        (directoryRes.data ?? []).map((row) => [
+          row.professional_id,
+          row.full_name ?? 'Profesional',
+        ])
+      );
+      setClasses(
+        ((sessionsRes.data ?? []) as unknown as AgendaSessionRow[]).map((s) => ({
+          id: s.id,
+          name: s.class_types?.name ?? 'Clase',
+          color: s.class_types?.color ?? colors.turquesa,
+          startsAt: s.starts_at,
+          endsAt: s.ends_at,
+          coach: s.coaches?.memberships?.profiles?.full_name ?? 'Sin coach',
+          location: [s.spaces?.venues?.name, s.spaces?.name].filter(Boolean).join(' · '),
+          capacity: s.capacity_override ?? s.spaces?.capacity ?? 0,
+          attendees: (s.bookings ?? []).map((b) => ({
+            bookingId: b.id,
+            name: b.profiles?.full_name ?? 'Sin nombre',
+            status: b.status,
+          })),
+        }))
+      );
+      setAppointments(
+        ((appointmentsRes.data ?? []) as unknown as AgendaAppointmentRow[]).map((a) => ({
+          id: a.id,
+          startsAt: a.starts_at,
+          endsAt: a.ends_at,
+          status: a.status,
+          service: a.services?.name ?? 'Cita',
+          client: a.patient?.full_name ?? 'Sin nombre',
+          phone: a.patient?.phone ?? null,
+          professional: names.get(a.professional_id) ?? 'Profesional',
+        }))
+      );
+    } catch {
+      setError('No pudimos cargar la agenda. Revisa tu conexión.');
+    } finally {
+      setLoading(false);
+    }
+  }, [organizationId, date]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  /** Cancela una cita confirmada; el trigger de la base avisa al miembro. */
+  const cancelAppointment = useCallback(
+    async (appointmentId: string) => {
+      const { data, error: updateErr } = await getSupabase()
+        .from('appointments')
+        .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+        .eq('id', appointmentId)
+        .eq('organization_id', organizationId)
+        .eq('status', 'confirmed')
+        .select('id');
+      if (updateErr || !data || data.length === 0) {
+        return {
+          success: false,
+          error: 'La cita cambió o ya no se puede cancelar. Recarga la agenda.',
+        };
+      }
+      await fetchData();
+      return { success: true };
+    },
+    [organizationId, fetchData]
+  );
+
+  return { classes, appointments, loading, error, refresh: fetchData, cancelAppointment };
 }
 
 // ------------------------------------------------------------
@@ -512,6 +769,82 @@ export function useOrgMembers(organizationId: string): OrgMembersData {
 }
 
 // ------------------------------------------------------------
+// Detalle de un miembro (panel lateral de Miembros)
+// ------------------------------------------------------------
+
+export interface MemberDetail {
+  payments: PaymentItem[];
+  bookings30d: number;
+  attended30d: number;
+  lastBookingAt: string | null;
+}
+
+export function useMemberDetail(organizationId: string, profileId: string | null) {
+  const [detail, setDetail] = useState<MemberDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profileId || !organizationId) {
+      setDetail(null);
+      return;
+    }
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      const supabase = getSupabase();
+      const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+      const [paymentsRes, bookingsRes] = await Promise.all([
+        supabase
+          .from('payments')
+          .select(
+            `id, amount_cents, currency, method, status, paid_at,
+             profiles!payments_profile_id_fkey ( full_name ),
+             membership_plans ( name )`
+          )
+          .eq('organization_id', organizationId)
+          .eq('profile_id', profileId)
+          .order('paid_at', { ascending: false })
+          .limit(5),
+        // Reservas de los últimos 30 días en clases de este gimnasio.
+        supabase
+          .from('bookings')
+          .select(
+            'id, status, created_at, sessions!inner ( class_types!inner ( organization_id ) )'
+          )
+          .eq('profile_id', profileId)
+          .eq('sessions.class_types.organization_id', organizationId)
+          .gte('created_at', since)
+          .order('created_at', { ascending: false }),
+      ]);
+      if (cancelled) return;
+      if (paymentsRes.error || bookingsRes.error) {
+        setError(
+          friendlyError(paymentsRes.error ?? bookingsRes.error, 'No se pudo cargar el detalle.')
+        );
+        setLoading(false);
+        return;
+      }
+      const bookings = (bookingsRes.data ?? []) as { status: string; created_at: string }[];
+      setDetail({
+        payments: ((paymentsRes.data ?? []) as unknown as PaymentRowShape[]).map(mapPaymentRow),
+        bookings30d: bookings.filter((b) => b.status !== 'cancelled').length,
+        attended30d: bookings.filter((b) => b.status === 'attended').length,
+        lastBookingAt: bookings[0]?.created_at ?? null,
+      });
+      setLoading(false);
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId, profileId]);
+
+  return { detail, loading, error };
+}
+
+// ------------------------------------------------------------
 // Pagos: historial e ingresos del mes
 // ------------------------------------------------------------
 
@@ -537,18 +870,52 @@ interface PaymentRowShape {
   membership_plans: { name: string } | null;
 }
 
+function mapPaymentRow(row: PaymentRowShape): PaymentItem {
+  return {
+    id: row.id,
+    memberName: row.profiles?.full_name ?? null,
+    planName: row.membership_plans?.name ?? null,
+    amountCents: row.amount_cents,
+    currency: row.currency,
+    method: row.method,
+    status: row.status,
+    paidAt: row.paid_at,
+  };
+}
+
+export interface PlanOption {
+  id: string;
+  name: string;
+  priceCents: number;
+  currency: string;
+  durationDays: number;
+}
+
+export interface RegisterPaymentInput {
+  profileId: string;
+  planId: string | null;
+  amountCents: number;
+  currency: string;
+  method: string;
+  notes: string;
+  createdBy: string;
+}
+
 export interface PaymentsData {
   payments: PaymentItem[];
+  plans: PlanOption[];
   monthCount: number;
   monthRevenueCents: number;
   monthCurrency: string | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  registerPayment: (input: RegisterPaymentInput) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function usePayments(organizationId: string): PaymentsData {
   const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [plans, setPlans] = useState<PlanOption[]>([]);
   const [monthCount, setMonthCount] = useState(0);
   const [monthRevenueCents, setMonthRevenueCents] = useState(0);
   const [monthCurrency, setMonthCurrency] = useState<string | null>(null);
@@ -573,7 +940,7 @@ export function usePayments(organizationId: string): PaymentsData {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      const [paymentsRes, monthRes] = await Promise.all([
+      const [paymentsRes, monthRes, plansRes] = await Promise.all([
         supabase
           .from('payments')
           .select(
@@ -591,7 +958,26 @@ export function usePayments(organizationId: string): PaymentsData {
           .eq('organization_id', organizationId)
           .eq('status', 'paid')
           .gte('paid_at', monthStart),
+        // Planes activos para el formulario «Registrar pago».
+        supabase
+          .from('membership_plans')
+          .select('id, name, price_cents, currency, duration_days')
+          .eq('organization_id', organizationId)
+          .eq('active', true)
+          .order('name'),
       ]);
+
+      if (!plansRes.error) {
+        setPlans(
+          (plansRes.data ?? []).map((plan) => ({
+            id: plan.id,
+            name: plan.name,
+            priceCents: plan.price_cents,
+            currency: plan.currency,
+            durationDays: plan.duration_days,
+          }))
+        );
+      }
 
       if (paymentsRes.error || monthRes.error) {
         setError(
@@ -600,18 +986,7 @@ export function usePayments(organizationId: string): PaymentsData {
         return;
       }
 
-      setPayments(
-        ((paymentsRes.data ?? []) as unknown as PaymentRowShape[]).map((row) => ({
-          id: row.id,
-          memberName: row.profiles?.full_name ?? null,
-          planName: row.membership_plans?.name ?? null,
-          amountCents: row.amount_cents,
-          currency: row.currency,
-          method: row.method,
-          status: row.status,
-          paidAt: row.paid_at,
-        }))
-      );
+      setPayments(((paymentsRes.data ?? []) as unknown as PaymentRowShape[]).map(mapPaymentRow));
 
       const monthRows = (monthRes.data ?? []) as { amount_cents: number; currency: string }[];
       setMonthRevenueCents(monthRows.reduce((sum, r) => sum + r.amount_cents, 0));
@@ -629,13 +1004,41 @@ export function usePayments(organizationId: string): PaymentsData {
     fetchData();
   }, [fetchData]);
 
+  // Mismo insert que la app móvil (RLS: solo admin). El pago queda «pagado».
+  const registerPayment = useCallback(
+    async (input: RegisterPaymentInput) => {
+      const { error: insertErr } = await getSupabase()
+        .from('payments')
+        .insert({
+          organization_id: organizationId,
+          profile_id: input.profileId,
+          plan_id: input.planId,
+          amount_cents: input.amountCents,
+          currency: input.currency,
+          method: input.method,
+          notes: input.notes.trim() ? input.notes.trim() : null,
+          created_by: input.createdBy,
+          status: 'paid',
+        });
+      if (insertErr) {
+        console.warn('register payment failed', insertErr.message);
+        return { success: false, error: friendlyError(insertErr, 'No se pudo registrar el pago.') };
+      }
+      await fetchData();
+      return { success: true };
+    },
+    [organizationId, fetchData]
+  );
+
   return {
     payments,
+    plans,
     monthCount,
     monthRevenueCents,
     monthCurrency,
     loading,
     error,
     refresh: fetchData,
+    registerPayment,
   };
 }

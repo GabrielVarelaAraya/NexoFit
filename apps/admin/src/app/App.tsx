@@ -1,8 +1,16 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import { Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
 import { ThemeProvider, colors, fonts, setSupabaseConfig } from '@nexofit/core';
@@ -12,6 +20,8 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { MembersScreen } from '../screens/MembersScreen';
 import { PaymentsScreen } from '../screens/PaymentsScreen';
+import { AgendaScreen } from '../screens/AgendaScreen';
+import { VIEW_TITLES, useRoute, type ViewName } from './router';
 
 // Configurar Supabase con las variables del .env (vía app.config.js).
 const supabaseUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -25,12 +35,19 @@ if (supabaseUrl && supabaseAnonKey) {
   );
 }
 
-type ViewName = 'dashboard' | 'members' | 'payments';
+type IconName = keyof typeof Ionicons.glyphMap;
 
-const NAV_ITEMS: { id: ViewName; label: string }[] = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'members', label: 'Miembros' },
-  { id: 'payments', label: 'Pagos' },
+// Menú agrupado como en la app móvil: operación del día y finanzas.
+const NAV_GROUPS: { title: string; items: { id: ViewName; icon: IconName }[] }[] = [
+  {
+    title: 'Operación',
+    items: [
+      { id: 'dashboard', icon: 'grid-outline' },
+      { id: 'agenda', icon: 'calendar-outline' },
+      { id: 'members', icon: 'people-outline' },
+    ],
+  },
+  { title: 'Finanzas', items: [{ id: 'payments', icon: 'cash-outline' }] },
 ];
 
 export default function App() {
@@ -39,6 +56,7 @@ export default function App() {
     Nunito_800ExtraBold,
     Inter_400Regular,
     Inter_600SemiBold,
+    ...Ionicons.font,
   });
 
   if (!fontsLoaded) {
@@ -59,7 +77,8 @@ export default function App() {
 
 function AdminShell() {
   const { session, membership, loading, accessError, signIn, signOut } = useAdminSession();
-  const [view, setView] = useState<ViewName>('dashboard');
+  const { route, navigate } = useRoute();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { width } = useWindowDimensions();
   const compact = width < 768;
 
@@ -95,32 +114,105 @@ function AdminShell() {
     );
   }
 
+  const go = (view: ViewName) => {
+    setMenuOpen(false);
+    navigate(view);
+  };
+
+  const navList = (
+    <View style={styles.nav}>
+      {NAV_GROUPS.map((group) => (
+        <View key={group.title} style={styles.navGroup}>
+          <Text style={styles.navGroupTitle}>{group.title}</Text>
+          {group.items.map((item) => {
+            const active = route.view === item.id;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.navItem, active && styles.navItemActive]}
+                onPress={() => go(item.id)}
+                activeOpacity={0.8}
+                accessibilityRole="link"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={VIEW_TITLES[item.id]}
+              >
+                <Ionicons
+                  name={item.icon}
+                  size={18}
+                  color={active ? colors.white : colors.white + 'B3'}
+                />
+                <Text style={[styles.navText, active && styles.navTextActive]}>
+                  {VIEW_TITLES[item.id]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+
+  const account = (
+    <View style={styles.sidebarFooter}>
+      <Text style={styles.orgName}>{membership.organizationName}</Text>
+      <Text style={styles.userEmail} numberOfLines={1}>
+        {session.user.email}
+      </Text>
+      <TouchableOpacity
+        style={styles.signOutLink}
+        onPress={() => void signOut()}
+        accessibilityRole="button"
+      >
+        <Text style={styles.signOutLinkText}>Cerrar sesión</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const screen = (() => {
+    const props = {
+      organizationId: membership.organizationId,
+      navigate,
+      params: route.params,
+      currentUserId: session.user.id,
+    };
+    switch (route.view) {
+      case 'agenda':
+        return <AgendaScreen {...props} />;
+      case 'members':
+        return <MembersScreen {...props} />;
+      case 'payments':
+        return <PaymentsScreen {...props} />;
+      default:
+        return <DashboardScreen {...props} />;
+    }
+  })();
+
   return (
     <View style={[styles.shell, compact && styles.shellCompact]}>
       {compact ? (
-        <View style={styles.topBar}>
-          <View style={styles.topBarBrand}>
+        // Angosto: barra con menú hamburguesa (antes la navegación se partía en 2 líneas).
+        <View>
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+              accessibilityState={{ expanded: menuOpen }}
+              onPress={() => setMenuOpen((open) => !open)}
+              hitSlop={8}
+            >
+              <Ionicons name={menuOpen ? 'close' : 'menu'} size={24} color={colors.white} />
+            </TouchableOpacity>
             <Text style={styles.brandCompact}>NexoFit</Text>
+            <Text style={styles.topBarTitle} numberOfLines={1}>
+              {VIEW_TITLES[route.view]}
+            </Text>
           </View>
-          <View style={styles.topNav}>
-            {NAV_ITEMS.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.topNavItem, view === item.id && styles.topNavItemActive]}
-                onPress={() => setView(item.id)}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel={item.label}
-              >
-                <Text style={[styles.topNavText, view === item.id && styles.topNavTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TouchableOpacity style={styles.topSignOut} onPress={() => void signOut()}>
-            <Text style={styles.signOutLinkText}>Salir</Text>
-          </TouchableOpacity>
+          {menuOpen && (
+            <View style={styles.dropdown}>
+              {navList}
+              {account}
+            </View>
+          )}
         </View>
       ) : (
         <View style={styles.sidebar}>
@@ -128,45 +220,17 @@ function AdminShell() {
             <Text style={styles.brand}>NexoFit</Text>
             <Text style={styles.brandSub}>Consola de administración</Text>
           </View>
-
-          <View style={styles.nav}>
-            {NAV_ITEMS.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.navItem, view === item.id && styles.navItemActive]}
-                onPress={() => setView(item.id)}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel={item.label}
-              >
-                <Text style={[styles.navText, view === item.id && styles.navTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.sidebarFooter}>
-            <Text style={styles.orgName}>{membership.organizationName}</Text>
-            <Text style={styles.userEmail} numberOfLines={1}>
-              {session.user.email}
-            </Text>
-            <TouchableOpacity
-              style={styles.signOutLink}
-              onPress={() => void signOut()}
-              accessibilityRole="button"
-            >
-              <Text style={styles.signOutLinkText}>Cerrar sesión</Text>
-            </TouchableOpacity>
-          </View>
+          {navList}
+          {account}
         </View>
       )}
 
-      <View style={[styles.content, compact && styles.contentCompact]}>
-        {view === 'dashboard' && <DashboardScreen organizationId={membership.organizationId} />}
-        {view === 'members' && <MembersScreen organizationId={membership.organizationId} />}
-        {view === 'payments' && <PaymentsScreen organizationId={membership.organizationId} />}
-      </View>
+      <ScrollView
+        style={styles.contentScroll}
+        contentContainerStyle={[styles.content, compact && styles.contentCompact]}
+      >
+        {screen}
+      </ScrollView>
     </View>
   );
 }
@@ -212,19 +276,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
-    flexWrap: 'wrap',
   },
-  topBarBrand: { marginRight: 8 },
   brandCompact: { fontFamily: fonts.brand, fontSize: 18, color: colors.white },
-  topNav: { flexDirection: 'row', gap: 4, flex: 1, flexWrap: 'wrap' },
-  topNavItem: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  topNavItemActive: { backgroundColor: colors.white + '1F' },
-  topNavText: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.white + 'CC' },
-  topNavTextActive: { fontFamily: fonts.uiSemiBold, color: colors.white },
-  topSignOut: { paddingHorizontal: 10, paddingVertical: 6 },
-  contentCompact: { padding: 16 },
+  topBarTitle: {
+    flex: 1,
+    textAlign: 'right',
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 14,
+    color: colors.white + 'CC',
+  },
+  dropdown: {
+    backgroundColor: colors.azulNexo,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 16,
+  },
   sidebar: {
-    width: 260,
+    width: 248,
     backgroundColor: colors.azulNexo,
     padding: 24,
   },
@@ -236,8 +304,25 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   // Navegación pegada arriba, bajo la marca; el pie (organización/salir) al fondo.
-  nav: { gap: 8, marginTop: 32, flex: 1 },
-  navItem: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  nav: { gap: 20, marginTop: 32, flex: 1 },
+  navGroup: { gap: 4 },
+  navGroupTitle: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.white + '80',
+    marginBottom: 4,
+    marginLeft: 14,
+  },
+  navItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
   navItemActive: { backgroundColor: colors.white + '1F' },
   navText: { fontFamily: fonts.uiRegular, fontSize: 15, color: colors.white + 'CC' },
   navTextActive: { fontFamily: fonts.uiSemiBold, color: colors.white },
@@ -250,5 +335,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.limaProgreso,
   },
-  content: { flex: 1, padding: 32, overflow: 'scroll' },
+  contentScroll: { flex: 1 },
+  content: { padding: 32, maxWidth: 1280, width: '100%' },
+  contentCompact: { padding: 16 },
 });

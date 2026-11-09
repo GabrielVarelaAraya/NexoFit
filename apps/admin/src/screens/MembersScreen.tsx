@@ -1,9 +1,27 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { colors, fonts, type RoleType } from '@nexofit/core';
-import { Card, EmptyState, ErrorText, LoadingView } from '../components/ui';
-import { useOrgMembers, type OrgMember } from '../hooks/useAdminData';
-import { formatShortDate } from '../utils/format';
+import {
+  Badge,
+  Card,
+  ConfirmModal,
+  EmptyState,
+  ErrorText,
+  FilterChips,
+  LoadingView,
+  SidePanel,
+  useNarrow,
+} from '../components/ui';
+import { useMemberDetail, useOrgMembers, type OrgMember } from '../hooks/useAdminData';
+import type { ScreenProps } from '../app/router';
+import { METHOD_LABELS, formatMoney, formatRelative, formatShortDate } from '../utils/format';
+import {
+  ROLE_FILTERS,
+  countByRole,
+  filterMembers,
+  parseRoleFilter,
+  type RoleFilter,
+} from '../utils/members';
 
 const ROLE_LABELS: Record<RoleType, string> = {
   member: 'Miembro',
@@ -21,34 +39,38 @@ const ROLE_COLORS: Record<RoleType, string> = {
 
 const ALL_ROLES: RoleType[] = ['member', 'coach', 'professional', 'admin'];
 
-// Miembros del gimnasio con gestión de roles (misma RLS que la app móvil).
-export function MembersScreen({ organizationId }: { organizationId: string }) {
+// Miembros del gimnasio: filtros por rol, búsqueda y panel de detalle.
+// Búsqueda, filtro y miembro abierto viven en la URL (?q=&rol=&m=) para
+// poder compartir el enlace y volver con el botón atrás.
+export function MembersScreen({ organizationId, navigate, params, currentUserId }: ScreenProps) {
   const { members, loading, error, updateRole } = useOrgMembers(organizationId);
-  const [query, setQuery] = useState('');
-  const [openRoleId, setOpenRoleId] = useState<string | null>(null);
+  const narrow = useNarrow();
+  const [query, setQuery] = useState(params.q ?? '');
+  const role = parseRoleFilter(params.rol);
+  const selected = members.find((m) => m.membershipId === params.m) ?? null;
+  const [pendingRole, setPendingRole] = useState<{ member: OrgMember; role: RoleType } | null>(
+    null
+  );
+  const [saving, setSaving] = useState(false);
   const [roleError, setRoleError] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return members;
-    return members.filter((m) => m.fullName.toLowerCase().includes(q));
-  }, [members, query]);
+  const counts = useMemo(() => countByRole(members), [members]);
+  const filtered = useMemo(() => filterMembers(members, query, role), [members, query, role]);
 
-  const handleRoleChange = async (member: OrgMember, role: RoleType) => {
-    if (role === member.role) {
-      setOpenRoleId(null);
-      return;
-    }
-    // En web no existe Alert: se usa el confirm nativo. El rol Administrador
-    // otorga acceso total, así que nunca se aplica sin un paso explícito.
-    const confirmed = window.confirm(
-      `¿Cambiar el rol de ${member.fullName} a ${ROLE_LABELS[role]}? Se aplica de inmediato.`
+  const setParams = (next: Partial<Record<'q' | 'rol' | 'm', string>>, replace = true) =>
+    navigate(
+      'members',
+      { q: query, rol: role === 'all' ? '' : role, m: params.m ?? '', ...next },
+      replace
     );
-    setOpenRoleId(null);
-    if (!confirmed) return;
 
+  const applyRole = async () => {
+    if (!pendingRole) return;
+    setSaving(true);
     setRoleError(null);
-    const result = await updateRole(member.membershipId, role);
+    const result = await updateRole(pendingRole.member.membershipId, pendingRole.role);
+    setSaving(false);
+    setPendingRole(null);
     if (!result.success) setRoleError(result.error ?? 'No se pudo cambiar el rol.');
   };
 
@@ -59,89 +81,213 @@ export function MembersScreen({ organizationId }: { organizationId: string }) {
       <View style={styles.headerRow}>
         <Text style={styles.h1}>Miembros</Text>
         <TextInput
-          style={styles.search}
-          placeholder="Buscar por nombre…"
+          style={[styles.search, narrow && styles.searchNarrow]}
+          placeholder="Buscar por nombre o teléfono…"
           placeholderTextColor={colors.textPlaceholder}
+          accessibilityLabel="Buscar miembros"
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(text) => {
+            setQuery(text);
+            setParams({ q: text });
+          }}
         />
       </View>
+
+      <FilterChips<RoleFilter>
+        label="Filtrar por rol"
+        value={role}
+        onChange={(value) => setParams({ rol: value === 'all' ? '' : value })}
+        options={ROLE_FILTERS.map((option) => ({
+          value: option.value,
+          label: `${option.label} (${counts[option.value]})`,
+        }))}
+      />
 
       {error && <ErrorText>{error}</ErrorText>}
       {roleError && <ErrorText>{roleError}</ErrorText>}
 
       <Card style={styles.table}>
-        <View style={[styles.row, styles.headerTableRow]}>
-          <Text style={[styles.cellName, styles.headerText]}>Miembro</Text>
-          <Text style={[styles.cellPhone, styles.headerText]}>Teléfono</Text>
-          <Text style={[styles.cellDate, styles.headerText]}>Alta</Text>
-          <Text style={[styles.cellRole, styles.headerText]}>Rol</Text>
-        </View>
+        {!narrow && (
+          <View style={[styles.row, styles.headerTableRow]}>
+            <Text style={[styles.cellName, styles.headerText]}>Miembro</Text>
+            <Text style={[styles.cellPhone, styles.headerText]}>Teléfono</Text>
+            <Text style={[styles.cellDate, styles.headerText]}>Alta</Text>
+            <Text style={[styles.cellRole, styles.headerText]}>Rol</Text>
+          </View>
+        )}
 
         {filtered.length === 0 ? (
           // La búsqueda vacía no significa que la organización no tenga miembros.
-          query.trim() ? (
+          query.trim() || role !== 'all' ? (
             <EmptyState
               title="Sin resultados"
-              subtitle={`No encontramos miembros que coincidan con «${query.trim()}».`}
+              subtitle="Ningún miembro coincide con la búsqueda o el filtro."
             />
           ) : (
             <EmptyState title="Sin miembros" subtitle="Aún no hay miembros en esta organización." />
           )
         ) : (
           filtered.map((member) => (
-            <View key={member.membershipId} style={styles.row}>
-              <Text style={[styles.cellText, styles.cellName]}>{member.fullName}</Text>
-              <Text style={[styles.cellText, styles.cellPhone]}>{member.phone ?? '—'}</Text>
+            <TouchableOpacity
+              key={member.membershipId}
+              style={[styles.row, narrow && styles.rowNarrow]}
+              onPress={() => setParams({ m: member.membershipId }, false)}
+              accessibilityRole="button"
+              accessibilityLabel={`Ver detalle de ${member.fullName}`}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.cellText, styles.cellName, styles.nameText]}>
+                {member.fullName}
+              </Text>
+              <Text style={[styles.cellText, styles.cellPhone]}>
+                {member.phone ?? (narrow ? 'Sin teléfono' : '—')}
+              </Text>
               <Text style={[styles.cellText, styles.cellDate]}>
+                {narrow ? 'Alta: ' : ''}
                 {formatShortDate(member.createdAt)}
               </Text>
               <View style={styles.cellRole}>
-                <TouchableOpacity
-                  style={styles.roleButton}
-                  onPress={() =>
-                    setOpenRoleId(openRoleId === member.membershipId ? null : member.membershipId)
-                  }
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.roleButtonText, { color: ROLE_COLORS[member.role] }]}>
-                    {ROLE_LABELS[member.role]}
-                  </Text>
-                  <Text style={styles.roleChevron}>▾</Text>
-                </TouchableOpacity>
-
-                {openRoleId === member.membershipId && (
-                  <View style={styles.roleMenu}>
-                    {ALL_ROLES.map((role) => (
-                      <TouchableOpacity
-                        key={role}
-                        style={styles.roleMenuItem}
-                        onPress={() => void handleRoleChange(member, role)}
-                        activeOpacity={0.8}
-                      >
-                        <Text
-                          style={[
-                            styles.roleMenuText,
-                            role === member.role && styles.roleMenuActive,
-                          ]}
-                        >
-                          {ROLE_LABELS[role]}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+                <Badge label={ROLE_LABELS[member.role]} color={ROLE_COLORS[member.role]} />
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </Card>
+
+      <SidePanel
+        visible={selected !== null}
+        title={selected?.fullName ?? ''}
+        onClose={() => setParams({ m: '' }, false)}
+      >
+        {selected && (
+          <MemberPanel
+            organizationId={organizationId}
+            member={selected}
+            isSelf={selected.profileId === currentUserId}
+            onChangeRole={(next) => setPendingRole({ member: selected, role: next })}
+          />
+        )}
+      </SidePanel>
+
+      <ConfirmModal
+        visible={pendingRole !== null}
+        title={pendingRole ? `Cambiar a ${ROLE_LABELS[pendingRole.role]}` : ''}
+        message={
+          pendingRole
+            ? pendingRole.role === 'admin'
+              ? `${pendingRole.member.fullName} tendrá acceso total a la consola, pagos y miembros. Se aplica de inmediato.`
+              : `${pendingRole.member.fullName} pasará a ser ${ROLE_LABELS[pendingRole.role].toLowerCase()}. Se aplica de inmediato.`
+            : ''
+        }
+        confirmLabel="Cambiar rol"
+        destructive={pendingRole?.role === 'admin'}
+        busy={saving}
+        onConfirm={() => void applyRole()}
+        onCancel={() => setPendingRole(null)}
+      />
+    </View>
+  );
+}
+
+function MemberPanel({
+  organizationId,
+  member,
+  isSelf,
+  onChangeRole,
+}: {
+  organizationId: string;
+  member: OrgMember;
+  isSelf: boolean;
+  onChangeRole: (role: RoleType) => void;
+}) {
+  const { detail, loading, error } = useMemberDetail(organizationId, member.profileId);
+
+  return (
+    <>
+      <Card style={styles.panelCard}>
+        <InfoRow label="Teléfono" value={member.phone ?? 'Sin registrar'} />
+        <InfoRow label="Miembro desde" value={formatShortDate(member.createdAt)} />
+        <InfoRow label="Rol" value={ROLE_LABELS[member.role]} />
+      </Card>
+
+      <Card style={styles.panelCard}>
+        <Text style={styles.panelTitle}>Cambiar rol</Text>
+        {isSelf ? (
+          // Igual que en la app móvil: un admin no puede quitarse su propio acceso.
+          <Text style={styles.muted}>Es tu cuenta: otro administrador debe cambiar tu rol.</Text>
+        ) : (
+          <View style={styles.roleOptions}>
+            {ALL_ROLES.map((option) => {
+              const current = option === member.role;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: current, disabled: current }}
+                  disabled={current}
+                  style={[styles.roleOption, current && styles.roleOptionCurrent]}
+                  onPress={() => onChangeRole(option)}
+                >
+                  <Text style={[styles.roleOptionText, current && styles.roleOptionTextCurrent]}>
+                    {ROLE_LABELS[option]}
+                    {current ? ' · actual' : ''}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </Card>
+
+      <Card style={styles.panelCard}>
+        <Text style={styles.panelTitle}>Actividad (30 días)</Text>
+        {loading ? (
+          <LoadingView label="Cargando…" />
+        ) : error ? (
+          <ErrorText>{error}</ErrorText>
+        ) : detail ? (
+          <>
+            <InfoRow label="Reservas" value={String(detail.bookings30d)} />
+            <InfoRow label="Asistencias marcadas" value={String(detail.attended30d)} />
+            <InfoRow
+              label="Última reserva"
+              value={detail.lastBookingAt ? formatRelative(detail.lastBookingAt) : 'Sin reservas'}
+            />
+          </>
+        ) : null}
+      </Card>
+
+      <Card style={styles.panelCard}>
+        <Text style={styles.panelTitle}>Últimos pagos</Text>
+        {detail && detail.payments.length === 0 && (
+          <Text style={styles.muted}>Sin pagos registrados.</Text>
+        )}
+        {detail?.payments.map((payment) => (
+          <View key={payment.id} style={styles.paymentRow}>
+            <Text style={styles.cellText}>{formatShortDate(payment.paidAt)}</Text>
+            <Text style={styles.muted}>
+              {payment.planName ?? 'Sin plan'} ·{' '}
+              {METHOD_LABELS[payment.method as keyof typeof METHOD_LABELS] ?? payment.method}
+            </Text>
+            <Text style={styles.amount}>{formatMoney(payment.amountCents, payment.currency)}</Text>
+          </View>
+        ))}
+      </Card>
+    </>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.muted}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 20 },
+  container: { gap: 16 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -157,11 +303,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    minWidth: 260,
+    minWidth: 280,
     fontFamily: fonts.uiRegular,
     fontSize: 14,
     color: colors.azulNexo,
   },
+  searchNarrow: { minWidth: 0, width: '100%' },
   table: { padding: 8, gap: 0 },
   row: {
     flexDirection: 'row',
@@ -172,45 +319,38 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.surfaceSubtle,
     gap: 12,
   },
+  // Angosto: cada miembro es una tarjeta apilada en vez de una fila con columnas.
+  rowNarrow: { flexDirection: 'column', alignItems: 'flex-start', gap: 4 },
   headerTableRow: { borderBottomWidth: 1, borderBottomColor: colors.border },
   headerText: { fontFamily: fonts.uiSemiBold, fontSize: 12, color: colors.textSecondary },
   cellText: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.azulNexo },
+  nameText: { fontFamily: fonts.uiSemiBold },
   cellName: { flex: 2, minWidth: 160 },
   cellPhone: { flex: 1, minWidth: 120 },
   cellDate: { flex: 1, minWidth: 100 },
-  cellRole: { flex: 1, minWidth: 150, position: 'relative' },
-  roleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
+  cellRole: { flex: 1, minWidth: 130 },
+  panelCard: { gap: 10, padding: 16 },
+  panelTitle: { fontFamily: fonts.uiSemiBold, fontSize: 15, color: colors.azulNexo },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  infoValue: { fontFamily: fonts.uiSemiBold, fontSize: 14, color: colors.azulNexo },
+  muted: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textSecondary },
+  roleOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  roleOption: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 999,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     backgroundColor: colors.white,
   },
-  roleButtonText: { fontFamily: fonts.uiSemiBold, fontSize: 13 },
-  roleChevron: { fontSize: 10, color: colors.textSecondary },
-  roleMenu: {
-    position: 'absolute',
-    top: 40,
-    left: 0,
-    zIndex: 20,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 4,
-    minWidth: 160,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+  roleOptionCurrent: { backgroundColor: colors.surfaceSubtle },
+  roleOptionText: { fontFamily: fonts.uiSemiBold, fontSize: 13, color: colors.azulNexo },
+  roleOptionTextCurrent: { color: colors.textSecondary },
+  paymentRow: {
+    gap: 2,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceSubtle,
   },
-  roleMenuItem: { paddingHorizontal: 14, paddingVertical: 8 },
-  roleMenuText: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.azulNexo },
-  roleMenuActive: { fontFamily: fonts.uiSemiBold, color: colors.textAccent },
+  amount: { fontFamily: fonts.uiSemiBold, fontSize: 14, color: colors.azulNexo },
 });

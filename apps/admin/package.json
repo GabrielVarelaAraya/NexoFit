@@ -12,6 +12,7 @@
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/nunito": "^0.4.2",
+    "@expo/vector-icons": "^14.1.0",
     "@nexofit/core": "workspace:*",
     "@supabase/supabase-js": "^2.45.4",
     "expo": "~57.0.13",

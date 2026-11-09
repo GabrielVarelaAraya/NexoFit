@@ -1,18 +1,22 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, fonts } from '@nexofit/core';
+import { colors, fonts, formatWeekdayDate } from '@nexofit/core';
 import { Card, EmptyState, ErrorText, LoadingView, StatCard } from '../components/ui';
 import { useDashboard, type ActivityItem, type UpcomingClass } from '../hooks/useAdminData';
-import { formatMoney } from '../utils/format';
+import type { ScreenProps } from '../app/router';
+import { dayLabel } from '../utils/date';
+import { formatChange, formatMoney, formatRelative, formatTime } from '../utils/format';
 
-// Dashboard con las mismas métricas reales que la app móvil.
-export function DashboardScreen({ organizationId }: { organizationId: string }) {
-  const { stats, activity, upcoming, loading, error, refresh } = useDashboard(organizationId);
+// Dashboard con las mismas métricas que la app móvil, comparadas con el mismo
+// tramo del mes anterior; cada tarjeta lleva a su listado.
+export function DashboardScreen({ organizationId, navigate }: ScreenProps) {
+  const { stats, activity, upcoming, loading, error, updatedAt, refresh } =
+    useDashboard(organizationId);
 
   if (loading && stats === null) {
     return <LoadingView label="Cargando métricas…" />;
   }
 
-  const safeStats = stats ?? {
+  const s = stats ?? {
     activeMembers: 0,
     newMembersThisMonth: 0,
     sessionsToday: 0,
@@ -20,41 +24,72 @@ export function DashboardScreen({ organizationId }: { organizationId: string }) 
     bookingsThisMonth: 0,
     monthRevenueCents: 0,
     monthCurrency: null,
+    prevNewMembers: 0,
+    prevBookings: 0,
+    prevRevenueCents: 0,
   };
+
+  const revenueChange = formatChange(s.monthRevenueCents, s.prevRevenueCents);
+  const bookingsChange = formatChange(s.bookingsThisMonth, s.prevBookings);
+  const tone = (current: number, previous: number) =>
+    previous <= 0 || current === previous ? 'neutral' : current > previous ? 'good' : 'bad';
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.h1}>Dashboard</Text>
-        <TouchableOpacity onPress={() => void refresh()} activeOpacity={0.7}>
-          <Text style={styles.refreshHint}>Actualizar</Text>
-        </TouchableOpacity>
+        <View style={styles.refresh}>
+          {updatedAt && <Text style={styles.updated}>Actualizado {formatRelative(updatedAt)}</Text>}
+          <TouchableOpacity
+            onPress={() => void refresh()}
+            activeOpacity={0.7}
+            disabled={loading}
+            accessibilityRole="button"
+            style={styles.refreshButton}
+          >
+            <Text style={styles.refreshText}>{loading ? 'Actualizando…' : '↻ Actualizar'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {error && <ErrorText>{error}</ErrorText>}
 
-      {/* Métricas reales */}
+      {/* Mismos nombres y definiciones que en la app móvil. */}
       <View style={styles.statsRow}>
         <StatCard
-          label="Miembros registrados"
-          value={String(safeStats.activeMembers)}
-          hint={
-            safeStats.newMembersThisMonth > 0
-              ? `+${safeStats.newMembersThisMonth} este mes`
-              : 'Sin altas este mes'
+          label="Miembros activos"
+          value={String(s.activeMembers)}
+          change={
+            s.newMembersThisMonth > 0 ? `+${s.newMembersThisMonth} este mes` : 'Sin altas este mes'
           }
+          changeTone={s.newMembersThisMonth > 0 ? 'good' : 'neutral'}
+          hint={s.prevNewMembers > 0 ? `${s.prevNewMembers} el mes pasado a esta fecha` : undefined}
+          onPress={() => navigate('members')}
         />
         <StatCard
           label="Ingresos del mes"
-          value={formatMoney(safeStats.monthRevenueCents, safeStats.monthCurrency)}
+          value={formatMoney(s.monthRevenueCents, s.monthCurrency)}
+          change={revenueChange ? `${revenueChange} vs mes anterior` : null}
+          changeTone={tone(s.monthRevenueCents, s.prevRevenueCents)}
+          onPress={() => navigate('payments')}
         />
-        <StatCard label="Clases hoy" value={String(safeStats.sessionsToday)} />
         <StatCard
-          label="Ocupación (7 días)"
-          value={safeStats.occupancy7d != null ? `${safeStats.occupancy7d}%` : '—'}
-          hint={safeStats.occupancy7d != null ? 'Próximos 7 días' : 'Sin clases programadas'}
+          label="Clases hoy"
+          value={String(s.sessionsToday)}
+          onPress={() => navigate('agenda')}
         />
-        <StatCard label="Reservas este mes" value={String(safeStats.bookingsThisMonth)} />
+        <StatCard
+          label="Ocupación media"
+          value={s.occupancy7d != null ? `${s.occupancy7d}%` : '—'}
+          hint={s.occupancy7d != null ? 'Próximos 7 días' : 'Sin clases programadas'}
+          onPress={() => navigate('agenda')}
+        />
+        <StatCard
+          label="Reservas este mes"
+          value={String(s.bookingsThisMonth)}
+          change={bookingsChange ? `${bookingsChange} vs mes anterior` : null}
+          changeTone={tone(s.bookingsThisMonth, s.prevBookings)}
+        />
       </View>
 
       <View style={styles.columns}>
@@ -72,7 +107,12 @@ export function DashboardScreen({ organizationId }: { organizationId: string }) 
         </Card>
 
         <Card style={styles.column}>
-          <Text style={styles.sectionTitle}>Próximas clases</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Próximas clases</Text>
+            <TouchableOpacity accessibilityRole="link" onPress={() => navigate('agenda')}>
+              <Text style={styles.link}>Ver agenda →</Text>
+            </TouchableOpacity>
+          </View>
           {upcoming.length > 0 ? (
             <View style={styles.list}>
               {upcoming.map((cls) => (
@@ -95,6 +135,8 @@ const ACTIVITY_COLORS: Record<ActivityItem['kind'], string> = {
   booked: colors.success,
   cancelled: colors.textError,
   joined: colors.turquesa,
+  payment: colors.azulNexo,
+  appointment: '#0EA5E9',
 };
 
 function ActivityRow({ item }: { item: ActivityItem }) {
@@ -103,27 +145,22 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       <View style={[styles.activityDot, { backgroundColor: ACTIVITY_COLORS[item.kind] }]} />
       <View style={styles.activityBody}>
         <Text style={styles.activityText}>{item.text}</Text>
-        <Text style={styles.activityTime}>
-          {new Date(item.iso).toLocaleString('es-CR', {
-            day: 'numeric',
-            month: 'short',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </Text>
+        <Text style={styles.activityTime}>{formatRelative(item.iso)}</Text>
       </View>
     </View>
   );
 }
 
 function UpcomingRow({ cls }: { cls: UpcomingClass }) {
+  // «Hoy 07:00» / «Mañana 18:00» / «jue 12 nov 07:00»: antes solo la hora.
+  const day = dayLabel(cls.startsAt) ?? formatWeekdayDate(cls.startsAt);
   return (
     <View style={styles.upcomingRow}>
       <View style={[styles.upcomingBar, { backgroundColor: cls.color }]} />
       <View style={styles.activityBody}>
         <Text style={styles.activityText}>{cls.name}</Text>
         <Text style={styles.activityTime}>
-          {cls.time} · Coach: {cls.coach} · {cls.spots} cupos
+          {day} {formatTime(cls.startsAt)} · Coach: {cls.coach} · {cls.spots} cupos
         </Text>
       </View>
     </View>
@@ -134,19 +171,29 @@ const styles = StyleSheet.create({
   container: { gap: 20 },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
   },
   h1: { fontFamily: fonts.brand, fontSize: 26, color: colors.azulNexo },
-  refreshHint: {
-    fontFamily: fonts.uiSemiBold,
-    fontSize: 13,
-    color: colors.textAccent,
+  refresh: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  updated: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },
+  refreshButton: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
+  refreshText: { fontFamily: fonts.uiSemiBold, fontSize: 13, color: colors.textAccent },
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   columns: { flexDirection: 'row', gap: 20, flexWrap: 'wrap' },
-  column: { flex: 1, minWidth: 360, gap: 16 },
+  column: { flex: 1, minWidth: 300, gap: 16 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontFamily: fonts.uiSemiBold, fontSize: 16, color: colors.azulNexo },
+  link: { fontFamily: fonts.uiSemiBold, fontSize: 13, color: colors.textAccent },
   list: { gap: 4 },
   activityRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   upcomingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },

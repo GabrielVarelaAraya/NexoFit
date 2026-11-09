@@ -128,7 +128,25 @@ Cada lote se puede revisar y commitear por separado.
    - P2: lista «Completa tu perfil para recibir reservas» en la agenda del profesional.
    - Sin verificar en vivo: tarjeta de próxima cita, banner del profesional en Reservar y la
      lista del profesional (no hay profesional ni citas de prueba en la base).
-5. **Lote 5 – Consola web:** W4 (rutas), W5, W6, W7, W8, W10, W11, luego W3 (paridad).
+5. **Lote 5 – Consola web:** W4 (rutas), W5, W6, W7, W8, W10, W11, luego W3 (paridad). ✅ Hecho
+   (8 nov 2026):
+   - W4/W2: rutas `/`, `/agenda`, `/miembros`, `/pagos` con filtros y paneles en la URL; el botón
+     atrás funciona y el título de la pestaña cambia. Menú con íconos y grupos Operación / Finanzas.
+   - W5: filtros por rol con conteo, búsqueda sin tildes (nombre o teléfono), panel de detalle
+     con actividad de 30 días y últimos pagos; cambio de rol con confirmación propia (rojo si es
+     admin) y bloqueado en la cuenta propia.
+   - W6: «Registrar pago» (miembro, plan con precio, método, monto «15 000» o «15,50»), filtros
+     por estado y método, búsqueda y «Exportar CSV».
+   - W7/W8/W11: KPIs con el mismo nombre que en móvil, comparación con el mismo tramo del mes
+     anterior, clic al listado; actividad con pagos y citas, fechas relativas; próximas clases
+     con día; «Actualizado hace …».
+   - W3 (parcial): nueva sección Agenda con clases del día (quién reservó) y citas 1-a-1 con
+     cancelación. Crear clases, marcar asistencia, notificaciones, planes y espacios siguen
+     solo en la app móvil.
+   - W10: menú hamburguesa < 768 px; tablas de Miembros y Pagos pasan a tarjetas.
+   - También: horas en 24 h como en móvil y montos con 2 decimales cuando hay céntimos.
+   - Sin verificar en vivo: registrar un pago real (no se crearon datos) y cancelar una cita
+     (no había citas).
 6. **Lote 6 – Staff móvil:** S2–S6, P3. ✅ Hecho (8 nov 2026):
    - S2: 4 KPIs (2×2) tocables; al coach se le muestra «Reservas este mes» en vez de ingresos,
      y la acción «Registrar pago» es solo admin (RLS de pagos).
