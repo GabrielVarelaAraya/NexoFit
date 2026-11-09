@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, TextInput, FlatList, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, Button, CardListSkeleton, withFadeIn } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
 import { friendlyError } from '../../utils/errors';
-import { notify } from '../../utils/alerts';
+import { notify, showMessage } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -74,14 +74,13 @@ export function JoinGymScreen({ navigation }: Props) {
     await refreshMembership();
     setJoiningId(null);
     const message = `Ya eres miembro de ${gym.name}.`;
-    if (Platform.OS === 'web') {
-      notify(message, '¡Inscripción completa!');
-      navigation.goBack();
-    } else {
-      Alert.alert('¡Inscripción completa!', message, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    }
+    showMessage({
+      title: '¡Inscripción completa!',
+      message,
+      tone: 'success',
+      buttonLabel: 'Listo',
+      onClose: () => navigation.goBack(),
+    });
   };
 
   const term = search.trim().toLowerCase();

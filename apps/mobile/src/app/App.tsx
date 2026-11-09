@@ -8,6 +8,7 @@ import { documentTitleFor } from '../navigation/documentTitle';
 import { setSupabaseConfig } from '@nexofit/core';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { authStorage } from '../utils/authStorage';
 import { useFonts } from 'expo-font';
 import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
@@ -53,23 +54,27 @@ export default function App() {
     return <LoadingView label="Cargando NexoFit…" />;
   }
 
+  // SafeAreaProvider global: el toast y los diálogos (fuera de los navegadores)
+  // necesitan los márgenes del notch.
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <NotificationsProvider>
-          <RealtimeBridge />
-          <ThemeProvider>
-            <NavigationContainer
-              documentTitle={{
-                formatter: (options, route) => documentTitleFor(route?.name, options?.title),
-              }}
-            >
-              <RootNavigator />
-            </NavigationContainer>
-            <DialogHost />
-          </ThemeProvider>
-        </NotificationsProvider>
-      </AuthProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <NotificationsProvider>
+            <RealtimeBridge />
+            <ThemeProvider>
+              <NavigationContainer
+                documentTitle={{
+                  formatter: (options, route) => documentTitleFor(route?.name, options?.title),
+                }}
+              >
+                <RootNavigator />
+              </NavigationContainer>
+              <DialogHost />
+            </ThemeProvider>
+          </NotificationsProvider>
+        </AuthProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }

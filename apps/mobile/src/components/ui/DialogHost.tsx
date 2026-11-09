@@ -1,33 +1,43 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { colors, textStyles } from '@nexofit/core';
 import { Button } from './Button';
+import { FadeIn } from './FadeIn';
 import {
   setDialogListener,
   type ConfirmRequest,
+  type MessageRequest,
   type ToastRequest,
   type ToastTone,
 } from '../../utils/dialogStore';
 
 const TOAST_MS = 4000;
 
-const TONE: Record<ToastTone, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+type IconName = keyof typeof Ionicons.glyphMap;
+
+const TONE: Record<ToastTone, { icon: IconName; color: string }> = {
   info: { icon: 'information-circle', color: colors.azulNexo },
   success: { icon: 'checkmark-circle', color: colors.textSuccess },
   error: { icon: 'alert-circle', color: colors.textError },
 };
 
+type ModalRequest = ConfirmRequest | MessageRequest;
+
 /**
- * Muestra los avisos (toast) y confirmaciones pedidos con notify /
- * confirmAction. Se monta una vez en App; sin él, alerts.ts usa el
- * diálogo del navegador.
+ * Muestra los avisos de NexoFit: toast (aviso corto que se cierra solo) y
+ * tarjetas con ícono para mensajes y confirmaciones, en web y en el teléfono
+ * (antes en nativo salía el Alert del sistema, de texto plano). Se monta una
+ * vez en App; si llegan varias tarjetas seguidas se muestran una tras otra.
  */
 export function DialogHost() {
+  const insets = useContext(SafeAreaInsetsContext);
   const [toast, setToast] = useState<ToastRequest | null>(null);
-  const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
+  const [queue, setQueue] = useState<ModalRequest[]>([]);
   const [busy, setBusy] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const current = queue[0] ?? null;
 
   const hideToast = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -38,46 +48,57 @@ export function DialogHost() {
   useEffect(
     () =>
       setDialogListener((request) => {
-        if (request.kind === 'confirm') {
-          setConfirm(request);
+        if (request.kind === 'toast') {
+          if (timer.current) clearTimeout(timer.current);
+          setToast(request);
+          timer.current = setTimeout(() => setToast(null), TOAST_MS);
           return;
         }
-        if (timer.current) clearTimeout(timer.current);
-        setToast(request);
-        timer.current = setTimeout(() => setToast(null), TOAST_MS);
+        setQueue((items) => [...items, request]);
       }),
     []
   );
 
   useEffect(() => () => hideToast(), [hideToast]);
 
-  const closeConfirm = () => {
-    if (!busy) setConfirm(null);
+  const dismiss = () => {
+    if (busy || !current) return;
+    setQueue((items) => items.slice(1));
+    if (current.kind === 'message') current.onClose?.();
   };
 
   const accept = async () => {
-    if (!confirm) return;
+    if (!current || current.kind !== 'confirm') return;
     setBusy(true);
     try {
-      await confirm.onConfirm();
+      await current.onConfirm();
     } finally {
       setBusy(false);
-      setConfirm(null);
+      setQueue((items) => items.slice(1));
     }
   };
 
-  const tone = toast ? TONE[toast.tone] : null;
+  const toastTone = toast ? TONE[toast.tone] : null;
+  const dialogTone =
+    current?.kind === 'message'
+      ? TONE[current.tone]
+      : current?.destructive
+        ? { icon: 'warning' as IconName, color: colors.textError }
+        : { icon: 'help-circle' as IconName, color: colors.textAccent };
 
   return (
     <>
-      {toast && tone && (
-        <View pointerEvents="box-none" style={styles.toastLayer}>
+      {toast && toastTone && (
+        <View
+          pointerEvents="box-none"
+          style={[styles.toastLayer, { top: (insets?.top ?? 0) + 12 }]}
+        >
           <View
-            style={[styles.toast, { borderLeftColor: tone.color }]}
+            style={[styles.toast, { borderLeftColor: toastTone.color }]}
             accessibilityRole="alert"
             accessibilityLiveRegion="polite"
           >
-            <Ionicons name={tone.icon} size={22} color={tone.color} />
+            <Ionicons name={toastTone.icon} size={22} color={toastTone.color} />
             <View style={styles.toastBody}>
               {toast.title ? <Text style={styles.toastTitle}>{toast.title}</Text> : null}
               <Text style={styles.toastMessage}>{toast.message}</Text>
@@ -94,42 +115,51 @@ export function DialogHost() {
         </View>
       )}
 
-      <Modal
-        visible={confirm !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={closeConfirm}
-      >
-        <Pressable
-          style={styles.overlay}
-          onPress={closeConfirm}
-          accessibilityLabel="Cerrar diálogo"
-        >
+      <Modal visible={current !== null} transparent animationType="fade" onRequestClose={dismiss}>
+        <Pressable style={styles.overlay} onPress={dismiss} accessibilityLabel="Cerrar diálogo">
           {/* Pressable interno: los toques en la tarjeta no cierran el diálogo. */}
-          <Pressable style={styles.card} onPress={() => undefined} accessibilityRole="none">
-            {confirm && (
-              <>
-                <Text style={styles.cardTitle} accessibilityRole="header">
-                  {confirm.title}
-                </Text>
-                <Text style={styles.cardMessage}>{confirm.message}</Text>
-                <View style={styles.actions}>
-                  <Button
-                    title={confirm.cancelLabel}
-                    variant="ghost"
-                    style={styles.action}
-                    disabled={busy}
-                    onPress={closeConfirm}
-                  />
-                  <Button
-                    title={confirm.confirmLabel}
-                    variant={confirm.destructive ? 'danger' : 'primary'}
-                    style={styles.action}
-                    loading={busy}
-                    onPress={() => void accept()}
-                  />
+          <Pressable style={styles.cardWrap} onPress={() => undefined} accessibilityRole="none">
+            {current && (
+              // key: cada tarjeta de la cola vuelve a animar su entrada.
+              <FadeIn key={queue.length + current.kind + current.message} rise={14} duration={220}>
+                <View style={styles.card}>
+                  <View style={[styles.iconWrap, { backgroundColor: dialogTone.color + '1A' }]}>
+                    <Ionicons name={dialogTone.icon} size={32} color={dialogTone.color} />
+                  </View>
+                  {current.title ? (
+                    <Text style={styles.cardTitle} accessibilityRole="header">
+                      {current.title}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.cardMessage}>{current.message}</Text>
+
+                  {current.kind === 'message' ? (
+                    <Button
+                      title={current.buttonLabel}
+                      fullWidth
+                      style={styles.singleAction}
+                      onPress={dismiss}
+                    />
+                  ) : (
+                    <View style={styles.actions}>
+                      <Button
+                        title={current.cancelLabel}
+                        variant="ghost"
+                        style={styles.action}
+                        disabled={busy}
+                        onPress={dismiss}
+                      />
+                      <Button
+                        title={current.confirmLabel}
+                        variant={current.destructive ? 'danger' : 'primary'}
+                        style={styles.action}
+                        loading={busy}
+                        onPress={() => void accept()}
+                      />
+                    </View>
+                  )}
                 </View>
-              </>
+              </FadeIn>
             )}
           </Pressable>
         </Pressable>
@@ -141,7 +171,6 @@ export function DialogHost() {
 const styles = StyleSheet.create({
   toastLayer: {
     position: 'absolute',
-    top: 12,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -171,17 +200,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
+  cardWrap: { width: '100%', maxWidth: 380, alignSelf: 'center' },
   card: {
-    width: '100%',
-    maxWidth: 420,
-    alignSelf: 'center',
+    alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    gap: 12,
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 20,
+    gap: 10,
+    boxShadow: '0px 16px 40px rgba(6, 53, 78, 0.22)',
   },
-  cardTitle: { ...textStyles.title, color: colors.azulNexo },
-  cardMessage: { ...textStyles.body, color: colors.textSecondary },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  iconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  cardTitle: { ...textStyles.h2, color: colors.azulNexo, textAlign: 'center' },
+  cardMessage: {
+    ...textStyles.bodyLg,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  singleAction: { marginTop: 14 },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 14, alignSelf: 'stretch' },
   action: { flex: 1, paddingHorizontal: 12 },
 });

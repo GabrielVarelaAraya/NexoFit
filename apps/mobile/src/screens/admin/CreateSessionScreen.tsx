@@ -4,8 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  Alert,
-  Platform,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
@@ -21,7 +19,7 @@ import {
 } from '../../hooks/useAdmin';
 import { holdLoading } from '../../utils/loading';
 import { toLocalDateStr } from '../../utils/date';
-import { notify } from '../../utils/alerts';
+import { notify, showMessage } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -171,14 +169,13 @@ export function CreateSessionScreen({ route, navigation }: Props) {
       return;
     }
 
-    if (Platform.OS === 'web') {
-      notify('La nueva clase ya aparece en la agenda.', 'Clase creada');
-      navigation.goBack();
-    } else {
-      Alert.alert('Clase creada', 'La nueva clase ya aparece en la agenda.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    }
+    showMessage({
+      title: 'Clase creada',
+      message: 'La nueva clase ya aparece en la agenda.',
+      tone: 'success',
+      buttonLabel: 'Listo',
+      onClose: () => navigation.goBack(),
+    });
   };
 
   if (!orgId) {

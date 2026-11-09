@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, getSupabase } from '@nexofit/core';
@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { bookSession } from '../../hooks/useBooking';
 import { fetchSessionProgram } from '../../hooks/useWorkout';
 import { holdLoading } from '../../utils/loading';
-import { notify } from '../../utils/alerts';
+import { notify, showMessage } from '../../utils/alerts';
 import { Header, Button, Card } from '../../components/ui';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
@@ -128,13 +128,13 @@ export function SessionDetailScreen({ route, navigation }: Props) {
       const message = result.position
         ? `Eres el #${result.position} en la lista.`
         : 'Tu plaza está confirmada.';
-      if (Platform.OS === 'web') {
-        // RN-Web ignora Alert: avisamos y volvemos (el OK nativo no existe aquí).
-        notify(message, title);
-        navigation.goBack();
-      } else {
-        Alert.alert(title, message, [{ text: 'OK', onPress: () => navigation.goBack() }]);
-      }
+      showMessage({
+        title,
+        message,
+        tone: 'success',
+        buttonLabel: 'Listo',
+        onClose: () => navigation.goBack(),
+      });
     } else {
       notify(result.error ?? 'Algo salió mal.', 'Error');
     }

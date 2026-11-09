@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, Platform, Keyboard } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { setSignupIntent } from '../../utils/signupIntent';
 import { friendlyError } from '../../utils/errors';
-import { notify } from '../../utils/alerts';
+import { notify, showMessage } from '../../utils/alerts';
 import { Header, Button } from '../../components/ui';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
@@ -80,14 +80,13 @@ export function CreateGymScreen({ navigation }: Props) {
     // al usuario en la app de cliente con la que llegó a esta pantalla.
     const goToAdmin = () => navigation.reset({ index: 0, routes: [{ name: 'AdminTabs' }] });
     const message = `"${result.name}" ya está disponible en NexoFit (/${result.slug}).`;
-    if (Platform.OS === 'web') {
-      notify(message, '¡Gimnasio creado!');
-      goToAdmin();
-    } else {
-      Alert.alert('¡Gimnasio creado!', message, [
-        { text: 'Gestionar gimnasio', onPress: goToAdmin },
-      ]);
-    }
+    showMessage({
+      title: '¡Gimnasio creado!',
+      message,
+      tone: 'success',
+      buttonLabel: 'Gestionar gimnasio',
+      onClose: goToAdmin,
+    });
   };
 
   return (

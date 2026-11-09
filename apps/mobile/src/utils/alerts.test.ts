@@ -14,37 +14,86 @@ vi.mock('react-native', () => ({
   },
 }));
 
-import { confirmAction, notify } from './alerts';
-import { setDialogListener, toneForTitle, type DialogRequest } from './dialogStore';
+import { confirmAction, notify, showMessage } from './alerts';
+import {
+  LONG_MESSAGE_CHARS,
+  isLongMessage,
+  setDialogListener,
+  toneForTitle,
+  type DialogRequest,
+} from './dialogStore';
 
 beforeEach(() => {
   mockAlert.mockReset();
   mockOS.value = 'ios';
 });
 
-describe('with an in-app dialog host on web', () => {
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe.each(['ios', 'web'])('with the NexoFit dialog host on %s', (platform) => {
   let received: DialogRequest[];
   let unregister: () => void;
 
   beforeEach(() => {
     received = [];
     unregister = setDialogListener((request) => received.push(request));
-    mockOS.value = 'web';
+    mockOS.value = platform;
     vi.stubGlobal('window', { alert: vi.fn(), confirm: vi.fn() });
   });
 
   afterEach(() => unregister());
 
-  it('shows notify as a toast instead of window.alert', () => {
+  it('shows a short notify as a toast, never the system dialog', () => {
     notify('No pudimos guardar.', 'No se pudo guardar');
 
     expect(received).toEqual([
       { kind: 'toast', title: 'No se pudo guardar', message: 'No pudimos guardar.', tone: 'error' },
     ]);
+    expect(mockAlert).not.toHaveBeenCalled();
     expect(window.alert).not.toHaveBeenCalled();
   });
 
-  it('routes confirmAction to the host with defaults', () => {
+  it('shows a long notify as a card with a button so it can be read calmly', () => {
+    // Texto real de «Acerca de NexoFit» (ProfileScreen).
+    const about =
+      'NexoFit es la app para reservar clases, gestionar tus citas, seguir tu progreso y consultar tus reservas en tu gimnasio.';
+    notify(about, 'Acerca de NexoFit');
+
+    expect(received).toEqual([
+      {
+        kind: 'message',
+        title: 'Acerca de NexoFit',
+        message: about,
+        tone: 'info',
+        buttonLabel: 'Entendido',
+      },
+    ]);
+    expect(mockAlert).not.toHaveBeenCalled();
+  });
+
+  it('showMessage opens a card and passes onClose through', () => {
+    const onClose = vi.fn();
+    showMessage({
+      title: 'Entrenamiento guardado',
+      message: 'Tu registro ya aparece en Progreso.',
+      buttonLabel: 'Listo',
+      onClose,
+    });
+
+    expect(received).toHaveLength(1);
+    expect(received[0]).toMatchObject({
+      kind: 'message',
+      tone: 'success',
+      buttonLabel: 'Listo',
+      onClose,
+    });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(mockAlert).not.toHaveBeenCalled();
+  });
+
+  it('routes confirmAction to the host with its defaults', () => {
     const onConfirm = vi.fn();
     confirmAction({ title: 'Borrar', message: '¿Seguro?', confirmLabel: 'Borrar', onConfirm });
 
@@ -53,48 +102,18 @@ describe('with an in-app dialog host on web', () => {
       cancelLabel: 'Cancelar',
       destructive: true,
     });
-    expect(window.confirm).not.toHaveBeenCalled();
+    expect(mockAlert).not.toHaveBeenCalled();
     expect(onConfirm).not.toHaveBeenCalled();
   });
-
-  it('still uses the native dialog on native platforms', () => {
-    mockOS.value = 'ios';
-    notify('Hola', 'Aviso');
-    expect(received).toHaveLength(0);
-    expect(mockAlert).toHaveBeenCalled();
-  });
 });
 
-describe('toneForTitle', () => {
-  it('maps error-like titles to error', () => {
-    expect(toneForTitle('Error')).toBe('error');
-    expect(toneForTitle('No se pudo cancelar')).toBe('error');
-    expect(toneForTitle('Sin conexión')).toBe('error');
-  });
-
-  it('maps success-like titles to success', () => {
-    expect(toneForTitle('Listo')).toBe('success');
-    expect(toneForTitle('Cita reservada')).toBe('success');
-  });
-
-  it('defaults to info', () => {
-    expect(toneForTitle()).toBe('info');
-    expect(toneForTitle('Ayuda y soporte')).toBe('info');
-  });
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe('notify', () => {
-  it('uses the native dialog on native platforms', () => {
+describe('without a host (fallback to the system dialogs)', () => {
+  it('notify uses Alert.alert in native apps', () => {
     notify('Guardado correctamente.', 'Éxito');
-
-    expect(mockAlert).toHaveBeenCalledWith('Éxito', 'Guardado correctamente.');
+    expect(mockAlert).toHaveBeenCalledWith('Éxito', 'Guardado correctamente.', undefined);
   });
 
-  it('falls back to window.alert on web (RN-Web ignores Alert)', () => {
+  it('notify uses window.alert on web (RN-Web ignores Alert)', () => {
     const alert = vi.fn();
     vi.stubGlobal('window', { alert });
     mockOS.value = 'web';
@@ -105,14 +124,35 @@ describe('notify', () => {
     expect(mockAlert).not.toHaveBeenCalled();
   });
 
-  it('shows only the message when there is no title', () => {
+  it('notify shows only the message when there is no title', () => {
     notify('Solo mensaje');
+    expect(mockAlert).toHaveBeenCalledWith('', 'Solo mensaje', undefined);
+  });
 
-    expect(mockAlert).toHaveBeenCalledWith('', 'Solo mensaje');
+  it('showMessage runs onClose from the native OK button', () => {
+    const onClose = vi.fn();
+    showMessage({ title: 'Listo', message: 'Hecho', onClose });
+
+    const buttons = mockAlert.mock.calls[0][2] as { text: string; onPress: () => void }[];
+    expect(buttons[0].text).toBe('OK');
+    buttons[0].onPress();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('showMessage on web alerts and then runs onClose', () => {
+    const alert = vi.fn();
+    const onClose = vi.fn();
+    vi.stubGlobal('window', { alert });
+    mockOS.value = 'web';
+
+    showMessage({ title: 'Listo', message: 'Hecho', onClose });
+
+    expect(alert).toHaveBeenCalledWith('Listo\n\nHecho');
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('confirmAction', () => {
+describe('confirmAction fallback', () => {
   const options = {
     title: 'Cancelar reserva',
     message: '¿Estás seguro?',
@@ -168,5 +208,35 @@ describe('confirmAction', () => {
 
     expect(options.onConfirm).not.toHaveBeenCalled();
     expect(mockAlert).not.toHaveBeenCalled();
+  });
+});
+
+describe('toneForTitle', () => {
+  it('maps error-like titles to error', () => {
+    expect(toneForTitle('Error')).toBe('error');
+    expect(toneForTitle('No se pudo cancelar')).toBe('error');
+    expect(toneForTitle('Sin conexión')).toBe('error');
+  });
+
+  it('maps success-like titles to success', () => {
+    expect(toneForTitle('Listo')).toBe('success');
+    expect(toneForTitle('Cita reservada')).toBe('success');
+    expect(toneForTitle('¡Inscripción completa!')).toBe('success');
+    expect(toneForTitle('Ya registrado')).toBe('success');
+  });
+
+  it('defaults to info', () => {
+    expect(toneForTitle()).toBe('info');
+    expect(toneForTitle('Ayuda y soporte')).toBe('info');
+    expect(toneForTitle('Acerca de NexoFit')).toBe('info');
+  });
+});
+
+describe('isLongMessage', () => {
+  it('keeps short feedback as a toast and moves long text to a card', () => {
+    expect(isLongMessage('Se envió a 3 miembros.')).toBe(false);
+    expect(isLongMessage('x'.repeat(LONG_MESSAGE_CHARS))).toBe(false);
+    expect(isLongMessage('x'.repeat(LONG_MESSAGE_CHARS + 1))).toBe(true);
+    expect(isLongMessage('Línea uno\nLínea dos')).toBe(true);
   });
 });

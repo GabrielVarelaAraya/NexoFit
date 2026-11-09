@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Button, Card, Input } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
-import { confirmAction, notify } from '../../utils/alerts';
+import { confirmAction, notify, showMessage } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -87,14 +87,13 @@ export function SendNotificationScreen({ navigation }: Props) {
     }
 
     const successMessage = `Se envió a ${recipients.length} ${recipients.length === 1 ? 'miembro' : 'miembros'}.`;
-    if (Platform.OS === 'web') {
-      notify(successMessage, 'Notificación enviada');
-      navigation.goBack();
-    } else {
-      Alert.alert('Notificación enviada', successMessage, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    }
+    showMessage({
+      title: 'Notificación enviada',
+      message: successMessage,
+      tone: 'success',
+      buttonLabel: 'Listo',
+      onClose: () => navigation.goBack(),
+    });
   };
 
   const confirmSend = () => {

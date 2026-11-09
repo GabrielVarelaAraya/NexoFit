@@ -4,8 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  Alert,
-  Platform,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
@@ -15,7 +13,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Header, Button, Card, Input } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
 import { friendlyError } from '../../utils/errors';
-import { notify } from '../../utils/alerts';
+import { notify, showMessage } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 
@@ -147,19 +145,13 @@ export function PublishProgramScreen({ navigation }: Props) {
       return;
     }
 
-    if (Platform.OS === 'web') {
-      notify(
-        'Los miembros ya ven el entrenamiento en el detalle de la clase.',
-        'Programa publicado'
-      );
-      navigation.goBack();
-    } else {
-      Alert.alert(
-        'Programa publicado',
-        'Los miembros ya ven el entrenamiento en el detalle de la clase.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    }
+    showMessage({
+      title: 'Programa publicado',
+      message: 'Los miembros ya ven el entrenamiento en el detalle de la clase.',
+      tone: 'success',
+      buttonLabel: 'Listo',
+      onClose: () => navigation.goBack(),
+    });
   };
 
   return (
