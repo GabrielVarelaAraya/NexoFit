@@ -3,7 +3,7 @@ import { colors, fonts } from '@nexofit/core';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card } from '../../components/ui';
-import { confirmAction } from '../../utils/alerts';
+import { confirmAction, notify } from '../../utils/alerts';
 import type { NavigationProp } from '../../types/screens';
 
 type MenuItemType = {
@@ -14,56 +14,30 @@ type MenuItemType = {
   destructive?: boolean;
 };
 
-// Solo entradas que abren una pantalla real: los puntos muertos se eliminaron.
-// Pagos es solo admin: la RLS de payments solo deja ver el libro completo al admin.
-function buildMenuItems(navigation: NavigationProp, isAdmin: boolean): MenuItemType[] {
+// «Más» es configuración y cuenta. Las operaciones del día (nueva clase,
+// publicar programa, notificar, pagos) viven en las acciones rápidas del
+// Dashboard; antes se repetían aquí.
+// Planes y pagos es solo admin: la RLS de payments solo deja ver el libro al admin.
+function buildGymItems(navigation: NavigationProp, isAdmin: boolean): MenuItemType[] {
   return [
-    {
-      icon: 'barbell',
-      title: 'Programas de entreno',
-      subtitle: 'Publica el WOD de una clase',
-      onPress: () => navigation.navigate('PublishProgram'),
-    },
-    {
-      icon: 'notifications',
-      title: 'Notificaciones',
-      subtitle: 'Enviar avisos a miembros',
-      onPress: () => navigation.navigate('SendNotification'),
-    },
-    {
-      icon: 'add',
-      title: 'Nueva clase',
-      subtitle: 'Programar una clase en la agenda',
-      onPress: () => navigation.navigate('CreateSession'),
-    },
     {
       icon: 'business',
       title: 'Espacios y clases',
-      subtitle: 'Tipos de clase, sedes y espacios',
+      subtitle: 'Sedes, espacios y tipos de clase',
       onPress: () => navigation.navigate('GymContent'),
     },
     ...(isAdmin
       ? ([
           {
-            icon: 'cash',
-            title: 'Pagos',
-            subtitle: 'Historial, planes y registrar cobros',
+            icon: 'pricetags',
+            title: 'Planes y pagos',
+            subtitle: 'Planes de membresía e historial de cobros',
             onPress: () => navigation.navigate('Payments'),
           },
         ] satisfies MenuItemType[])
       : []),
   ];
 }
-
-const dangerItems: MenuItemType[] = [
-  {
-    icon: 'log-out',
-    title: 'Cerrar sesión',
-    subtitle: 'Salir de tu cuenta',
-    onPress: () => {},
-    destructive: true,
-  },
-];
 
 export function MoreScreen({ navigation }: { navigation: NavigationProp }) {
   const { membership, signOut } = useAuth();
@@ -72,7 +46,7 @@ export function MoreScreen({ navigation }: { navigation: NavigationProp }) {
   const handleSignOut = () => {
     confirmAction({
       title: 'Cerrar sesión',
-      message: '¿Estás seguro?',
+      message: '¿Seguro que quieres salir de tu cuenta?',
       confirmLabel: 'Cerrar sesión',
       onConfirm: signOut,
     });
@@ -89,36 +63,47 @@ export function MoreScreen({ navigation }: { navigation: NavigationProp }) {
     );
   }
 
-  const itemsWithSignOut = dangerItems.map((item) => ({
-    ...item,
-    onPress: handleSignOut,
-  }));
-
-  const menuItems = buildMenuItems(navigation, membership?.role === 'admin');
+  const isAdmin = membership?.role === 'admin';
+  const accountItems: MenuItemType[] = [
+    {
+      icon: 'help-circle',
+      title: 'Ayuda y soporte',
+      subtitle: 'Cómo resolver dudas frecuentes',
+      onPress: () =>
+        notify(
+          'Para problemas de acceso o datos de miembros, revisa Clientes y Pagos. Si algo no funciona, escríbenos desde el correo de tu cuenta.',
+          'Ayuda y soporte'
+        ),
+    },
+    {
+      icon: 'log-out',
+      title: 'Cerrar sesión',
+      subtitle: 'Salir de tu cuenta',
+      onPress: handleSignOut,
+      destructive: true,
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header
-        title="Más"
-        subtitle={membership?.role === 'admin' ? 'Administración' : 'Entrenador'}
-      />
+      <Header title="Más" subtitle={isAdmin ? 'Administración' : 'Entrenador'} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.groupTitle}>{membership?.organization_name ?? 'Gimnasio'}</Text>
         <Card style={styles.menuCard}>
-          {menuItems.map((item) => (
+          {buildGymItems(navigation, isAdmin).map((item) => (
             <MenuItem key={item.title} item={item} />
           ))}
         </Card>
 
+        <Text style={styles.groupTitle}>Cuenta</Text>
         <Card style={styles.menuCard}>
-          {itemsWithSignOut.map((item) => (
+          {accountItems.map((item) => (
             <MenuItem key={item.title} item={item} />
           ))}
         </Card>
 
-        {/* App Version */}
         <View style={styles.version}>
           <Text style={styles.versionText}>NexoFit v0.1.0</Text>
-          <Text style={styles.versionText}>Build: Development</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -146,15 +131,22 @@ function MenuItem({ item }: { item: MenuItemType }) {
         </Text>
         <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
       </View>
-      <Text style={styles.chevron}>›</Text>
+      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
-  content: { padding: 16, gap: 16, paddingBottom: 40 },
-  menuCard: { gap: 0 },
+  content: { padding: 16, gap: 8, paddingBottom: 40 },
+  groupTitle: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 8,
+    marginLeft: 4,
+  },
+  menuCard: { gap: 0, padding: 0, overflow: 'hidden' },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -164,11 +156,10 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.surfaceSubtle,
     gap: 16,
   },
-  menuIcon: { width: 40, textAlign: 'center' },
+  menuIcon: { width: 28, textAlign: 'center' },
   menuText: { flex: 1, gap: 2 },
   menuTitle: { fontFamily: fonts.uiSemiBold, fontSize: 15, color: colors.azulNexo },
   menuSubtitle: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },
-  chevron: { fontFamily: fonts.uiRegular, fontSize: 20, color: colors.textSecondary },
   version: { alignItems: 'center', paddingVertical: 24, gap: 4 },
   versionText: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },

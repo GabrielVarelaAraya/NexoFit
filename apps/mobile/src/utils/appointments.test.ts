@@ -13,10 +13,33 @@ import {
   gymSlotsForDate,
   splitAppointments,
   bookingStepNumber,
+  groupByGymDay,
   missingStepHint,
   specialtyLabel,
   type AvailabilityBlock,
 } from './appointments';
+
+describe('groupByGymDay', () => {
+  // 8 nov 2026, 10:00 en Costa Rica (16:00 UTC).
+  const now = new Date('2026-11-08T16:00:00Z');
+
+  it('labels today and tomorrow and keeps the input order', () => {
+    const groups = groupByGymDay(
+      [
+        { id: 'a', starts_at: '2026-11-08T20:00:00Z' }, // hoy 14:00 CR
+        { id: 'b', starts_at: '2026-11-09T05:30:00Z' }, // hoy 23:30 CR (aún es 8 en CR)
+        { id: 'c', starts_at: '2026-11-09T15:00:00Z' }, // mañana
+        { id: 'd', starts_at: '2026-11-12T15:00:00Z' },
+      ],
+      now
+    );
+    expect(groups.map((g) => [g.label, g.items.map((i) => i.id)])).toEqual([
+      ['Hoy', ['a', 'b']],
+      ['Mañana', ['c']],
+      [formatGymDate(new Date('2026-11-12T15:00:00Z')), ['d']],
+    ]);
+  });
+});
 
 describe('booking flow helpers', () => {
   it('numbers steps with and without the professional step', () => {

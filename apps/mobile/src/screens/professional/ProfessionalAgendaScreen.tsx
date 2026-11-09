@@ -4,7 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { Button, Card, SegmentedControl } from '../../components/ui';
-import { formatGymDate, formatGymTime, splitAppointments } from '../../utils/appointments';
+import {
+  formatGymDate,
+  formatGymTime,
+  groupByGymDay,
+  splitAppointments,
+} from '../../utils/appointments';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfessional } from '../../hooks/useProfessional';
 import { useRealtimeAppointments } from '../../hooks/useRealtimeAppointments';
@@ -112,55 +117,74 @@ export function ProfessionalAgendaScreen() {
           </Text>
         </Card>
       )}
-      {appointments.map((appointment) => (
-        <Card key={appointment.id} style={styles.card}>
-          <Text style={styles.title}>{appointment.patient?.full_name || 'Cliente'}</Text>
-          <Text style={styles.text}>
-            {appointment.services?.name || 'Consulta'} · {APPOINTMENT_STATUS[appointment.status]}
+      {/* Agrupadas por día («Hoy», «Mañana», «jue 12 nov») con la hora al frente:
+          es lo primero que busca el profesional. Hora del gimnasio, igual que el miembro. */}
+      {groupByGymDay(appointments).map((group) => (
+        <View key={group.key} style={dayStyles.group}>
+          <Text style={dayStyles.label} accessibilityRole="header">
+            {group.label}
           </Text>
-          {/* Mismo formato y hora del gimnasio que ve el miembro en Citas. */}
-          <Text style={styles.text}>
-            {formatGymDate(new Date(appointment.starts_at))} ·{' '}
-            {formatGymTime(new Date(appointment.starts_at))} –{' '}
-            {formatGymTime(new Date(appointment.ends_at))}
-          </Text>
-          {appointment.patient?.phone && (
-            <Text style={styles.text}>Teléfono: {appointment.patient.phone}</Text>
-          )}
-          {appointment.status === 'confirmed' && (
-            <View style={styles.form}>
-              {now >= new Date(appointment.starts_at).getTime() && (
-                <Button
-                  title="Marcar atendida"
-                  disabled={pending !== null}
-                  loading={pending === appointment.id}
-                  onPress={() => void update(appointment, 'attended')}
-                />
+          {group.items.map((appointment) => (
+            <Card key={appointment.id} style={styles.card}>
+              <View style={dayStyles.cardTop}>
+                <Text style={dayStyles.time}>
+                  {formatGymTime(new Date(appointment.starts_at))} –{' '}
+                  {formatGymTime(new Date(appointment.ends_at))}
+                </Text>
+                <Text style={dayStyles.status}>{APPOINTMENT_STATUS[appointment.status]}</Text>
+              </View>
+              <Text style={styles.title}>{appointment.patient?.full_name || 'Cliente'}</Text>
+              <Text style={styles.text}>{appointment.services?.name || 'Consulta'}</Text>
+              {history && (
+                <Text style={styles.text}>{formatGymDate(new Date(appointment.starts_at))}</Text>
               )}
-              {now >= new Date(appointment.ends_at).getTime() && (
-                <Button
-                  title="No asistió"
-                  variant="ghost"
-                  disabled={pending !== null}
-                  onPress={() => void update(appointment, 'no_show')}
-                />
+              {appointment.patient?.phone && (
+                <Text style={styles.text}>Teléfono: {appointment.patient.phone}</Text>
               )}
-              {now < new Date(appointment.starts_at).getTime() && (
-                <Button
-                  title="Cancelar cita"
-                  variant="danger"
-                  disabled={pending !== null}
-                  loading={pending === appointment.id}
-                  onPress={() => cancel(appointment)}
-                />
+              {appointment.status === 'confirmed' && (
+                <View style={styles.form}>
+                  {now >= new Date(appointment.starts_at).getTime() && (
+                    <Button
+                      title="Marcar atendida"
+                      disabled={pending !== null}
+                      loading={pending === appointment.id}
+                      onPress={() => void update(appointment, 'attended')}
+                    />
+                  )}
+                  {now >= new Date(appointment.ends_at).getTime() && (
+                    <Button
+                      title="No asistió"
+                      variant="ghost"
+                      disabled={pending !== null}
+                      onPress={() => void update(appointment, 'no_show')}
+                    />
+                  )}
+                  {now < new Date(appointment.starts_at).getTime() && (
+                    <Button
+                      title="Cancelar cita"
+                      variant="danger"
+                      disabled={pending !== null}
+                      loading={pending === appointment.id}
+                      onPress={() => cancel(appointment)}
+                    />
+                  )}
+                </View>
               )}
-            </View>
-          )}
-        </Card>
+            </Card>
+          ))}
+        </View>
       ))}
     </ProfessionalLayout>
   );
 }
+
+const dayStyles = StyleSheet.create({
+  group: { gap: 10 },
+  label: { fontFamily: fonts.uiSemiBold, fontSize: 15, color: colors.azulNexo, marginTop: 4 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  time: { fontFamily: fonts.uiSemiBold, fontSize: 16, color: colors.textAccent },
+  status: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },
+});
 
 const setupStyles = StyleSheet.create({
   card: { gap: 8, borderColor: colors.warning + '66', backgroundColor: colors.warningBg },

@@ -23,6 +23,7 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
   const orgId = membership?.organization_id ?? '';
   const { stats, activity, upcoming, loading, error, refresh } = useDashboard(orgId);
   const [refreshing, setRefreshing] = useState(false);
+  const isAdmin = membership?.role === 'admin';
 
   // Refrescar al volver a la pestaña: los contadores cambian con reservas y altas.
   useFocusEffect(
@@ -93,6 +94,8 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
         {error && <Text style={styles.error}>{error}</Text>}
 
         {/* Métricas reales (ingresos = pagos registrados del mes, Stage 5) */}
+        {/* 4 KPIs (grid parejo de 2×2; antes la 5.ª quedaba sola) y cada uno
+            lleva a su detalle. «Reservas este mes» pasa a dato de apoyo. */}
         <View style={styles.metricsGrid}>
           <MetricCard
             title="Miembros activos"
@@ -100,28 +103,42 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
             change={
               safeStats.newMembersThisMonth > 0
                 ? `+${safeStats.newMembersThisMonth} este mes`
-                : undefined
+                : 'Sin altas este mes'
             }
-            changePositive
+            changePositive={safeStats.newMembersThisMonth > 0}
             icon="people"
+            onPress={() => navigation.navigate('Clientes')}
           />
+          {isAdmin ? (
+            <MetricCard
+              title="Ingresos del mes"
+              value={formatMoney(safeStats.monthRevenueCents, safeStats.monthRevenueCurrency)}
+              icon="cash"
+              onPress={() => navigation.navigate('Payments')}
+            />
+          ) : (
+            <MetricCard
+              title="Reservas este mes"
+              value={String(safeStats.bookingsThisMonth)}
+              icon="ticket"
+            />
+          )}
           <MetricCard
-            title="Ingresos del mes"
-            value={formatMoney(safeStats.monthRevenueCents, safeStats.monthRevenueCurrency)}
-            icon="cash"
+            title="Clases hoy"
+            value={String(safeStats.sessionsToday)}
+            icon="calendar"
+            onPress={() => navigation.navigate('Agenda')}
           />
-          <MetricCard title="Clases hoy" value={String(safeStats.sessionsToday)} icon="calendar" />
           <MetricCard
             title="Ocupación media"
             value={safeStats.occupancy7d != null ? `${safeStats.occupancy7d}%` : '—'}
-            change={safeStats.occupancy7d != null ? 'Próximos 7 días' : 'Sin clases programadas'}
-            changePositive={safeStats.occupancy7d != null}
+            change={
+              safeStats.occupancy7d != null
+                ? `Próximos 7 días · ${safeStats.bookingsThisMonth} reservas este mes`
+                : 'Sin clases programadas'
+            }
             icon="stats-chart"
-          />
-          <MetricCard
-            title="Reservas este mes"
-            value={String(safeStats.bookingsThisMonth)}
-            icon="ticket"
+            onPress={() => navigation.navigate('Agenda')}
           />
         </View>
 
@@ -146,11 +163,14 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
               label="Enviar notificación"
               onPress={() => navigation.navigate('SendNotification')}
             />
-            <ActionButton
-              icon="cash"
-              label="Pagos"
-              onPress={() => navigation.navigate('Payments')}
-            />
+            {/* Pagos es solo admin (RLS): el coach no veía nada al entrar. */}
+            {isAdmin && (
+              <ActionButton
+                icon="cash"
+                label="Registrar pago"
+                onPress={() => navigation.navigate('Payments')}
+              />
+            )}
             <ActionButton
               icon="color-palette"
               label="Tipos de clase"
@@ -214,16 +234,28 @@ function MetricCard({
   change,
   changePositive,
   icon,
+  onPress,
 }: {
   title: string;
   value: string;
   change?: string;
   changePositive?: boolean;
   icon: keyof typeof Ionicons.glyphMap;
+  onPress?: () => void;
 }) {
   return (
-    <View style={styles.metricCard}>
-      <Ionicons name={icon} size={24} color={colors.azulNexo} />
+    <TouchableOpacity
+      style={styles.metricCard}
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={0.8}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`${title}: ${value}`}
+    >
+      <View style={styles.metricTop}>
+        <Ionicons name={icon} size={24} color={colors.azulNexo} />
+        {onPress && <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />}
+      </View>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricTitle}>{title}</Text>
       {change !== undefined && (
@@ -236,7 +268,7 @@ function MetricCard({
           {change}
         </Text>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -328,12 +360,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
+  metricTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   metricValue: {
     fontFamily: fonts.brand,
     fontSize: 26,

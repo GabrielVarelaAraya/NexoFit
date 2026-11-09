@@ -11,10 +11,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts, type SessionPublic } from '@nexofit/core';
+import { colors, fonts, formatTime, type SessionPublic } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSchedule } from '../../hooks/useBooking';
-import { Header, Card } from '../../components/ui';
+import { Header, Card, SegmentedControl } from '../../components/ui';
+import { StaffAppointmentsList } from './StaffAppointmentsList';
 import { toLocalDateStr } from '../../utils/date';
 import type { NavigationProp } from '../../types/screens';
 
@@ -49,6 +50,7 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
   const { membership } = useAuth();
   const orgId = membership?.organization_id ?? '';
   const [selectedDate, setSelectedDate] = useState(toLocalDateStr());
+  const [view, setView] = useState<'classes' | 'appointments'>('classes');
 
   // Mismo motor que la agenda del miembro: sesiones reales + cupos por RPC.
   const { sessions: rawSessions, loading, error, refresh } = useSchedule(orgId, selectedDate);
@@ -60,11 +62,6 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
   );
 
   const sessions = rawSessions.map(toAgendaSession);
-
-  const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  };
 
   const formatDateLabel = (dateStr: string) => {
     const d = new Date(dateStr + 'T12:00:00');
@@ -87,33 +84,52 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
     const location = item.venue_name ? `${item.venue_name} · ${item.space_name}` : item.space_name;
 
     return (
-      <Card style={styles.sessionCard}>
-        <View style={styles.sessionHeader}>
-          <View style={styles.sessionTime}>
-            <Text style={styles.sessionTimeText}>
-              {formatTime(item.start_at)} – {formatTime(item.end_at)}
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={`Ver lista de ${item.class_name} a las ${formatTime(item.start_at)}`}
+        activeOpacity={0.8}
+        onPress={() =>
+          navigation.navigate('SessionRoster', {
+            sessionId: item.id,
+            title: item.class_name,
+            startsAt: item.start_at,
+            endsAt: item.end_at,
+            capacity,
+          })
+        }
+      >
+        <Card style={styles.sessionCard}>
+          <View style={styles.sessionHeader}>
+            <View style={styles.sessionTime}>
+              <Text style={styles.sessionTimeText}>
+                {formatTime(item.start_at)} – {formatTime(item.end_at)}
+              </Text>
+              <Text style={styles.sessionClass}>{item.class_name}</Text>
+            </View>
+            <View style={styles.sessionMeta}>
+              <Text style={styles.sessionCoach}>Coach: {item.coach_name}</Text>
+              <Text style={styles.sessionLocation}>{location}</Text>
+            </View>
+          </View>
+          <View style={styles.sessionFooter}>
+            <View style={styles.occupancy}>
+              <View
+                style={[
+                  styles.occupancyBar,
+                  {
+                    width: `${pct}%`,
+                    backgroundColor: pct >= 90 ? colors.danger : colors.turquesa,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.occupancyText}>
+              {item.booked}/{capacity} ({pct}%)
             </Text>
-            <Text style={styles.sessionClass}>{item.class_name}</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
           </View>
-          <View style={styles.sessionMeta}>
-            <Text style={styles.sessionCoach}>Coach: {item.coach_name}</Text>
-            <Text style={styles.sessionLocation}>{location}</Text>
-          </View>
-        </View>
-        <View style={styles.sessionFooter}>
-          <View style={styles.occupancy}>
-            <View
-              style={[
-                styles.occupancyBar,
-                { width: `${pct}%`, backgroundColor: pct >= 90 ? colors.danger : colors.turquesa },
-              ]}
-            />
-          </View>
-          <Text style={styles.occupancyText}>
-            {item.booked}/{capacity} ({pct}%)
-          </Text>
-        </View>
-      </Card>
+        </Card>
+      </TouchableOpacity>
     );
   };
 
@@ -160,43 +176,62 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
         }}
       />
 
-      {/* Sessions List */}
-      <FlatList
-        data={sessions}
-        keyExtractor={(s) => s.id}
-        renderItem={renderSession}
-        contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
-        ListEmptyComponent={
-          loading ? (
-            <View style={styles.center}>
-              <ActivityIndicator color={colors.turquesa} />
-              <Text style={styles.emptyHint}>Cargando clases…</Text>
-            </View>
-          ) : error ? (
-            <View style={styles.center}>
-              <Text style={styles.emptyTitle}>No se pudo cargar</Text>
-              <Text style={styles.emptyHint}>{error}</Text>
-            </View>
-          ) : (
-            <View style={styles.center}>
-              <Text style={styles.emptyTitle}>Sin clases programadas</Text>
-              <Text style={styles.emptyHint}>Toca «+» para crear una clase este día.</Text>
-            </View>
-          )
-        }
+      <SegmentedControl
+        style={styles.segment}
+        value={view}
+        onChange={setView}
+        segments={[
+          { value: 'classes', label: 'Clases' },
+          { value: 'appointments', label: 'Citas 1-a-1' },
+        ]}
       />
 
+      {view === 'appointments' ? (
+        <StaffAppointmentsList
+          organizationId={orgId}
+          date={selectedDate}
+          isAdmin={membership?.role === 'admin'}
+        />
+      ) : (
+        <FlatList
+          data={sessions}
+          keyExtractor={(s) => s.id}
+          renderItem={renderSession}
+          contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
+          ListEmptyComponent={
+            loading ? (
+              <View style={styles.center}>
+                <ActivityIndicator color={colors.turquesa} />
+                <Text style={styles.emptyHint}>Cargando clases…</Text>
+              </View>
+            ) : error ? (
+              <View style={styles.center}>
+                <Text style={styles.emptyTitle}>No se pudo cargar</Text>
+                <Text style={styles.emptyHint}>{error}</Text>
+              </View>
+            ) : (
+              <View style={styles.center}>
+                <Text style={styles.emptyTitle}>Sin clases programadas</Text>
+                <Text style={styles.emptyHint}>Toca «+» para crear una clase este día.</Text>
+              </View>
+            )
+          }
+        />
+      )}
+
       {/* FAB for new class */}
-      <TouchableOpacity
-        accessibilityRole="button"
-        style={styles.fab}
-        onPress={() => navigation.navigate('CreateSession', { defaultDate: selectedDate })}
-        accessibilityLabel="Crear clase"
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={30} color={colors.white} />
-      </TouchableOpacity>
+      {view === 'classes' && (
+        <TouchableOpacity
+          accessibilityRole="button"
+          style={styles.fab}
+          onPress={() => navigation.navigate('CreateSession', { defaultDate: selectedDate })}
+          accessibilityLabel="Crear clase"
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={30} color={colors.white} />
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }
@@ -205,6 +240,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
   dateBar: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
   dateBarScroll: { flexGrow: 0, flexShrink: 0 },
+  segment: { marginHorizontal: 16, marginBottom: 12 },
   dateItem: {
     width: 52,
     alignItems: 'center',

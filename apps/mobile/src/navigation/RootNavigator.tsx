@@ -30,6 +30,7 @@ import { BookAppointmentScreen } from '../screens/client/BookAppointmentScreen';
 
 // Admin screens (from admin tabs)
 import { CreateSessionScreen } from '../screens/admin/CreateSessionScreen';
+import { SessionRosterScreen } from '../screens/admin/SessionRosterScreen';
 import { PublishProgramScreen } from '../screens/admin/PublishProgramScreen';
 import { SendNotificationScreen } from '../screens/admin/SendNotificationScreen';
 import { PaymentsScreen } from '../screens/admin/PaymentsScreen';
@@ -87,6 +88,7 @@ function MainNavigator() {
           {access === 'staff' && (
             <>
               <MainStack.Screen name="CreateSession" component={CreateSessionScreen} />
+              <MainStack.Screen name="SessionRoster" component={SessionRosterScreen} />
               <MainStack.Screen name="PublishProgram" component={PublishProgramScreen} />
               <MainStack.Screen name="SendNotification" component={SendNotificationScreen} />
               <MainStack.Screen name="Payments" component={PaymentsScreen} />

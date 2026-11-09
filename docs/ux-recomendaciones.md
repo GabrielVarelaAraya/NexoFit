@@ -129,5 +129,18 @@ Cada lote se puede revisar y commitear por separado.
    - Sin verificar en vivo: tarjeta de próxima cita, banner del profesional en Reservar y la
      lista del profesional (no hay profesional ni citas de prueba en la base).
 5. **Lote 5 – Consola web:** W4 (rutas), W5, W6, W7, W8, W10, W11, luego W3 (paridad).
-6. **Lote 6 – Staff móvil:** S2–S6, P3.
+6. **Lote 6 – Staff móvil:** S2–S6, P3. ✅ Hecho (8 nov 2026):
+   - S2: 4 KPIs (2×2) tocables; al coach se le muestra «Reservas este mes» en vez de ingresos,
+     y la acción «Registrar pago» es solo admin (RLS de pagos).
+   - S3: «Más» con solo configuración (Espacios y clases, Planes y pagos) y cuenta.
+   - S4: sin «Cambiar rol» en la fila propia («Tú»), filtros con wrap y filtro «Admin».
+   - S5: la tarjeta de clase abre «Lista de la clase» con conteos y «Asistió / No vino /
+     Deshacer» desde 15 min antes. Usa el estado de la reserva (reversible), no la tabla
+     `attendance`, que no permite borrar.
+   - S6: Agenda con pestañas «Clases | Citas 1-a-1»; el admin ve las citas del día con cliente y
+     profesional y puede cancelarlas (el miembro recibe aviso). El coach ve un aviso: la RLS no
+     le da acceso a citas.
+   - P3: agenda del profesional agrupada por día («Hoy», «Mañana», fecha) con la hora al frente.
+   - Sin verificar en vivo: marcar asistencia (no había reservas activas) y la lista de citas con
+     datos (no hay citas en la base).
 7. **Transversal continuo:** T6 (accesibilidad) y T12 en cada pantalla que se toque.

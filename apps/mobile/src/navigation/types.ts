@@ -58,6 +58,13 @@ export type MainStackParamList = {
   CreateGym: undefined;
   WorkoutLog: { sessionId?: string; programId?: string };
   CreateSession: { defaultDate?: string } | undefined;
+  SessionRoster: {
+    sessionId: string;
+    title: string;
+    startsAt: string;
+    endsAt: string;
+    capacity: number;
+  };
   GymContent: { form?: 'classType' | 'spaces' } | undefined;
   PublishProgram: undefined;
   SendNotification: undefined;

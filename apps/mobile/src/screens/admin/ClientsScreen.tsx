@@ -41,7 +41,7 @@ export function ClientsScreen() {
   const isAdmin = membership?.role === 'admin';
   const { members, loading, error, refresh, updateRole } = useOrgMembers(orgId);
   const [search, setSearch] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'member' | 'coach' | 'professional'>('all');
+  const [filterRole, setFilterRole] = useState<'all' | RoleType>('all');
   const [changingId, setChangingId] = useState<string | null>(null);
   // Modal de cambio de rol: Alert.alert es no-op en RN-Web, así que el
   // selector vive en un modal in-app (funciona en web y en nativo).
@@ -118,7 +118,10 @@ export function ClientsScreen() {
         </View>
         <View style={styles.memberFooter}>
           <Text style={styles.joinedDate}>Miembro desde: {formatDate(item.joinedAt)}</Text>
-          {isAdmin && (
+          {/* El propio rol no se puede cambiar: no se ofrece la acción (antes se
+              mostraba y daba error al tocarla). */}
+          {isAdmin && item.profileId === user?.id && <Text style={styles.joinedDate}>Tú</Text>}
+          {isAdmin && item.profileId !== user?.id && (
             <TouchableOpacity
               accessibilityRole="button"
               style={[styles.roleSelector, { borderColor: roleColor }]}
@@ -168,7 +171,7 @@ export function ClientsScreen() {
           onChangeText={setSearch}
         />
         <View style={styles.roleFilters}>
-          {(['all', 'member', 'coach', 'professional'] as const).map((role) => (
+          {(['all', 'member', 'coach', 'professional', 'admin'] as const).map((role) => (
             <TouchableOpacity
               accessibilityRole="button"
               key={role}
@@ -308,9 +311,10 @@ const styles = StyleSheet.create({
     borderColor: colors.azulNexo + '20',
     color: colors.azulNexo,
   },
-  roleFilters: { flexDirection: 'row', gap: 8 },
+  // flexWrap: en pantallas angostas los chips bajan de línea en vez de cortarse.
+  roleFilters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   filterChip: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,

@@ -174,6 +174,29 @@ export async function fetchProfessionalWorkspace(
   };
 }
 
+/**
+ * Citas 1-a-1 del gimnasio en un rango (vista del staff en Agenda). La RLS
+ * solo las devuelve al admin; para un coach la lista llega vacía.
+ */
+export async function fetchOrgAppointments(
+  client: Client,
+  organizationId: string,
+  from: Date,
+  to: Date
+): Promise<Appointment[]> {
+  const { data, error } = await client
+    .from('appointments')
+    .select(
+      '*, patient:profiles!appointments_profile_id_fkey(full_name, phone), services(name, duration_minutes)'
+    )
+    .eq('organization_id', organizationId)
+    .gte('starts_at', from.toISOString())
+    .lt('starts_at', to.toISOString())
+    .order('starts_at');
+  if (error) throw error;
+  return data as Appointment[];
+}
+
 export async function updateProfessionalAppointment(
   client: Client,
   organizationId: string,

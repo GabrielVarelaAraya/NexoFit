@@ -5,12 +5,13 @@ import { createDebouncer } from '../utils/debounce';
 /**
  * Llama a `onChange` cuando cambia una cita relevante para la persona:
  * las suyas como miembro (`profile_id`) o las que atiende como profesional
- * (`professional_id`). Escucha la tabla `appointments`, publicada por la
+ * (`professional_id`), o todas las del gimnasio para el admin (`organization_id`).
+ * Escucha la tabla `appointments`, publicada por la
  * migración 000008; Realtime aplica RLS. Sin Realtime no hace nada y las
  * pantallas siguen actualizándose al enfocarse o al deslizar para refrescar.
  */
 export function useRealtimeAppointments(
-  column: 'profile_id' | 'professional_id',
+  column: 'profile_id' | 'professional_id' | 'organization_id',
   value: string | undefined,
   onChange: () => void
 ): void {

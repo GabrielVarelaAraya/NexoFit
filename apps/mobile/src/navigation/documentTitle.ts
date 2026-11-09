@@ -31,6 +31,7 @@ const ROUTE_TITLES: Record<string, string> = {
   WorkoutLog: 'Entrenamiento',
   BookAppointment: 'Reservar cita',
   CreateSession: 'Nueva clase',
+  SessionRoster: 'Lista de la clase',
   PublishProgram: 'Publicar programa',
   SendNotification: 'Enviar notificación',
   Payments: 'Pagos',

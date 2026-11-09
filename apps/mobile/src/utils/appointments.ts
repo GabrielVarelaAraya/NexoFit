@@ -227,6 +227,31 @@ export function splitAppointments<T extends { status: string; starts_at: string;
   return { upcoming, past };
 }
 
+/**
+ * Agrupa citas por día del gimnasio, conservando el orden recibido, con
+ * etiqueta «Hoy» / «Mañana» / «lun 9 nov».
+ */
+export function groupByGymDay<T extends { starts_at: string }>(
+  items: readonly T[],
+  now: Date = new Date()
+): { key: string; label: string; items: T[] }[] {
+  const today = gymDateStr(now);
+  const tomorrow = addDaysStr(today, 1);
+  const groups: { key: string; label: string; items: T[] }[] = [];
+  for (const item of items) {
+    const start = new Date(item.starts_at);
+    const key = gymDateStr(start);
+    let group = groups.find((existing) => existing.key === key);
+    if (!group) {
+      const label = key === today ? 'Hoy' : key === tomorrow ? 'Mañana' : formatGymDate(start);
+      group = { key, label, items: [] };
+      groups.push(group);
+    }
+    group.items.push(item);
+  }
+  return groups;
+}
+
 // ------------------------------------------------------------
 // Flujo de reserva (pantalla BookAppointment)
 // ------------------------------------------------------------
