@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { colors, fonts, getSupabase } from '@nexofit/core';
-import { Header, Button, LoadingView } from '../../components/ui';
+import { Header, Button, Skeleton, SkeletonScreen } from '../../components/ui';
 import { caughtError } from '../../utils/errors';
 import { notify } from '../../utils/alerts';
 import type { NavigationProp } from '../../types/screens';
@@ -28,6 +28,34 @@ import {
 } from '../../utils/appointments';
 
 const DAY_MS = 24 * 60 * 60_000;
+
+/** Pasos de la reserva mientras cargan: opciones, días y horas. */
+function BookingSkeleton({ label }: { label: string }) {
+  return (
+    <SkeletonScreen label={label} style={skeletonStyles.container}>
+      <Skeleton width="35%" height={16} />
+      <Skeleton height={56} radius={12} />
+      <Skeleton width="20%" height={16} style={skeletonStyles.gap} />
+      <View style={skeletonStyles.days}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} width={52} height={72} radius={12} />
+        ))}
+      </View>
+      <View style={skeletonStyles.slots}>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} width={72} height={40} radius={10} />
+        ))}
+      </View>
+    </SkeletonScreen>
+  );
+}
+
+const skeletonStyles = StyleSheet.create({
+  container: { gap: 12 },
+  gap: { marginTop: 8 },
+  days: { flexDirection: 'row', gap: 8 },
+  slots: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+});
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -201,7 +229,7 @@ export function BookAppointmentScreen({ navigation }: { navigation: NavigationPr
       />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {directoryLoading ? (
-          <LoadingView label="Cargando profesionales…" style={styles.center} />
+          <BookingSkeleton label="Cargando profesionales" />
         ) : directoryError ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{directoryError}</Text>
@@ -254,7 +282,7 @@ export function BookAppointmentScreen({ navigation }: { navigation: NavigationPr
               </View>
             )}
 
-            {offerLoading && <LoadingView label="Cargando horarios…" style={styles.center} />}
+            {offerLoading && <BookingSkeleton label="Cargando horarios" />}
 
             {offerError && (
               <View style={styles.errorBox}>

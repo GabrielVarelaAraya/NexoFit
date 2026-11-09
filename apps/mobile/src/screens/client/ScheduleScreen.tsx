@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts } from '@nexofit/core';
+import { colors, fonts, shouldShowSkeleton, useHasLoaded } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSchedule, useBookings } from '../../hooks/useBooking';
-import { Header, Card, Button, LoadingView } from '../../components/ui';
+import { Header, Card, Button, CardListSkeleton, withFadeIn } from '../../components/ui';
 import { toLocalDateStr } from '../../utils/date';
+import { noSwipeProps } from '../../navigation/SwipeTabsLayout';
 import type { NavigationProp, SessionWithType } from '../../types/screens';
 
 interface Props {
@@ -17,6 +18,9 @@ export function ScheduleScreen({ navigation }: Props) {
   const [selectedDate, setSelectedDate] = useState(toLocalDateStr());
   const orgId = membership?.organization_id ?? '';
   const { sessions, loading, error, refresh } = useSchedule(orgId, selectedDate);
+  // Skeleton solo en la primera carga de cada día; al volver a la pestaña se
+  // refresca en silencio sobre las clases que ya se ven.
+  const hasLoaded = useHasLoaded(loading, selectedDate);
   const { bookings, refresh: refreshBookings } = useBookings(user?.id ?? '');
 
   useFocusEffect(
@@ -152,32 +156,35 @@ export function ScheduleScreen({ navigation }: Props) {
     <View style={styles.container}>
       <Header title="Clases" subtitle="Reserva tu próxima sesión" />
 
-      <FlatList
-        data={dates}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        // RN-Web da a los ScrollView flexGrow:1 por defecto: sin acotar la
-        // altura, la tira de días estira los chips hasta pillar gigantes.
-        style={styles.dateBarScroll}
-        contentContainerStyle={styles.dateBar}
-        keyExtractor={(d) => d}
-        renderItem={({ item: dateStr }) => {
-          const { day, num } = formatDateLabel(dateStr);
-          const isSelected = dateStr === selectedDate;
-          return (
-            <TouchableOpacity
-              accessibilityRole="button"
-              style={[styles.dateItem, isSelected && styles.dateItemActive]}
-              onPress={() => setSelectedDate(dateStr)}
-              accessibilityLabel={`Seleccionar ${day} ${num}`}
-              accessibilityState={{ selected: isSelected }}
-            >
-              <Text style={[styles.dateDay, isSelected && styles.dateDayActive]}>{day}</Text>
-              <Text style={[styles.dateNum, isSelected && styles.dateNumActive]}>{num}</Text>
-            </TouchableOpacity>
-          );
-        }}
-      />
+      {/* Tira con scroll horizontal propio: no cambia de pestaña al arrastrarla (web). */}
+      <View {...noSwipeProps}>
+        <FlatList
+          data={dates}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          // RN-Web da a los ScrollView flexGrow:1 por defecto: sin acotar la
+          // altura, la tira de días estira los chips hasta pillar gigantes.
+          style={styles.dateBarScroll}
+          contentContainerStyle={styles.dateBar}
+          keyExtractor={(d) => d}
+          renderItem={({ item: dateStr }) => {
+            const { day, num } = formatDateLabel(dateStr);
+            const isSelected = dateStr === selectedDate;
+            return (
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={[styles.dateItem, isSelected && styles.dateItemActive]}
+                onPress={() => setSelectedDate(dateStr)}
+                accessibilityLabel={`Seleccionar ${day} ${num}`}
+                accessibilityState={{ selected: isSelected }}
+              >
+                <Text style={[styles.dateDay, isSelected && styles.dateDayActive]}>{day}</Text>
+                <Text style={[styles.dateNum, isSelected && styles.dateNumActive]}>{num}</Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
 
       {error && (
         <View style={styles.errorBox}>
@@ -186,13 +193,14 @@ export function ScheduleScreen({ navigation }: Props) {
         </View>
       )}
 
-      {loading ? (
-        <LoadingView label="Cargando clases…" />
+      {shouldShowSkeleton(loading, hasLoaded) ? (
+        // Skeleton con la forma de las tarjetas de clase (con su botón Reservar).
+        <CardListSkeleton label="Cargando clases" count={3} withButton />
       ) : (
         <FlatList
           data={sessions as SessionWithType[]}
           keyExtractor={(s) => s.id}
-          renderItem={renderSession}
+          renderItem={withFadeIn(renderSession)}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
           ListEmptyComponent={

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { colors, fonts } from '@nexofit/core';
+import { colors, fonts, shouldShowSkeleton, useHasLoaded } from '@nexofit/core';
 import {
   Badge,
   Button,
@@ -13,6 +13,7 @@ import {
   StatCard,
   TableSkeleton,
   useNarrow,
+  FadeIn,
 } from '../components/ui';
 import { useOrgMembers, usePayments, type PaymentItem } from '../hooks/useAdminData';
 import type { ScreenProps } from '../app/router';
@@ -63,6 +64,7 @@ const METHOD_OPTIONS: readonly { value: MethodFilter; label: string }[] = [
 // lectura: había que ir a la app móvil para registrar un cobro).
 export function PaymentsScreen({ organizationId, navigate, params, currentUserId }: ScreenProps) {
   const data = usePayments(organizationId);
+  const hasLoaded = useHasLoaded(data.loading);
   const narrow = useNarrow();
   const status = (STATUS_OPTIONS.find((o) => o.value === params.estado)?.value ??
     'all') as StatusFilter;
@@ -115,103 +117,105 @@ export function PaymentsScreen({ organizationId, navigate, params, currentUserId
     URL.revokeObjectURL(url);
   };
 
-  if (data.loading && data.payments.length === 0) {
+  if (shouldShowSkeleton(data.loading, hasLoaded) && data.payments.length === 0) {
     return <TableSkeleton label="Cargando pagos" />;
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.h1}>Pagos</Text>
-        <View style={styles.headerActions}>
-          <Button
-            label="Exportar CSV"
-            variant="ghost"
-            onPress={exportCsv}
-            disabled={filtered.length === 0}
-          />
-          <Button label="Registrar pago" onPress={() => setFilter({ nuevo: '1' }, false)} />
-        </View>
-      </View>
-
-      {data.error && <ErrorText>{data.error}</ErrorText>}
-
-      <View style={styles.statsRow}>
-        <StatCard
-          label="Ingresos cobrados del mes"
-          value={formatMoney(data.monthRevenueCents, data.monthCurrency)}
-        />
-        <StatCard label="Pagos registrados del mes" value={String(data.monthCount)} />
-      </View>
-
-      <Card style={styles.table}>
-        <View style={styles.filters}>
-          <Text style={styles.sectionTitle}>Historial reciente (últimos 50)</Text>
-          <TextInput
-            style={[styles.search, narrow && styles.searchNarrow]}
-            placeholder="Buscar miembro…"
-            placeholderTextColor={colors.textPlaceholder}
-            accessibilityLabel="Buscar pagos por miembro"
-            value={query}
-            onChangeText={setQuery}
-          />
-        </View>
-        <FilterChips<StatusFilter>
-          label="Filtrar por estado"
-          value={status}
-          onChange={(value) => setFilter({ estado: value === 'all' ? '' : value })}
-          options={STATUS_OPTIONS}
-        />
-        <FilterChips<MethodFilter>
-          label="Filtrar por método"
-          value={method}
-          onChange={(value) => setFilter({ metodo: value === 'all' ? '' : value })}
-          options={METHOD_OPTIONS}
-        />
-
-        {filtered.length === 0 ? (
-          data.payments.length === 0 ? (
-            <EmptyState
-              title="Sin pagos registrados"
-              subtitle="Usa «Registrar pago» cuando un miembro pague en recepción."
+    <FadeIn>
+      <View style={styles.container}>
+        <View style={styles.headerRow}>
+          <Text style={styles.h1}>Pagos</Text>
+          <View style={styles.headerActions}>
+            <Button
+              label="Exportar CSV"
+              variant="ghost"
+              onPress={exportCsv}
+              disabled={filtered.length === 0}
             />
-          ) : (
-            <EmptyState title="Sin resultados" subtitle="Ningún pago coincide con los filtros." />
-          )
-        ) : (
-          <View>
-            {!narrow && (
-              <View style={[styles.row, styles.headerTableRow]}>
-                <Text style={[styles.cellDate, styles.headerText]}>Fecha</Text>
-                <Text style={[styles.cellName, styles.headerText]}>Miembro</Text>
-                <Text style={[styles.cellPlan, styles.headerText]}>Plan</Text>
-                <Text style={[styles.cellMethod, styles.headerText]}>Método</Text>
-                <Text style={[styles.cellAmount, styles.headerText]}>Monto</Text>
-                <Text style={[styles.cellStatus, styles.headerText]}>Estado</Text>
-              </View>
-            )}
-            {filtered.map((payment) => (
-              <PaymentRow key={payment.id} payment={payment} narrow={narrow} />
-            ))}
+            <Button label="Registrar pago" onPress={() => setFilter({ nuevo: '1' }, false)} />
           </View>
-        )}
-      </Card>
+        </View>
 
-      <SidePanel
-        visible={registering}
-        title="Registrar pago"
-        onClose={() => setFilter({ nuevo: '' }, false)}
-      >
-        {registering && (
-          <RegisterPaymentForm
-            organizationId={organizationId}
-            data={data}
-            createdBy={currentUserId}
-            onDone={() => setFilter({ nuevo: '' }, false)}
+        {data.error && <ErrorText>{data.error}</ErrorText>}
+
+        <View style={styles.statsRow}>
+          <StatCard
+            label="Ingresos cobrados del mes"
+            value={formatMoney(data.monthRevenueCents, data.monthCurrency)}
           />
-        )}
-      </SidePanel>
-    </View>
+          <StatCard label="Pagos registrados del mes" value={String(data.monthCount)} />
+        </View>
+
+        <Card style={styles.table}>
+          <View style={styles.filters}>
+            <Text style={styles.sectionTitle}>Historial reciente (últimos 50)</Text>
+            <TextInput
+              style={[styles.search, narrow && styles.searchNarrow]}
+              placeholder="Buscar miembro…"
+              placeholderTextColor={colors.textPlaceholder}
+              accessibilityLabel="Buscar pagos por miembro"
+              value={query}
+              onChangeText={setQuery}
+            />
+          </View>
+          <FilterChips<StatusFilter>
+            label="Filtrar por estado"
+            value={status}
+            onChange={(value) => setFilter({ estado: value === 'all' ? '' : value })}
+            options={STATUS_OPTIONS}
+          />
+          <FilterChips<MethodFilter>
+            label="Filtrar por método"
+            value={method}
+            onChange={(value) => setFilter({ metodo: value === 'all' ? '' : value })}
+            options={METHOD_OPTIONS}
+          />
+
+          {filtered.length === 0 ? (
+            data.payments.length === 0 ? (
+              <EmptyState
+                title="Sin pagos registrados"
+                subtitle="Usa «Registrar pago» cuando un miembro pague en recepción."
+              />
+            ) : (
+              <EmptyState title="Sin resultados" subtitle="Ningún pago coincide con los filtros." />
+            )
+          ) : (
+            <View>
+              {!narrow && (
+                <View style={[styles.row, styles.headerTableRow]}>
+                  <Text style={[styles.cellDate, styles.headerText]}>Fecha</Text>
+                  <Text style={[styles.cellName, styles.headerText]}>Miembro</Text>
+                  <Text style={[styles.cellPlan, styles.headerText]}>Plan</Text>
+                  <Text style={[styles.cellMethod, styles.headerText]}>Método</Text>
+                  <Text style={[styles.cellAmount, styles.headerText]}>Monto</Text>
+                  <Text style={[styles.cellStatus, styles.headerText]}>Estado</Text>
+                </View>
+              )}
+              {filtered.map((payment) => (
+                <PaymentRow key={payment.id} payment={payment} narrow={narrow} />
+              ))}
+            </View>
+          )}
+        </Card>
+
+        <SidePanel
+          visible={registering}
+          title="Registrar pago"
+          onClose={() => setFilter({ nuevo: '' }, false)}
+        >
+          {registering && (
+            <RegisterPaymentForm
+              organizationId={organizationId}
+              data={data}
+              createdBy={currentUserId}
+              onDone={() => setFilter({ nuevo: '' }, false)}
+            />
+          )}
+        </SidePanel>
+      </View>
+    </FadeIn>
   );
 }
 

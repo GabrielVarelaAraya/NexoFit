@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, getSupabase } from '@nexofit/core';
-import { Badge, Button, Card, EmptyState, LoadingView } from '../../components/ui';
+import { colors, fonts, getSupabase, shouldShowSkeleton, useHasLoaded } from '@nexofit/core';
+import { Badge, Button, Card, CardListSkeleton, EmptyState, withFadeIn } from '../../components/ui';
 import { useRealtimeAppointments } from '../../hooks/useRealtimeAppointments';
 import { confirmAction, notify } from '../../utils/alerts';
 import { caughtError } from '../../utils/errors';
@@ -41,6 +41,7 @@ export function StaffAppointmentsList({
   const [items, setItems] = useState<Appointment[]>([]);
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
+  const hasLoaded = useHasLoaded(loading, date);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
 
@@ -119,8 +120,8 @@ export function StaffAppointmentsList({
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
       ListHeaderComponent={error ? <Text style={styles.error}>{error}</Text> : null}
       ListEmptyComponent={
-        loading ? (
-          <LoadingView label="Cargando citas…" />
+        shouldShowSkeleton(loading, hasLoaded) ? (
+          <CardListSkeleton label="Cargando citas" count={3} flush />
         ) : error ? null : (
           <EmptyState
             icon="calendar-clear-outline"
@@ -129,7 +130,7 @@ export function StaffAppointmentsList({
           />
         )
       }
-      renderItem={({ item }) => {
+      renderItem={withFadeIn(({ item }: { item: Appointment; index: number }) => {
         const badge = appointmentBadge(item.status, item.ends_at);
         const start = new Date(item.starts_at);
         const end = new Date(item.ends_at);
@@ -161,7 +162,7 @@ export function StaffAppointmentsList({
             )}
           </Card>
         );
-      }}
+      })}
     />
   );
 }

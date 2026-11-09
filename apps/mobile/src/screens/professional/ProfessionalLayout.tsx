@@ -1,13 +1,6 @@
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { colors, fonts } from '@nexofit/core';
-import { Button, Header } from '../../components/ui';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { colors, fonts, shouldShowSkeleton, useHasLoaded } from '@nexofit/core';
+import { Button, CardListSkeleton, FadeIn, Header } from '../../components/ui';
 
 export function ProfessionalLayout({
   title,
@@ -22,6 +15,9 @@ export function ProfessionalLayout({
   refresh: () => Promise<void>;
   children: React.ReactNode;
 }) {
+  // Skeleton solo en la primera carga: al volver a la pestaña el contenido
+  // se mantiene y se refresca debajo (antes lo tapaba el skeleton).
+  const hasLoaded = useHasLoaded(loading);
   return (
     <View style={professionalStyles.container}>
       <Header title={title} />
@@ -35,15 +31,15 @@ export function ProfessionalLayout({
           />
         }
       >
-        {loading ? (
-          <ActivityIndicator size="large" color={colors.textAccent} />
+        {shouldShowSkeleton(loading, hasLoaded) ? (
+          <CardListSkeleton label="Cargando" count={3} flush />
         ) : error ? (
           <View style={professionalStyles.form}>
             <Text style={professionalStyles.error}>{error}</Text>
             <Button title="Reintentar" onPress={() => void refresh()} />
           </View>
         ) : (
-          children
+          <FadeIn>{children}</FadeIn>
         )}
       </ScrollView>
     </View>

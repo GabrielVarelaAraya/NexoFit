@@ -11,4 +11,5 @@ export { SegmentedControl } from './SegmentedControl';
 export type { Segment } from './SegmentedControl';
 export { EmptyState } from './EmptyState';
 export { Sparkline } from './Sparkline';
-export { Skeleton, SkeletonScreen } from './Skeleton';
+export { Skeleton, SkeletonScreen, CardListSkeleton, RowListSkeleton } from './Skeleton';
+export { FadeIn, staggerDelay, withFadeIn } from './FadeIn';

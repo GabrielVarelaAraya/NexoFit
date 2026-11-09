@@ -97,6 +97,93 @@ export function SkeletonScreen({
   );
 }
 
+/**
+ * Lista de tarjetas en carga (Clases, Citas, Mis reservas, Agenda…): título,
+ * subtítulo y, si aplica, un botón a todo el ancho, como las tarjetas reales.
+ */
+export function CardListSkeleton({
+  label,
+  count = 3,
+  withButton = false,
+  flush = false,
+  style,
+}: {
+  label: string;
+  count?: number;
+  withButton?: boolean;
+  /** Sin padding propio: para usarlo dentro de una lista que ya lo tiene. */
+  flush?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <SkeletonScreen label={label} style={[listStyles.list, flush && listStyles.flush, style]}>
+      {Array.from({ length: count }, (_, i) => (
+        <View key={i} style={listStyles.card}>
+          <View style={listStyles.cardTop}>
+            <Skeleton width="50%" height={16} />
+            <Skeleton width={64} height={22} radius={6} />
+          </View>
+          <Skeleton width="75%" height={12} />
+          {withButton && <Skeleton height={44} radius={12} />}
+        </View>
+      ))}
+    </SkeletonScreen>
+  );
+}
+
+/** Lista de filas con avatar (Clientes, lista de clase). */
+export function RowListSkeleton({
+  label,
+  count = 5,
+  flush = false,
+  style,
+}: {
+  label: string;
+  count?: number;
+  flush?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <SkeletonScreen label={label} style={[listStyles.list, flush && listStyles.flush, style]}>
+      {Array.from({ length: count }, (_, i) => (
+        <View key={i} style={listStyles.row}>
+          <Skeleton width={44} height={44} radius={22} />
+          <View style={listStyles.rowText}>
+            <Skeleton width="55%" height={14} />
+            <Skeleton width="35%" height={11} />
+          </View>
+          <Skeleton width={64} height={22} radius={999} />
+        </View>
+      ))}
+    </SkeletonScreen>
+  );
+}
+
 const styles = StyleSheet.create({
   block: { backgroundColor: colors.border },
+});
+
+const listStyles = StyleSheet.create({
+  list: { padding: 16, gap: 12 },
+  flush: { padding: 0 },
+  card: {
+    gap: 10,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  rowText: { flex: 1, gap: 6 },
 });

@@ -3,7 +3,7 @@ import { View, Text, TextInput, FlatList, StyleSheet, Alert, Platform } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { Header, Card, Button, LoadingView } from '../../components/ui';
+import { Header, Card, Button, CardListSkeleton, withFadeIn } from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
 import { friendlyError } from '../../utils/errors';
 import { notify } from '../../utils/alerts';
@@ -129,12 +129,12 @@ export function JoinGymScreen({ navigation }: Props) {
       <FlatList
         data={filtered}
         keyExtractor={(g) => g.id}
-        renderItem={renderGym}
+        renderItem={withFadeIn(renderGym)}
         contentContainerStyle={[styles.list, { paddingBottom: 24 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           loading ? (
-            <LoadingView label="Buscando gimnasios…" style={styles.loading} />
+            <CardListSkeleton label="Buscando gimnasios" count={3} flush />
           ) : !error ? (
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>

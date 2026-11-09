@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Easing,
   Modal,
   ScrollView,
   StyleSheet,
@@ -188,6 +189,59 @@ export function Skeleton({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     />
+  );
+}
+
+/**
+ * Entrada suave del contenido real cuando reemplaza al skeleton: fundido y un
+ * ligero deslizamiento hacia arriba. Con «reducir movimiento» aparece de golpe.
+ */
+export function FadeIn({
+  children,
+  duration = 260,
+  delay = 0,
+  rise = 8,
+  style,
+}: {
+  children: ReactNode;
+  duration?: number;
+  delay?: number;
+  rise?: number;
+  style?: ViewStyle;
+}) {
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      progress.setValue(1);
+      return;
+    }
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration,
+      delay,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [progress, duration, delay]);
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: progress,
+          transform: [
+            { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [rise, 0] }) },
+          ],
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
   );
 }
 

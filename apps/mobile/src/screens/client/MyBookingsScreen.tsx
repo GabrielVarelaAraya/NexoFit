@@ -2,10 +2,17 @@ import { useState, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts, formatTime, formatWeekdayDate as formatDate } from '@nexofit/core';
+import {
+  colors,
+  fonts,
+  formatTime,
+  formatWeekdayDate as formatDate,
+  shouldShowSkeleton,
+  useHasLoaded,
+} from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookings, cancelBooking, cancelWaitlistEntry } from '../../hooks/useBooking';
-import { Header, Card, Button, LoadingView } from '../../components/ui';
+import { Header, Card, Button, CardListSkeleton, withFadeIn } from '../../components/ui';
 import { confirmAction, notify } from '../../utils/alerts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
@@ -16,6 +23,7 @@ type Props = NativeStackScreenProps<MainStackParamList, 'MyBookings'>;
 export function MyBookingsScreen({ navigation }: Props) {
   const { user } = useAuth();
   const { bookings, loading, error, refresh } = useBookings(user?.id ?? '');
+  const hasLoaded = useHasLoaded(loading);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
@@ -108,12 +116,12 @@ export function MyBookingsScreen({ navigation }: Props) {
       <FlatList
         data={bookings as BookingWithSession[]}
         keyExtractor={(b) => b.id}
-        renderItem={renderBooking}
+        renderItem={withFadeIn(renderBooking)}
         contentContainerStyle={[styles.list, { paddingBottom: 24 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
         ListEmptyComponent={
-          loading ? (
-            <LoadingView label="Cargando tus reservas…" style={styles.center} />
+          shouldShowSkeleton(loading, hasLoaded) ? (
+            <CardListSkeleton label="Cargando tus reservas" count={3} withButton flush />
           ) : !error ? (
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>Sin reservas</Text>

@@ -12,7 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { Header, Card, Skeleton, SkeletonScreen } from '../../components/ui';
+import { Header, Card, FadeIn, Skeleton, SkeletonScreen } from '../../components/ui';
 import { useDashboard, type ActivityItem, type UpcomingClass } from '../../hooks/useAdmin';
 import { formatMoney } from '../../hooks/usePayments';
 import { toLocalDateStr } from '../../utils/date';
@@ -81,150 +81,152 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
         title="Dashboard"
         subtitle={membership?.role === 'admin' ? 'Administrador' : 'Entrenador'}
       />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[colors.turquesa]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {error && <Text style={styles.error}>{error}</Text>}
+      <FadeIn style={styles.fill}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.turquesa]}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {error && <Text style={styles.error}>{error}</Text>}
 
-        {/* Métricas reales (ingresos = pagos registrados del mes, Stage 5) */}
-        {/* 4 KPIs (grid parejo de 2×2; antes la 5.ª quedaba sola) y cada uno
+          {/* Métricas reales (ingresos = pagos registrados del mes, Stage 5) */}
+          {/* 4 KPIs (grid parejo de 2×2; antes la 5.ª quedaba sola) y cada uno
             lleva a su detalle. «Reservas este mes» pasa a dato de apoyo. */}
-        <View style={styles.metricsGrid}>
-          <MetricCard
-            title="Miembros activos"
-            value={String(safeStats.activeMembers)}
-            change={
-              safeStats.newMembersThisMonth > 0
-                ? `+${safeStats.newMembersThisMonth} este mes`
-                : 'Sin altas este mes'
-            }
-            changePositive={safeStats.newMembersThisMonth > 0}
-            icon="people"
-            onPress={() => navigation.navigate('Clientes')}
-          />
-          {isAdmin ? (
+          <View style={styles.metricsGrid}>
             <MetricCard
-              title="Ingresos del mes"
-              value={formatMoney(safeStats.monthRevenueCents, safeStats.monthRevenueCurrency)}
-              icon="cash"
-              onPress={() => navigation.navigate('Payments')}
-            />
-          ) : (
-            <MetricCard
-              title="Reservas este mes"
-              value={String(safeStats.bookingsThisMonth)}
-              icon="ticket"
-            />
-          )}
-          <MetricCard
-            title="Clases hoy"
-            value={String(safeStats.sessionsToday)}
-            icon="calendar"
-            onPress={() => navigation.navigate('Agenda')}
-          />
-          <MetricCard
-            title="Ocupación media"
-            value={safeStats.occupancy7d != null ? `${safeStats.occupancy7d}%` : '—'}
-            change={
-              safeStats.occupancy7d != null
-                ? `Próximos 7 días · ${safeStats.bookingsThisMonth} reservas este mes`
-                : 'Sin clases programadas'
-            }
-            icon="stats-chart"
-            onPress={() => navigation.navigate('Agenda')}
-          />
-        </View>
-
-        {/* Quick Actions */}
-        <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Acciones rápidas</Text>
-          <View style={styles.actionsGrid}>
-            <ActionButton
-              icon="add"
-              label="Nueva clase"
-              onPress={() =>
-                navigation.navigate('CreateSession', { defaultDate: toLocalDateStr() })
+              title="Miembros activos"
+              value={String(safeStats.activeMembers)}
+              change={
+                safeStats.newMembersThisMonth > 0
+                  ? `+${safeStats.newMembersThisMonth} este mes`
+                  : 'Sin altas este mes'
               }
+              changePositive={safeStats.newMembersThisMonth > 0}
+              icon="people"
+              onPress={() => navigation.navigate('Clientes')}
             />
-            <ActionButton
-              icon="clipboard"
-              label="Publicar programa"
-              onPress={() => navigation.navigate('PublishProgram')}
-            />
-            <ActionButton
-              icon="notifications"
-              label="Enviar notificación"
-              onPress={() => navigation.navigate('SendNotification')}
-            />
-            {/* Pagos es solo admin (RLS): el coach no veía nada al entrar. */}
-            {isAdmin && (
-              <ActionButton
+            {isAdmin ? (
+              <MetricCard
+                title="Ingresos del mes"
+                value={formatMoney(safeStats.monthRevenueCents, safeStats.monthRevenueCurrency)}
                 icon="cash"
-                label="Registrar pago"
                 onPress={() => navigation.navigate('Payments')}
               />
+            ) : (
+              <MetricCard
+                title="Reservas este mes"
+                value={String(safeStats.bookingsThisMonth)}
+                icon="ticket"
+              />
             )}
-            <ActionButton
-              icon="color-palette"
-              label="Tipos de clase"
-              onPress={() => navigation.navigate('GymContent', { form: 'classType' })}
+            <MetricCard
+              title="Clases hoy"
+              value={String(safeStats.sessionsToday)}
+              icon="calendar"
+              onPress={() => navigation.navigate('Agenda')}
             />
-            <ActionButton
-              icon="business"
-              label="Sedes y espacios"
-              onPress={() => navigation.navigate('GymContent', { form: 'spaces' })}
+            <MetricCard
+              title="Ocupación media"
+              value={safeStats.occupancy7d != null ? `${safeStats.occupancy7d}%` : '—'}
+              change={
+                safeStats.occupancy7d != null
+                  ? `Próximos 7 días · ${safeStats.bookingsThisMonth} reservas este mes`
+                  : 'Sin clases programadas'
+              }
+              icon="stats-chart"
+              onPress={() => navigation.navigate('Agenda')}
             />
           </View>
-        </Card>
 
-        {/* Recent Activity */}
-        <Card style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Actividad reciente</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Agenda')}>
-              <Text style={styles.seeAll}>Ver agenda</Text>
-            </TouchableOpacity>
-          </View>
-          {activity.length > 0 ? (
-            <View style={styles.activityList}>
-              {activity.map((item) => (
-                <ActivityRow key={item.id} item={item} />
-              ))}
+          {/* Quick Actions */}
+          <Card style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Acciones rápidas</Text>
+            <View style={styles.actionsGrid}>
+              <ActionButton
+                icon="add"
+                label="Nueva clase"
+                onPress={() =>
+                  navigation.navigate('CreateSession', { defaultDate: toLocalDateStr() })
+                }
+              />
+              <ActionButton
+                icon="clipboard"
+                label="Publicar programa"
+                onPress={() => navigation.navigate('PublishProgram')}
+              />
+              <ActionButton
+                icon="notifications"
+                label="Enviar notificación"
+                onPress={() => navigation.navigate('SendNotification')}
+              />
+              {/* Pagos es solo admin (RLS): el coach no veía nada al entrar. */}
+              {isAdmin && (
+                <ActionButton
+                  icon="cash"
+                  label="Registrar pago"
+                  onPress={() => navigation.navigate('Payments')}
+                />
+              )}
+              <ActionButton
+                icon="color-palette"
+                label="Tipos de clase"
+                onPress={() => navigation.navigate('GymContent', { form: 'classType' })}
+              />
+              <ActionButton
+                icon="business"
+                label="Sedes y espacios"
+                onPress={() => navigation.navigate('GymContent', { form: 'spaces' })}
+              />
             </View>
-          ) : (
-            <Text style={styles.emptySection}>Todavía no hay actividad registrada.</Text>
-          )}
-        </Card>
+          </Card>
 
-        {/* Upcoming Classes */}
-        <Card style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Próximas clases</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Agenda')}>
-              <Text style={styles.seeAll}>Ver agenda</Text>
-            </TouchableOpacity>
-          </View>
-          {upcoming.length > 0 ? (
-            <View style={styles.upcomingList}>
-              {upcoming.map((cls) => (
-                <UpcomingRow key={cls.id} cls={cls} />
-              ))}
+          {/* Recent Activity */}
+          <Card style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Actividad reciente</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Agenda')}>
+                <Text style={styles.seeAll}>Ver agenda</Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <Text style={styles.emptySection}>
-              Sin clases programadas. Crea una con «Nueva clase».
-            </Text>
-          )}
-        </Card>
-      </ScrollView>
+            {activity.length > 0 ? (
+              <View style={styles.activityList}>
+                {activity.map((item) => (
+                  <ActivityRow key={item.id} item={item} />
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptySection}>Todavía no hay actividad registrada.</Text>
+            )}
+          </Card>
+
+          {/* Upcoming Classes */}
+          <Card style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Próximas clases</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Agenda')}>
+                <Text style={styles.seeAll}>Ver agenda</Text>
+              </TouchableOpacity>
+            </View>
+            {upcoming.length > 0 ? (
+              <View style={styles.upcomingList}>
+                {upcoming.map((cls) => (
+                  <UpcomingRow key={cls.id} cls={cls} />
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptySection}>
+                Sin clases programadas. Crea una con «Nueva clase».
+              </Text>
+            )}
+          </Card>
+        </ScrollView>
+      </FadeIn>
     </SafeAreaView>
   );
 }
@@ -386,6 +388,7 @@ function UpcomingRow({ cls }: { cls: UpcomingClass }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
+  fill: { flex: 1 },
   content: { padding: 16, gap: 16, paddingBottom: 40 },
   error: {
     fontFamily: fonts.uiRegular,

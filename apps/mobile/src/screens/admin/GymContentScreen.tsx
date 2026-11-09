@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '@nexofit/core';
+import { colors, fonts, shouldShowSkeleton, useHasLoaded } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { Header, Button, Card, Input, LoadingView } from '../../components/ui';
+import { Header, Button, Card, Input, CardListSkeleton } from '../../components/ui';
 import { confirmAction, notify } from '../../utils/alerts';
 import { useGymContent, type ClassTypeItem, type SpaceItem } from '../../hooks/useAdmin';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -44,6 +44,7 @@ export function GymContentScreen({ route, navigation }: Props) {
     createSpace,
     deleteSpace,
   } = useGymContent(orgId);
+  const hasLoaded = useHasLoaded(loading);
 
   // Tipo de clase.
   const [ctOpen, setCtOpen] = useState(initialForm === 'classType');
@@ -218,8 +219,8 @@ export function GymContentScreen({ route, navigation }: Props) {
         leftAction={{ label: 'Volver', onPress: () => navigation.goBack() }}
       />
 
-      {loading ? (
-        <LoadingView label="Cargando contenido…" />
+      {shouldShowSkeleton(loading, hasLoaded) ? (
+        <CardListSkeleton label="Cargando contenido" count={3} />
       ) : (
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}

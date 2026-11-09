@@ -7,6 +7,7 @@ import {
   formatTime,
   formatWeekdayDate as formatDate,
   textStyles,
+  useHasLoaded,
 } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookings, useSchedule, useRecommendations } from '../../hooks/useBooking';
@@ -16,7 +17,7 @@ import { stillAhead } from '../../utils/schedule';
 import { formatGymDate, formatGymTime } from '../../utils/appointments';
 import { useNextAppointment } from '../../hooks/useNextAppointment';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Card, Button, Skeleton, SkeletonScreen } from '../../components/ui';
+import { Header, Card, Button, FadeIn, Skeleton, SkeletonScreen } from '../../components/ui';
 import { getSignupIntent } from '../../utils/signupIntent';
 import type { BookingWithSession, SessionWithType, NavigationProp } from '../../types/screens';
 
@@ -44,6 +45,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
   const [refreshing, setRefreshing] = useState(false);
 
   const loading = bookingsLoading || sessionsLoading;
+  const hasLoaded = useHasLoaded(loading);
 
   useFocusEffect(
     useCallback(() => {
@@ -137,7 +139,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
         }
         showsVerticalScrollIndicator={false}
       >
-        {loading && isEmpty ? (
+        {loading && !hasLoaded && isEmpty ? (
           // Skeleton con la forma de Inicio: accesos rápidos y tarjetas de clases.
           <SkeletonScreen label="Cargando tu actividad" style={styles.section}>
             <View style={styles.shortcuts}>
@@ -157,7 +159,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
             ))}
           </SkeletonScreen>
         ) : (
-          <>
+          <FadeIn>
             {/* Resumen: próxima cita y accesos directos a lo que más se hace. */}
             <View style={styles.section}>
               {nextAppointment && (
@@ -296,7 +298,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
                 </Text>
               </View>
             )}
-          </>
+          </FadeIn>
         )}
       </ScrollView>
     </View>

@@ -12,6 +12,7 @@ import {
   SidePanel,
   TableSkeleton,
   useNarrow,
+  FadeIn,
 } from '../components/ui';
 import { useMemberDetail, useOrgMembers, type OrgMember } from '../hooks/useAdminData';
 import type { ScreenProps } from '../app/router';
@@ -78,115 +79,120 @@ export function MembersScreen({ organizationId, navigate, params, currentUserId 
   if (loading) return <TableSkeleton label="Cargando miembros" />;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.h1}>Miembros</Text>
-        <TextInput
-          style={[styles.search, narrow && styles.searchNarrow]}
-          placeholder="Buscar por nombre o teléfono…"
-          placeholderTextColor={colors.textPlaceholder}
-          accessibilityLabel="Buscar miembros"
-          value={query}
-          onChangeText={(text) => {
-            setQuery(text);
-            setParams({ q: text });
-          }}
+    <FadeIn>
+      <View style={styles.container}>
+        <View style={styles.headerRow}>
+          <Text style={styles.h1}>Miembros</Text>
+          <TextInput
+            style={[styles.search, narrow && styles.searchNarrow]}
+            placeholder="Buscar por nombre o teléfono…"
+            placeholderTextColor={colors.textPlaceholder}
+            accessibilityLabel="Buscar miembros"
+            value={query}
+            onChangeText={(text) => {
+              setQuery(text);
+              setParams({ q: text });
+            }}
+          />
+        </View>
+
+        <FilterChips<RoleFilter>
+          label="Filtrar por rol"
+          value={role}
+          onChange={(value) => setParams({ rol: value === 'all' ? '' : value })}
+          options={ROLE_FILTERS.map((option) => ({
+            value: option.value,
+            label: `${option.label} (${counts[option.value]})`,
+          }))}
+        />
+
+        {error && <ErrorText>{error}</ErrorText>}
+        {roleError && <ErrorText>{roleError}</ErrorText>}
+
+        <Card style={styles.table}>
+          {!narrow && (
+            <View style={[styles.row, styles.headerTableRow]}>
+              <Text style={[styles.cellName, styles.headerText]}>Miembro</Text>
+              <Text style={[styles.cellPhone, styles.headerText]}>Teléfono</Text>
+              <Text style={[styles.cellDate, styles.headerText]}>Alta</Text>
+              <Text style={[styles.cellRole, styles.headerText]}>Rol</Text>
+            </View>
+          )}
+
+          {filtered.length === 0 ? (
+            // La búsqueda vacía no significa que la organización no tenga miembros.
+            query.trim() || role !== 'all' ? (
+              <EmptyState
+                title="Sin resultados"
+                subtitle="Ningún miembro coincide con la búsqueda o el filtro."
+              />
+            ) : (
+              <EmptyState
+                title="Sin miembros"
+                subtitle="Aún no hay miembros en esta organización."
+              />
+            )
+          ) : (
+            filtered.map((member) => (
+              <TouchableOpacity
+                key={member.membershipId}
+                style={[styles.row, narrow && styles.rowNarrow]}
+                onPress={() => setParams({ m: member.membershipId }, false)}
+                accessibilityRole="button"
+                accessibilityLabel={`Ver detalle de ${member.fullName}`}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.cellText, styles.cellName, styles.nameText]}>
+                  {member.fullName}
+                </Text>
+                <Text style={[styles.cellText, styles.cellPhone]}>
+                  {member.phone ?? (narrow ? 'Sin teléfono' : '—')}
+                </Text>
+                <Text style={[styles.cellText, styles.cellDate]}>
+                  {narrow ? 'Alta: ' : ''}
+                  {formatShortDate(member.createdAt)}
+                </Text>
+                <View style={styles.cellRole}>
+                  <Badge label={ROLE_LABELS[member.role]} color={ROLE_COLORS[member.role]} />
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </Card>
+
+        <SidePanel
+          visible={selected !== null}
+          title={selected?.fullName ?? ''}
+          onClose={() => setParams({ m: '' }, false)}
+        >
+          {selected && (
+            <MemberPanel
+              organizationId={organizationId}
+              member={selected}
+              isSelf={selected.profileId === currentUserId}
+              onChangeRole={(next) => setPendingRole({ member: selected, role: next })}
+            />
+          )}
+        </SidePanel>
+
+        <ConfirmModal
+          visible={pendingRole !== null}
+          title={pendingRole ? `Cambiar a ${ROLE_LABELS[pendingRole.role]}` : ''}
+          message={
+            pendingRole
+              ? pendingRole.role === 'admin'
+                ? `${pendingRole.member.fullName} tendrá acceso total a la consola, pagos y miembros. Se aplica de inmediato.`
+                : `${pendingRole.member.fullName} pasará a ser ${ROLE_LABELS[pendingRole.role].toLowerCase()}. Se aplica de inmediato.`
+              : ''
+          }
+          confirmLabel="Cambiar rol"
+          destructive={pendingRole?.role === 'admin'}
+          busy={saving}
+          onConfirm={() => void applyRole()}
+          onCancel={() => setPendingRole(null)}
         />
       </View>
-
-      <FilterChips<RoleFilter>
-        label="Filtrar por rol"
-        value={role}
-        onChange={(value) => setParams({ rol: value === 'all' ? '' : value })}
-        options={ROLE_FILTERS.map((option) => ({
-          value: option.value,
-          label: `${option.label} (${counts[option.value]})`,
-        }))}
-      />
-
-      {error && <ErrorText>{error}</ErrorText>}
-      {roleError && <ErrorText>{roleError}</ErrorText>}
-
-      <Card style={styles.table}>
-        {!narrow && (
-          <View style={[styles.row, styles.headerTableRow]}>
-            <Text style={[styles.cellName, styles.headerText]}>Miembro</Text>
-            <Text style={[styles.cellPhone, styles.headerText]}>Teléfono</Text>
-            <Text style={[styles.cellDate, styles.headerText]}>Alta</Text>
-            <Text style={[styles.cellRole, styles.headerText]}>Rol</Text>
-          </View>
-        )}
-
-        {filtered.length === 0 ? (
-          // La búsqueda vacía no significa que la organización no tenga miembros.
-          query.trim() || role !== 'all' ? (
-            <EmptyState
-              title="Sin resultados"
-              subtitle="Ningún miembro coincide con la búsqueda o el filtro."
-            />
-          ) : (
-            <EmptyState title="Sin miembros" subtitle="Aún no hay miembros en esta organización." />
-          )
-        ) : (
-          filtered.map((member) => (
-            <TouchableOpacity
-              key={member.membershipId}
-              style={[styles.row, narrow && styles.rowNarrow]}
-              onPress={() => setParams({ m: member.membershipId }, false)}
-              accessibilityRole="button"
-              accessibilityLabel={`Ver detalle de ${member.fullName}`}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.cellText, styles.cellName, styles.nameText]}>
-                {member.fullName}
-              </Text>
-              <Text style={[styles.cellText, styles.cellPhone]}>
-                {member.phone ?? (narrow ? 'Sin teléfono' : '—')}
-              </Text>
-              <Text style={[styles.cellText, styles.cellDate]}>
-                {narrow ? 'Alta: ' : ''}
-                {formatShortDate(member.createdAt)}
-              </Text>
-              <View style={styles.cellRole}>
-                <Badge label={ROLE_LABELS[member.role]} color={ROLE_COLORS[member.role]} />
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </Card>
-
-      <SidePanel
-        visible={selected !== null}
-        title={selected?.fullName ?? ''}
-        onClose={() => setParams({ m: '' }, false)}
-      >
-        {selected && (
-          <MemberPanel
-            organizationId={organizationId}
-            member={selected}
-            isSelf={selected.profileId === currentUserId}
-            onChangeRole={(next) => setPendingRole({ member: selected, role: next })}
-          />
-        )}
-      </SidePanel>
-
-      <ConfirmModal
-        visible={pendingRole !== null}
-        title={pendingRole ? `Cambiar a ${ROLE_LABELS[pendingRole.role]}` : ''}
-        message={
-          pendingRole
-            ? pendingRole.role === 'admin'
-              ? `${pendingRole.member.fullName} tendrá acceso total a la consola, pagos y miembros. Se aplica de inmediato.`
-              : `${pendingRole.member.fullName} pasará a ser ${ROLE_LABELS[pendingRole.role].toLowerCase()}. Se aplica de inmediato.`
-            : ''
-        }
-        confirmLabel="Cambiar rol"
-        destructive={pendingRole?.role === 'admin'}
-        busy={saving}
-        onConfirm={() => void applyRole()}
-        onCancel={() => setPendingRole(null)}
-      />
-    </View>
+    </FadeIn>
   );
 }
 

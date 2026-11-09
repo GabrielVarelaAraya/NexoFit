@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '@nexofit/core';
+import { colors, fonts, shouldShowSkeleton, useHasLoaded } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { Header, Button, Card, Input, LoadingView } from '../../components/ui';
+import { Header, Button, Card, Input, CardListSkeleton, FadeIn } from '../../components/ui';
 import { confirmAction, notify } from '../../utils/alerts';
 import {
   usePayments,
@@ -41,6 +41,7 @@ export function PaymentsScreen({ navigation }: Props) {
     createPlan,
     archivePlan,
   } = usePayments(orgId);
+  const hasLoaded = useHasLoaded(loading);
   const { members } = useOrgMembers(orgId);
 
   const [tab, setTab] = useState<Tab>('historial');
@@ -239,273 +240,281 @@ export function PaymentsScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {loading && payments.length === 0 && plans.length === 0 ? (
-        <LoadingView label="Cargando pagos…" />
+      {shouldShowSkeleton(loading, hasLoaded) && payments.length === 0 && plans.length === 0 ? (
+        <CardListSkeleton label="Cargando pagos" count={4} />
       ) : (
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {error && <Text style={styles.error}>{error}</Text>}
+        <FadeIn style={styles.fill}>
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {error && <Text style={styles.error}>{error}</Text>}
 
-          {tab === 'historial' ? (
-            <>
-              {/* Resumen del mes */}
-              <Card style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Ingresos de {monthLabel}</Text>
-                <Text style={styles.revenueValue}>
-                  {formatMoney(monthRevenueCents, monthCurrency)}
-                </Text>
-                <Text style={styles.revenueHint}>
-                  {monthCount === 1 ? '1 pago este mes' : `${monthCount} pagos este mes`}
-                </Text>
-              </Card>
-
-              {/* Formulario / alta de pago */}
-              {formOpen ? (
+            {tab === 'historial' ? (
+              <>
+                {/* Resumen del mes */}
                 <Card style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>Registrar pago</Text>
+                  <Text style={styles.sectionTitle}>Ingresos de {monthLabel}</Text>
+                  <Text style={styles.revenueValue}>
+                    {formatMoney(monthRevenueCents, monthCurrency)}
+                  </Text>
+                  <Text style={styles.revenueHint}>
+                    {monthCount === 1 ? '1 pago este mes' : `${monthCount} pagos este mes`}
+                  </Text>
+                </Card>
 
-                  <Text style={styles.fieldLabel}>Miembro</Text>
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    style={styles.selector}
-                    onPress={() => {
-                      setSearch('');
-                      setPickerOpen(true);
-                    }}
-                  >
-                    <Text style={selectedMember ? styles.selectorText : styles.selectorPlaceholder}>
-                      {selectedMember?.fullName ?? 'Seleccionar miembro'}
-                    </Text>
-                  </TouchableOpacity>
+                {/* Formulario / alta de pago */}
+                {formOpen ? (
+                  <Card style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Registrar pago</Text>
 
-                  <Text style={styles.fieldLabel}>Plan (opcional)</Text>
-                  {plans.filter((p) => p.active).length === 0 ? (
+                    <Text style={styles.fieldLabel}>Miembro</Text>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      style={styles.selector}
+                      onPress={() => {
+                        setSearch('');
+                        setPickerOpen(true);
+                      }}
+                    >
+                      <Text
+                        style={selectedMember ? styles.selectorText : styles.selectorPlaceholder}
+                      >
+                        {selectedMember?.fullName ?? 'Seleccionar miembro'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.fieldLabel}>Plan (opcional)</Text>
+                    {plans.filter((p) => p.active).length === 0 ? (
+                      <Text style={styles.hint}>
+                        No hay planes activos. Créalos en la pestaña Planes.
+                      </Text>
+                    ) : (
+                      <View style={styles.chips}>
+                        {plans
+                          .filter((p) => p.active)
+                          .map((p) => (
+                            <TouchableOpacity
+                              accessibilityRole="button"
+                              key={p.id}
+                              style={[styles.chip, planId === p.id && styles.chipActive]}
+                              onPress={() => togglePlan(p.id)}
+                            >
+                              <Text
+                                style={[styles.chipText, planId === p.id && styles.chipTextActive]}
+                              >
+                                {p.name} · {formatMoney(p.priceCents, p.currency)}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                      </View>
+                    )}
+
+                    <Text style={styles.fieldLabel}>Método</Text>
+                    <View style={styles.chips}>
+                      {METHODS.map((m) => (
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          key={m}
+                          style={[styles.chip, method === m && styles.chipActive]}
+                          onPress={() => setMethod(m)}
+                        >
+                          <Text style={[styles.chipText, method === m && styles.chipTextActive]}>
+                            {METHOD_LABELS[m]}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <Text style={styles.fieldLabel}>Moneda</Text>
+                    <View style={styles.chips}>
+                      {CURRENCIES.map((c) => (
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          key={c}
+                          style={[
+                            styles.chip,
+                            paymentCurrency === c && styles.chipActive,
+                            planId !== null && styles.chipDisabled,
+                          ]}
+                          onPress={() => setPaymentCurrency(c)}
+                          disabled={planId !== null}
+                          accessibilityState={{
+                            selected: paymentCurrency === c,
+                            disabled: planId !== null,
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              paymentCurrency === c && styles.chipTextActive,
+                            ]}
+                          >
+                            {c}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    {planId !== null && (
+                      <Text style={styles.hint}>La moneda la define el plan seleccionado.</Text>
+                    )}
+
+                    <Input
+                      label="Monto"
+                      value={amount}
+                      onChangeText={setAmount}
+                      placeholder="0.00"
+                      keyboardType="decimal-pad"
+                    />
+                    <Input
+                      label="Notas (opcional)"
+                      value={notes}
+                      onChangeText={setNotes}
+                      placeholder="Ej. Pago de octubre en efectivo"
+                    />
+
+                    <Button
+                      title="Registrar pago"
+                      fullWidth
+                      loading={saving}
+                      onPress={handleRegister}
+                    />
+                    <Button title="Cancelar" variant="ghost" fullWidth onPress={resetPaymentForm} />
+                  </Card>
+                ) : (
+                  <Button title="Registrar pago" fullWidth onPress={() => setFormOpen(true)} />
+                )}
+
+                {/* Historial */}
+                <Card style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Últimos pagos</Text>
+                  {payments.length === 0 ? (
                     <Text style={styles.hint}>
-                      No hay planes activos. Créalos en la pestaña Planes.
+                      Aún no hay pagos registrados. El primer cobro aparecerá aquí.
                     </Text>
                   ) : (
+                    payments.map((p) => (
+                      <View key={p.id} style={styles.paymentRow}>
+                        <View style={styles.paymentInfo}>
+                          <Text style={styles.paymentMember}>{p.memberName ?? 'Miembro'}</Text>
+                          <Text style={styles.paymentMeta}>
+                            {[p.planName, METHOD_LABELS[p.method as PaymentMethod] ?? p.method]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </Text>
+                        </View>
+                        <View style={styles.paymentRight}>
+                          <Text style={styles.paymentAmount}>
+                            {formatMoney(p.amountCents, p.currency)}
+                          </Text>
+                          <Text style={styles.paymentDate}>
+                            {formatShortDate(p.paidAt)}
+                            {p.status !== 'paid' ? ` · ${STATUS_LABELS[p.status] ?? p.status}` : ''}
+                          </Text>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </Card>
+              </>
+            ) : (
+              <>
+                {/* Crear plan */}
+                {planFormOpen ? (
+                  <Card style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Nuevo plan</Text>
+                    <Input
+                      label="Nombre"
+                      value={planName}
+                      onChangeText={setPlanName}
+                      placeholder="Ej. Plan mensual"
+                      maxLength={40}
+                    />
+                    <Input
+                      label="Precio"
+                      value={planPrice}
+                      onChangeText={setPlanPrice}
+                      placeholder="25.00"
+                      keyboardType="decimal-pad"
+                    />
+                    <Text style={styles.fieldLabel}>Moneda</Text>
                     <View style={styles.chips}>
-                      {plans
-                        .filter((p) => p.active)
-                        .map((p) => (
-                          <TouchableOpacity
-                            accessibilityRole="button"
-                            key={p.id}
-                            style={[styles.chip, planId === p.id && styles.chipActive]}
-                            onPress={() => togglePlan(p.id)}
+                      {CURRENCIES.map((c) => (
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          key={c}
+                          style={[styles.chip, planCurrency === c && styles.chipActive]}
+                          onPress={() => setPlanCurrency(c)}
+                        >
+                          <Text
+                            style={[styles.chipText, planCurrency === c && styles.chipTextActive]}
                           >
-                            <Text
-                              style={[styles.chipText, planId === p.id && styles.chipTextActive]}
-                            >
-                              {p.name} · {formatMoney(p.priceCents, p.currency)}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                    </View>
-                  )}
-
-                  <Text style={styles.fieldLabel}>Método</Text>
-                  <View style={styles.chips}>
-                    {METHODS.map((m) => (
-                      <TouchableOpacity
-                        accessibilityRole="button"
-                        key={m}
-                        style={[styles.chip, method === m && styles.chipActive]}
-                        onPress={() => setMethod(m)}
-                      >
-                        <Text style={[styles.chipText, method === m && styles.chipTextActive]}>
-                          {METHOD_LABELS[m]}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <Text style={styles.fieldLabel}>Moneda</Text>
-                  <View style={styles.chips}>
-                    {CURRENCIES.map((c) => (
-                      <TouchableOpacity
-                        accessibilityRole="button"
-                        key={c}
-                        style={[
-                          styles.chip,
-                          paymentCurrency === c && styles.chipActive,
-                          planId !== null && styles.chipDisabled,
-                        ]}
-                        onPress={() => setPaymentCurrency(c)}
-                        disabled={planId !== null}
-                        accessibilityState={{
-                          selected: paymentCurrency === c,
-                          disabled: planId !== null,
-                        }}
-                      >
-                        <Text
-                          style={[styles.chipText, paymentCurrency === c && styles.chipTextActive]}
-                        >
-                          {c}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  {planId !== null && (
-                    <Text style={styles.hint}>La moneda la define el plan seleccionado.</Text>
-                  )}
-
-                  <Input
-                    label="Monto"
-                    value={amount}
-                    onChangeText={setAmount}
-                    placeholder="0.00"
-                    keyboardType="decimal-pad"
-                  />
-                  <Input
-                    label="Notas (opcional)"
-                    value={notes}
-                    onChangeText={setNotes}
-                    placeholder="Ej. Pago de octubre en efectivo"
-                  />
-
-                  <Button
-                    title="Registrar pago"
-                    fullWidth
-                    loading={saving}
-                    onPress={handleRegister}
-                  />
-                  <Button title="Cancelar" variant="ghost" fullWidth onPress={resetPaymentForm} />
-                </Card>
-              ) : (
-                <Button title="Registrar pago" fullWidth onPress={() => setFormOpen(true)} />
-              )}
-
-              {/* Historial */}
-              <Card style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Últimos pagos</Text>
-                {payments.length === 0 ? (
-                  <Text style={styles.hint}>
-                    Aún no hay pagos registrados. El primer cobro aparecerá aquí.
-                  </Text>
-                ) : (
-                  payments.map((p) => (
-                    <View key={p.id} style={styles.paymentRow}>
-                      <View style={styles.paymentInfo}>
-                        <Text style={styles.paymentMember}>{p.memberName ?? 'Miembro'}</Text>
-                        <Text style={styles.paymentMeta}>
-                          {[p.planName, METHOD_LABELS[p.method as PaymentMethod] ?? p.method]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </Text>
-                      </View>
-                      <View style={styles.paymentRight}>
-                        <Text style={styles.paymentAmount}>
-                          {formatMoney(p.amountCents, p.currency)}
-                        </Text>
-                        <Text style={styles.paymentDate}>
-                          {formatShortDate(p.paidAt)}
-                          {p.status !== 'paid' ? ` · ${STATUS_LABELS[p.status] ?? p.status}` : ''}
-                        </Text>
-                      </View>
-                    </View>
-                  ))
-                )}
-              </Card>
-            </>
-          ) : (
-            <>
-              {/* Crear plan */}
-              {planFormOpen ? (
-                <Card style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>Nuevo plan</Text>
-                  <Input
-                    label="Nombre"
-                    value={planName}
-                    onChangeText={setPlanName}
-                    placeholder="Ej. Plan mensual"
-                    maxLength={40}
-                  />
-                  <Input
-                    label="Precio"
-                    value={planPrice}
-                    onChangeText={setPlanPrice}
-                    placeholder="25.00"
-                    keyboardType="decimal-pad"
-                  />
-                  <Text style={styles.fieldLabel}>Moneda</Text>
-                  <View style={styles.chips}>
-                    {CURRENCIES.map((c) => (
-                      <TouchableOpacity
-                        accessibilityRole="button"
-                        key={c}
-                        style={[styles.chip, planCurrency === c && styles.chipActive]}
-                        onPress={() => setPlanCurrency(c)}
-                      >
-                        <Text
-                          style={[styles.chipText, planCurrency === c && styles.chipTextActive]}
-                        >
-                          {c}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <Input
-                    label="Duración (días)"
-                    value={planDays}
-                    onChangeText={setPlanDays}
-                    placeholder="30"
-                    keyboardType="number-pad"
-                    maxLength={4}
-                  />
-                  <Input
-                    label="Descripción (opcional)"
-                    value={planDesc}
-                    onChangeText={setPlanDesc}
-                    placeholder="Ej. Acceso ilimitado a clases grupales"
-                    maxLength={120}
-                  />
-                  <Button
-                    title="Crear plan"
-                    fullWidth
-                    loading={savingPlan}
-                    onPress={handleCreatePlan}
-                  />
-                  <Button title="Cancelar" variant="ghost" fullWidth onPress={resetPlanForm} />
-                </Card>
-              ) : (
-                <Button title="Nuevo plan" fullWidth onPress={() => setPlanFormOpen(true)} />
-              )}
-
-              {/* Listado de planes */}
-              <Card style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Planes de membresía</Text>
-                {plans.length === 0 ? (
-                  <Text style={styles.hint}>
-                    No hay planes todavía. Crea el primero para poder registrar pagos ligados a él.
-                  </Text>
-                ) : (
-                  plans.map((p) => (
-                    <View key={p.id} style={styles.planRow}>
-                      <View style={styles.paymentInfo}>
-                        <Text style={styles.paymentMember}>
-                          {p.name} {!p.active && '· Archivado'}
-                        </Text>
-                        <Text style={styles.paymentMeta}>
-                          {formatMoney(p.priceCents, p.currency)} · {p.durationDays} días
-                          {p.description ? ` · ${p.description}` : ''}
-                        </Text>
-                      </View>
-                      {p.active && (
-                        <TouchableOpacity onPress={() => handleArchive(p.id, p.name)}>
-                          <Text style={styles.archiveText}>Archivar</Text>
+                            {c}
+                          </Text>
                         </TouchableOpacity>
-                      )}
+                      ))}
                     </View>
-                  ))
+                    <Input
+                      label="Duración (días)"
+                      value={planDays}
+                      onChangeText={setPlanDays}
+                      placeholder="30"
+                      keyboardType="number-pad"
+                      maxLength={4}
+                    />
+                    <Input
+                      label="Descripción (opcional)"
+                      value={planDesc}
+                      onChangeText={setPlanDesc}
+                      placeholder="Ej. Acceso ilimitado a clases grupales"
+                      maxLength={120}
+                    />
+                    <Button
+                      title="Crear plan"
+                      fullWidth
+                      loading={savingPlan}
+                      onPress={handleCreatePlan}
+                    />
+                    <Button title="Cancelar" variant="ghost" fullWidth onPress={resetPlanForm} />
+                  </Card>
+                ) : (
+                  <Button title="Nuevo plan" fullWidth onPress={() => setPlanFormOpen(true)} />
                 )}
-              </Card>
-            </>
-          )}
-        </ScrollView>
+
+                {/* Listado de planes */}
+                <Card style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Planes de membresía</Text>
+                  {plans.length === 0 ? (
+                    <Text style={styles.hint}>
+                      No hay planes todavía. Crea el primero para poder registrar pagos ligados a
+                      él.
+                    </Text>
+                  ) : (
+                    plans.map((p) => (
+                      <View key={p.id} style={styles.planRow}>
+                        <View style={styles.paymentInfo}>
+                          <Text style={styles.paymentMember}>
+                            {p.name} {!p.active && '· Archivado'}
+                          </Text>
+                          <Text style={styles.paymentMeta}>
+                            {formatMoney(p.priceCents, p.currency)} · {p.durationDays} días
+                            {p.description ? ` · ${p.description}` : ''}
+                          </Text>
+                        </View>
+                        {p.active && (
+                          <TouchableOpacity onPress={() => handleArchive(p.id, p.name)}>
+                            <Text style={styles.archiveText}>Archivar</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ))
+                  )}
+                </Card>
+              </>
+            )}
+          </ScrollView>
+        </FadeIn>
       )}
 
       {/* Selector de miembro */}
@@ -563,6 +572,7 @@ export function PaymentsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
+  fill: { flex: 1 },
   tabs: {
     flexDirection: 'row',
     margin: 16,

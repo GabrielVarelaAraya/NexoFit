@@ -3,8 +3,16 @@ import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } fr
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, formatTime, formatWeekdayDate, getSupabase } from '@nexofit/core';
-import { Badge, EmptyState, Header, LoadingView } from '../../components/ui';
+import {
+  colors,
+  fonts,
+  formatTime,
+  formatWeekdayDate,
+  getSupabase,
+  shouldShowSkeleton,
+  useHasLoaded,
+} from '@nexofit/core';
+import { Badge, EmptyState, Header, RowListSkeleton, withFadeIn } from '../../components/ui';
 import type { MainStackParamList } from '../../navigation/types';
 import { caughtError } from '../../utils/errors';
 import { notify } from '../../utils/alerts';
@@ -31,6 +39,7 @@ export function SessionRosterScreen({ route, navigation }: Props) {
   const { sessionId, title, startsAt, endsAt, capacity } = route.params;
   const [entries, setEntries] = useState<RosterEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const hasLoaded = useHasLoaded(loading);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
 
@@ -146,12 +155,12 @@ export function SessionRosterScreen({ route, navigation }: Props) {
       <FlatList
         data={entries}
         keyExtractor={(item) => item.bookingId}
-        renderItem={renderEntry}
+        renderItem={withFadeIn(renderEntry)}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
         ListEmptyComponent={
-          loading ? (
-            <LoadingView label="Cargando la lista…" />
+          shouldShowSkeleton(loading, hasLoaded) ? (
+            <RowListSkeleton label="Cargando la lista" count={4} flush />
           ) : error ? null : (
             <EmptyState
               icon="people-outline"

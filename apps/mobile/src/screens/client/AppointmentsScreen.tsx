@@ -1,13 +1,14 @@
 import { useState, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts, getSupabase } from '@nexofit/core';
+import { colors, fonts, getSupabase, shouldShowSkeleton, useHasLoaded } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   Header,
   Card,
   Button,
-  LoadingView,
+  CardListSkeleton,
+  withFadeIn,
   EmptyState,
   SegmentedControl,
 } from '../../components/ui';
@@ -47,6 +48,7 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const hasLoaded = useHasLoaded(loading);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
@@ -199,14 +201,14 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
       <FlatList
         data={visibleAppointments}
         keyExtractor={(a) => a.id}
-        renderItem={renderAppointment}
+        renderItem={withFadeIn(renderAppointment)}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={() => void fetchAppointments()} />
         }
         ListEmptyComponent={
-          loading ? (
-            <LoadingView label="Cargando tus citas…" style={styles.center} />
+          shouldShowSkeleton(loading, hasLoaded) ? (
+            <CardListSkeleton label="Cargando tus citas" count={3} withButton flush />
           ) : error ? null : appointments.length > 0 ? (
             tab === 'upcoming' ? (
               <EmptyState

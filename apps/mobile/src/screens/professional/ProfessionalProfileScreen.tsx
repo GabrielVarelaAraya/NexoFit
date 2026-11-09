@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text } from 'react-native';
-import { getSupabase, colors } from '@nexofit/core';
-import { Button, Card, Input } from '../../components/ui';
+import { Text } from 'react-native';
+import { getSupabase } from '@nexofit/core';
+import { Button, Card, Input, Skeleton, SkeletonScreen } from '../../components/ui';
 import { ProfileScreen } from '../client/ProfileScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfessional } from '../../hooks/useProfessional';
@@ -44,7 +44,10 @@ function ProfessionalDetails() {
     <Card style={styles.form}>
       <Text style={styles.title}>Ficha profesional</Text>
       {loading ? (
-        <ActivityIndicator color={colors.textAccent} />
+        <SkeletonScreen label="Cargando tu ficha" style={styles.form}>
+          <Skeleton height={48} radius={12} />
+          <Skeleton height={100} radius={12} />
+        </SkeletonScreen>
       ) : error ? (
         <>
           <Text style={styles.error}>{error}</Text>

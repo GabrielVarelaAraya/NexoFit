@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   TextInput,
   Keyboard,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,12 +18,14 @@ import {
   formatDayMonth,
   formatMonthShort,
   formatWeekdayDate,
+  shouldShowSkeleton,
   textStyles,
+  useHasLoaded,
 } from '@nexofit/core';
 import { Sparkline } from '../../components/ui';
 import { METRIC_DIRECTION, formatDelta, metricSeries, seriesTrend } from '../../utils/progress';
 import { useAuth } from '../../contexts/AuthContext';
-import { Header, Card, Button, LoadingView } from '../../components/ui';
+import { Header, Card, Button, FadeIn, Skeleton, SkeletonScreen } from '../../components/ui';
 import { useBodyMetrics, type MeasurementWithValues } from '../../hooks/useProgress';
 import { useWorkouts } from '../../hooks/useWorkout';
 import { toLocalDateStr } from '../../utils/date';
@@ -104,9 +105,14 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
   const previousMetrics = toMetricList(measurements[1]);
   // Transición inicial: sin datos aún, mostrar el spinner a pantalla completa
   // en lugar de una pantalla vacía.
+  // Skeleton solo mientras NO haya habido una primera carga. Antes se decidía
+  // por «no hay datos» y, al volver a la pestaña, los bloques internos
+  // (medidas, récords, entrenamientos) parpadeaban sobre datos ya cargados.
+  const bodyLoaded = useHasLoaded(loading);
+  const workoutsLoaded = useHasLoaded(workoutsLoading);
   const initialLoading =
-    (loading && measurements.length === 0 && !error) ||
-    (workoutsLoading && logs.length === 0 && records.length === 0 && !workoutsError);
+    (shouldShowSkeleton(loading, bodyLoaded) && !error) ||
+    (shouldShowSkeleton(workoutsLoading, workoutsLoaded) && !workoutsError);
 
   const findTrend = (name: string) => {
     const current = latestMetrics.find((m) => m.name === name)?.value;
@@ -201,151 +207,156 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
         </View>
       )}
       {initialLoading ? (
-        <LoadingView label="Cargando tu progreso…" />
+        <ProgressSkeleton />
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Evolución: tendencia de las medidas clave (antes 4 tarjetas que
+        <FadeIn style={styles.fill}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            {/* Evolución: tendencia de las medidas clave (antes 4 tarjetas que
               repetían los valores de «Medidas corporales»). */}
-          {measurements.length > 0 && (
+            {measurements.length > 0 && (
+              <Card style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Evolución</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {measurements.length === 1
+                    ? 'Registra otra medición para ver tu tendencia.'
+                    : `Últimas ${Math.min(measurements.length, 8)} mediciones`}
+                </Text>
+                {TREND_METRICS.map((name) => (
+                  <TrendRow
+                    key={name}
+                    name={name}
+                    unit={METRIC_DEFINITIONS.find((m) => m.name === name)?.unit ?? ''}
+                    series={metricSeries(measurements, name)}
+                  />
+                ))}
+              </Card>
+            )}
+
+            {/* Body Metrics */}
             <Card style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Evolución</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Medidas corporales</Text>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  style={styles.addChip}
+                  onPress={openModal}
+                  accessibilityLabel="Añadir medida"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.addChipText}>+ Añadir</Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.sectionSubtitle}>
-                {measurements.length === 1
-                  ? 'Registra otra medición para ver tu tendencia.'
-                  : `Últimas ${Math.min(measurements.length, 8)} mediciones`}
+                Última actualización:{' '}
+                {measurements[0]?.measured_at
+                  ? formatDate(measurements[0].measured_at)
+                  : 'Sin datos'}
               </Text>
-              {TREND_METRICS.map((name) => (
-                <TrendRow
-                  key={name}
-                  name={name}
-                  unit={METRIC_DEFINITIONS.find((m) => m.name === name)?.unit ?? ''}
-                  series={metricSeries(measurements, name)}
-                />
-              ))}
+
+              {shouldShowSkeleton(loading, bodyLoaded) ? (
+                <MetricsGridSkeleton />
+              ) : latestMetrics.length > 0 ? (
+                <View style={styles.metricsGrid}>
+                  {latestMetrics.map((metric) => (
+                    <MetricItem
+                      key={metric.name}
+                      label={metric.name}
+                      value={metric.value}
+                      unit={metric.unit}
+                      trend={findTrend(metric.name)}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.noMetrics}>
+                  <Text style={styles.noMetricsText}>No hay medidas registradas</Text>
+                  <Text style={styles.noMetricsSubtext}>
+                    Presiona "+ Añadir" para registrar tu primera medición
+                  </Text>
+                </View>
+              )}
             </Card>
-          )}
 
-          {/* Body Metrics */}
-          <Card style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Medidas corporales</Text>
-              <TouchableOpacity
-                accessibilityRole="button"
-                style={styles.addChip}
-                onPress={openModal}
-                accessibilityLabel="Añadir medida"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={styles.addChipText}>+ Añadir</Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.sectionSubtitle}>
-              Última actualización:{' '}
-              {measurements[0]?.measured_at ? formatDate(measurements[0].measured_at) : 'Sin datos'}
-            </Text>
-
-            {loading ? (
-              <ActivityIndicator style={styles.loading} color={colors.turquesa} />
-            ) : latestMetrics.length > 0 ? (
-              <View style={styles.metricsGrid}>
-                {latestMetrics.map((metric) => (
-                  <MetricItem
-                    key={metric.name}
-                    label={metric.name}
-                    value={metric.value}
-                    unit={metric.unit}
-                    trend={findTrend(metric.name)}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.noMetrics}>
-                <Text style={styles.noMetricsText}>No hay medidas registradas</Text>
-                <Text style={styles.noMetricsSubtext}>
-                  Presiona "+ Añadir" para registrar tu primera medición
+            {/* Personal Records */}
+            <Card style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Récords personales</Text>
+              {shouldShowSkeleton(workoutsLoading, workoutsLoaded) ? (
+                <RowsSkeleton rows={2} />
+              ) : records.length > 0 ? (
+                <View style={styles.recordsList}>
+                  {records.map((record) => (
+                    <View key={record.id} style={styles.recordRow}>
+                      <Text style={styles.recordName}>
+                        {record.exercise_library?.name ?? 'Ejercicio'}
+                      </Text>
+                      <Text style={styles.recordValue}>
+                        {Number(record.value_numeric)} {record.unit}
+                      </Text>
+                      <Text style={styles.recordDate}>{formatDayMonth(record.achieved_at)}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.noHistory}>
+                  Sin récords aún — registra entrenamientos con peso y aquí aparecerá tu mejor
+                  marca.
                 </Text>
-              </View>
-            )}
-          </Card>
+              )}
+              {workoutsError && <Text style={styles.workoutsError}>{workoutsError}</Text>}
+            </Card>
 
-          {/* Personal Records */}
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Récords personales</Text>
-            {workoutsLoading ? (
-              <ActivityIndicator style={styles.loading} color={colors.turquesa} />
-            ) : records.length > 0 ? (
-              <View style={styles.recordsList}>
-                {records.map((record) => (
-                  <View key={record.id} style={styles.recordRow}>
-                    <Text style={styles.recordName}>
-                      {record.exercise_library?.name ?? 'Ejercicio'}
-                    </Text>
-                    <Text style={styles.recordValue}>
-                      {Number(record.value_numeric)} {record.unit}
-                    </Text>
-                    <Text style={styles.recordDate}>{formatDayMonth(record.achieved_at)}</Text>
-                  </View>
-                ))}
+            {/* Workout History */}
+            <Card style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Mis entrenamientos</Text>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  style={styles.addChip}
+                  onPress={() => navigation.navigate('WorkoutLog', {})}
+                  accessibilityLabel="Registrar entrenamiento"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.addChipText}>+ Entrenamiento</Text>
+                </TouchableOpacity>
               </View>
-            ) : (
-              <Text style={styles.noHistory}>
-                Sin récords aún — registra entrenamientos con peso y aquí aparecerá tu mejor marca.
-              </Text>
-            )}
-            {workoutsError && <Text style={styles.workoutsError}>{workoutsError}</Text>}
-          </Card>
+              {shouldShowSkeleton(workoutsLoading, workoutsLoaded) ? (
+                <RowsSkeleton rows={2} />
+              ) : logs.length > 0 ? (
+                <View style={styles.historyList}>
+                  {logs.map((log) => (
+                    <WorkoutLogRow
+                      key={log.id}
+                      log={log}
+                      expanded={expandedLogId === log.id}
+                      onToggle={() => setExpandedLogId((prev) => (prev === log.id ? null : log.id))}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.noMetrics}>
+                  <Text style={styles.noMetricsText}>Sin entrenamientos registrados</Text>
+                  <Text style={styles.noMetricsSubtext}>
+                    Toca «+ Entrenamiento» para registrar tu primera sesión.
+                  </Text>
+                </View>
+              )}
+            </Card>
 
-          {/* Workout History */}
-          <Card style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Mis entrenamientos</Text>
-              <TouchableOpacity
-                accessibilityRole="button"
-                style={styles.addChip}
-                onPress={() => navigation.navigate('WorkoutLog', {})}
-                accessibilityLabel="Registrar entrenamiento"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={styles.addChipText}>+ Entrenamiento</Text>
-              </TouchableOpacity>
-            </View>
-            {workoutsLoading ? (
-              <ActivityIndicator style={styles.loading} color={colors.turquesa} />
-            ) : logs.length > 0 ? (
-              <View style={styles.historyList}>
-                {logs.map((log) => (
-                  <WorkoutLogRow
-                    key={log.id}
-                    log={log}
-                    expanded={expandedLogId === log.id}
-                    onToggle={() => setExpandedLogId((prev) => (prev === log.id ? null : log.id))}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.noMetrics}>
-                <Text style={styles.noMetricsText}>Sin entrenamientos registrados</Text>
-                <Text style={styles.noMetricsSubtext}>
-                  Toca «+ Entrenamiento» para registrar tu primera sesión.
-                </Text>
-              </View>
-            )}
-          </Card>
-
-          {/* Measurements History */}
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Historial de medidas</Text>
-            {measurements.length > 0 ? (
-              <View style={styles.historyList}>
-                {measurements.slice(0, 10).map((m) => (
-                  <HistoryItem key={m.id} measurement={m} onDelete={handleDeleteMeasurement} />
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.noHistory}>No hay historial de medidas</Text>
-            )}
-          </Card>
-        </ScrollView>
+            {/* Measurements History */}
+            <Card style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Historial de medidas</Text>
+              {measurements.length > 0 ? (
+                <View style={styles.historyList}>
+                  {measurements.slice(0, 10).map((m) => (
+                    <HistoryItem key={m.id} measurement={m} onDelete={handleDeleteMeasurement} />
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.noHistory}>No hay historial de medidas</Text>
+              )}
+            </Card>
+          </ScrollView>
+        </FadeIn>
       )}
 
       {/* Add Measurement Modal */}
@@ -488,6 +499,87 @@ function WorkoutLogRow({
   );
 }
 
+/** Cuadrícula 2×3 de medidas mientras cargan (dentro de «Medidas corporales»). */
+function MetricsGridSkeleton() {
+  return (
+    <View style={skeletonStyles.grid}>
+      {[0, 1, 2, 3].map((i) => (
+        <View key={i} style={skeletonStyles.metric}>
+          <Skeleton width="40%" height={11} />
+          <Skeleton width="60%" height={20} />
+          <Skeleton width="50%" height={11} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Filas simples de listas (récords, entrenamientos) mientras cargan. */
+function RowsSkeleton({ rows }: { rows: number }) {
+  return (
+    <View style={skeletonStyles.rows}>
+      {Array.from({ length: rows }, (_, i) => (
+        <View key={i} style={skeletonStyles.row}>
+          <Skeleton width="45%" height={14} />
+          <Skeleton width="20%" height={14} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Misma forma que Progreso: Evolución, Medidas, Récords y Entrenamientos. */
+function ProgressSkeleton() {
+  return (
+    <SkeletonScreen label="Cargando tu progreso" style={styles.content}>
+      <Card style={styles.sectionCard}>
+        <Skeleton width="35%" height={16} />
+        <Skeleton width="50%" height={12} />
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={skeletonStyles.trend}>
+            <View style={skeletonStyles.trendText}>
+              <Skeleton width="30%" height={11} />
+              <Skeleton width="45%" height={22} />
+              <Skeleton width="60%" height={12} />
+            </View>
+            <Skeleton width={72} height={36} radius={6} />
+          </View>
+        ))}
+      </Card>
+      <Card style={styles.sectionCard}>
+        <Skeleton width="50%" height={16} />
+        <MetricsGridSkeleton />
+      </Card>
+      <Card style={styles.sectionCard}>
+        <Skeleton width="40%" height={16} />
+        <RowsSkeleton rows={2} />
+      </Card>
+    </SkeletonScreen>
+  );
+}
+
+const skeletonStyles = StyleSheet.create({
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
+  metric: {
+    width: '47%',
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceMuted,
+  },
+  rows: { gap: 12, marginTop: 8 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  trend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceSubtle,
+  },
+  trendText: { flex: 1, gap: 6 },
+});
+
 const TREND_METRICS = ['Peso', 'Grasa corporal', 'Masa muscular'] as const;
 
 const TONE_COLORS = {
@@ -587,6 +679,7 @@ function HistoryItem({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
+  fill: { flex: 1 },
   content: { padding: 16, gap: 16, paddingBottom: 40 },
   errorBox: {
     margin: 16,
@@ -670,7 +763,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.uiSemiBold,
     fontSize: 12,
   },
-  loading: { marginVertical: 24 },
   addButton: { marginTop: 8 },
   noMetrics: {
     alignItems: 'center',

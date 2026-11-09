@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, fonts, formatWeekdayDate } from '@nexofit/core';
+import { colors, fonts, formatWeekdayDate, shouldShowSkeleton, useHasLoaded } from '@nexofit/core';
 import {
   Badge,
   Button,
@@ -8,6 +8,7 @@ import {
   ConfirmModal,
   EmptyState,
   ErrorText,
+  FadeIn,
   FilterChips,
   Skeleton,
   SkeletonScreen,
@@ -43,6 +44,9 @@ export function AgendaScreen({ organizationId, navigate, params }: ScreenProps) 
   const date = /^\d{4}-\d{2}-\d{2}$/.test(params.dia ?? '') ? params.dia : today;
   const tab: Tab = params.ver === 'citas' ? 'citas' : 'clases';
   const agenda = useAgenda(organizationId, date);
+  // Skeleton solo en la primera carga de cada día: cancelar una cita o
+  // actualizar ya no tapa la lista con el skeleton.
+  const hasLoaded = useHasLoaded(agenda.loading, date);
   const [toCancel, setToCancel] = useState<AgendaAppointment | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -115,7 +119,7 @@ export function AgendaScreen({ organizationId, navigate, params }: ScreenProps) 
       {agenda.error && <ErrorText>{agenda.error}</ErrorText>}
       {cancelError && <ErrorText>{cancelError}</ErrorText>}
 
-      {agenda.loading ? (
+      {shouldShowSkeleton(agenda.loading, hasLoaded) ? (
         <SkeletonScreen label="Cargando agenda" style={styles.list}>
           {[0, 1, 2].map((i) => (
             <Card key={i} style={styles.card}>
@@ -136,8 +140,10 @@ export function AgendaScreen({ organizationId, navigate, params }: ScreenProps) 
           </Card>
         ) : (
           <View style={styles.list}>
-            {agenda.classes.map((cls) => (
-              <ClassCard key={cls.id} cls={cls} />
+            {agenda.classes.map((cls, index) => (
+              <FadeIn key={cls.id} delay={Math.min(index, 6) * 45}>
+                <ClassCard cls={cls} />
+              </FadeIn>
             ))}
           </View>
         )
@@ -150,12 +156,13 @@ export function AgendaScreen({ organizationId, navigate, params }: ScreenProps) 
         </Card>
       ) : (
         <View style={styles.list}>
-          {agenda.appointments.map((appointment) => (
-            <AppointmentCard
-              key={appointment.id}
-              appointment={appointment}
-              onCancel={() => setToCancel(appointment)}
-            />
+          {agenda.appointments.map((appointment, index) => (
+            <FadeIn key={appointment.id} delay={Math.min(index, 6) * 45}>
+              <AppointmentCard
+                appointment={appointment}
+                onCancel={() => setToCancel(appointment)}
+              />
+            </FadeIn>
           ))}
         </View>
       )}

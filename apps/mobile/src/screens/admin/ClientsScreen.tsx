@@ -13,10 +13,17 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts, formatDate, type RoleType } from '@nexofit/core';
+import {
+  colors,
+  fonts,
+  formatDate,
+  shouldShowSkeleton,
+  useHasLoaded,
+  type RoleType,
+} from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrgMembers, type OrgMember } from '../../hooks/useAdmin';
-import { Header, Card, Button } from '../../components/ui';
+import { Header, Card, Button, RowListSkeleton, withFadeIn } from '../../components/ui';
 import { notify } from '../../utils/alerts';
 
 const roleLabels: Record<string, string> = {
@@ -40,6 +47,7 @@ export function ClientsScreen() {
   const orgId = membership?.organization_id ?? '';
   const isAdmin = membership?.role === 'admin';
   const { members, loading, error, refresh, updateRole } = useOrgMembers(orgId);
+  const hasLoaded = useHasLoaded(loading);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | RoleType>('all');
   const [changingId, setChangingId] = useState<string | null>(null);
@@ -199,15 +207,12 @@ export function ClientsScreen() {
       <FlatList
         data={filteredMembers}
         keyExtractor={(m) => m.membershipId}
-        renderItem={renderMember}
+        renderItem={withFadeIn(renderMember)}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
         ListEmptyComponent={
-          loading ? (
-            <View style={styles.center}>
-              <ActivityIndicator color={colors.turquesa} />
-              <Text style={styles.emptyHint}>Cargando miembros…</Text>
-            </View>
+          shouldShowSkeleton(loading, hasLoaded) ? (
+            <RowListSkeleton label="Cargando miembros" count={5} flush />
           ) : (
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>Sin miembros</Text>
