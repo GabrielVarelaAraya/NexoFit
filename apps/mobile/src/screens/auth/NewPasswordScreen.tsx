@@ -114,6 +114,8 @@ export function NewPasswordScreen() {
           autoComplete="new-password"
           textContentType="newPassword"
           editable={!busy}
+          returnKeyType="go"
+          onSubmitEditing={() => void handleSave()}
         />
 
         <View style={styles.requirements}>

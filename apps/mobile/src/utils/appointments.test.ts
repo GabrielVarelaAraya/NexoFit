@@ -11,8 +11,40 @@ import {
   gymDateStr,
   gymDayOfWeek,
   gymSlotsForDate,
+  splitAppointments,
   type AvailabilityBlock,
 } from './appointments';
+
+describe('splitAppointments', () => {
+  const now = new Date('2026-11-10T00:00:00Z');
+  const item = (id: string, status: string, startsAt: string, endsAt: string) => ({
+    id,
+    status,
+    starts_at: startsAt,
+    ends_at: endsAt,
+  });
+
+  const soon = item('soon', 'confirmed', '2026-11-11T15:00:00Z', '2026-11-11T16:00:00Z');
+  const later = item('later', 'confirmed', '2026-11-20T15:00:00Z', '2026-11-20T16:00:00Z');
+  const cancelledFuture = item('cf', 'cancelled', '2026-11-12T15:00:00Z', '2026-11-12T16:00:00Z');
+  const done = item('done', 'confirmed', '2026-11-01T15:00:00Z', '2026-11-01T16:00:00Z');
+  const older = item('older', 'attended', '2026-10-01T15:00:00Z', '2026-10-01T16:00:00Z');
+
+  it('puts confirmed future appointments in upcoming, nearest first', () => {
+    const { upcoming } = splitAppointments([later, done, soon, cancelledFuture], now);
+    expect(upcoming.map((a) => a.id)).toEqual(['soon', 'later']);
+  });
+
+  it('puts past and cancelled appointments in past, most recent first', () => {
+    const { past } = splitAppointments([older, cancelledFuture, soon, done], now);
+    expect(past.map((a) => a.id)).toEqual(['cf', 'done', 'older']);
+  });
+
+  it('keeps an appointment in progress as upcoming', () => {
+    const ongoing = item('now', 'confirmed', '2026-11-09T23:30:00Z', '2026-11-10T00:30:00Z');
+    expect(splitAppointments([ongoing], now).upcoming).toHaveLength(1);
+  });
+});
 
 // 9 de noviembre de 2026 es lunes (dow 1). 00:00 en Costa Rica = 06:00 UTC.
 const MONDAY = '2026-11-09';

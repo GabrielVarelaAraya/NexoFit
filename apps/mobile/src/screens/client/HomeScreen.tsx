@@ -4,6 +4,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookings, useSchedule, useRecommendations } from '../../hooks/useBooking';
+import { useSettings } from '../../hooks/useProgress';
+import { greeting } from '../../utils/greeting';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { getSignupIntent } from '../../utils/signupIntent';
 import type { BookingWithSession, SessionWithType, NavigationProp } from '../../types/screens';
@@ -37,6 +39,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
     loading: recommendationsLoading,
     refresh: refreshRecommendations,
   } = useRecommendations(orgId, user?.id ?? '');
+  const { profile } = useSettings(user?.id ?? '');
   const [refreshing, setRefreshing] = useState(false);
 
   const loading = bookingsLoading || sessionsLoading;
@@ -102,7 +105,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
     <View style={styles.container}>
       <Header
         title="Inicio"
-        subtitle={user ? `Hola, ${user.email?.split('@')[0]}` : 'Bienvenido'}
+        subtitle={user ? greeting(profile?.full_name, user.email) : 'Bienvenido'}
       />
 
       <ScrollView

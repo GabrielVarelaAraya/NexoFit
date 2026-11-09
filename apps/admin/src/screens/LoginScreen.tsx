@@ -41,6 +41,8 @@ export function LoginScreen({
           autoCapitalize="none"
           keyboardType="email-address"
           placeholder="admin@gimnasio.com"
+          returnKeyType="next"
+          onSubmitEditing={() => void handleSignIn()}
         />
         <Field
           label="Contraseña"
@@ -48,6 +50,8 @@ export function LoginScreen({
           onChangeText={setPassword}
           secureTextEntry
           placeholder="••••••••"
+          returnKeyType="go"
+          onSubmitEditing={() => void handleSignIn()}
         />
 
         {(error ?? accessMessage) && <ErrorText>{error ?? accessMessage}</ErrorText>}

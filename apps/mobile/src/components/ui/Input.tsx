@@ -13,7 +13,7 @@ export function Input({ label, error, hint, style, ...rest }: InputProps) {
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
         style={[styles.input, error && styles.inputError, style]}
-        placeholderTextColor={colors.textSecondary}
+        placeholderTextColor={colors.textPlaceholder}
         accessibilityLabel={rest.accessibilityLabel ?? label}
         {...rest}
       />

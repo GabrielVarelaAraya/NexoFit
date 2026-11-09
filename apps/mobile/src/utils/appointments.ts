@@ -206,6 +206,27 @@ export function appointmentBadge(
   return { label: 'Confirmada', tone: 'upcoming' };
 }
 
+/**
+ * Separa citas en próximas (confirmadas que aún no terminan, la más cercana
+ * primero) y anteriores (pasadas o canceladas, la más reciente primero).
+ */
+export function splitAppointments<T extends { status: string; starts_at: string; ends_at: string }>(
+  items: readonly T[],
+  now: Date = new Date()
+): { upcoming: T[]; past: T[] } {
+  const upcoming: T[] = [];
+  const past: T[] = [];
+  for (const item of items) {
+    const isUpcoming =
+      item.status === 'confirmed' && new Date(item.ends_at).getTime() >= now.getTime();
+    (isUpcoming ? upcoming : past).push(item);
+  }
+  const startOf = (item: T) => new Date(item.starts_at).getTime();
+  upcoming.sort((a, b) => startOf(a) - startOf(b));
+  past.sort((a, b) => startOf(b) - startOf(a));
+  return { upcoming, past };
+}
+
 /** El miembro solo puede cancelar citas confirmadas que aún no empiezan. */
 export function canCancelAppointment(
   status: string,

@@ -23,6 +23,7 @@ export function SignUpScreen({ navigation }: Props) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSignUp = async () => {
+    if (loading) return;
     if (!fullName.trim() || !email.trim() || !password.trim()) {
       setErrorMessage('Por favor completa todos los campos.');
       return;
@@ -103,6 +104,8 @@ export function SignUpScreen({ navigation }: Props) {
           onChangeText={setPassword}
           secureTextEntry
           autoComplete="new-password"
+          returnKeyType="go"
+          onSubmitEditing={() => void handleSignUp()}
         />
 
         <Button

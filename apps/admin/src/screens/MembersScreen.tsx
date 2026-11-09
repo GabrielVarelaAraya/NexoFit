@@ -61,7 +61,7 @@ export function MembersScreen({ organizationId }: { organizationId: string }) {
         <TextInput
           style={styles.search}
           placeholder="Buscar por nombre…"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.textPlaceholder}
           value={query}
           onChangeText={setQuery}
         />

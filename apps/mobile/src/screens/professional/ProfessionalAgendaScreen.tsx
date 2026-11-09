@@ -52,7 +52,7 @@ export function ProfessionalAgendaScreen() {
   const cancel = (appointment: Appointment) =>
     confirmAction({
       title: 'Cancelar cita',
-      message: 'El paciente verá esta cita como cancelada.',
+      message: 'El cliente recibirá un aviso y verá esta cita como cancelada.',
       confirmLabel: 'Cancelar cita',
       cancelLabel: 'Volver',
       onConfirm: () => void update(appointment, 'cancelled'),
@@ -85,7 +85,7 @@ export function ProfessionalAgendaScreen() {
       )}
       {appointments.map((appointment) => (
         <Card key={appointment.id} style={styles.card}>
-          <Text style={styles.title}>{appointment.patient?.full_name || 'Paciente'}</Text>
+          <Text style={styles.title}>{appointment.patient?.full_name || 'Cliente'}</Text>
           <Text style={styles.text}>
             {appointment.services?.name || 'Consulta'} · {APPOINTMENT_STATUS[appointment.status]}
           </Text>

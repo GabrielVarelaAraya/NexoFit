@@ -168,7 +168,7 @@ export function ClientsScreen() {
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar por nombre o teléfono"
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.textPlaceholder}
           value={search}
           onChangeText={setSearch}
         />

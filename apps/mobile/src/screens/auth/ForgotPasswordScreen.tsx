@@ -66,6 +66,8 @@ export function ForgotPasswordScreen({ navigation }: Props) {
         autoCapitalize="none"
         keyboardType="email-address"
         autoComplete="email"
+        returnKeyType="send"
+        onSubmitEditing={() => void handleSendCode()}
       />
 
       <View style={styles.footer}>

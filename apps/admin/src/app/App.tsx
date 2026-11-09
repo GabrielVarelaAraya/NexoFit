@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
+import { useFonts } from 'expo-font';
+import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
+import { Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
 import { ThemeProvider, colors, fonts, setSupabaseConfig } from '@nexofit/core';
 import { LoadingView } from '../components/ui';
 import { useAdminSession } from '../hooks/useAdminData';
@@ -31,6 +34,21 @@ const NAV_ITEMS: { id: ViewName; label: string }[] = [
 ];
 
 export default function App() {
+  // Sin esto, los fontFamily de @nexofit/core caen a la fuente serif del navegador.
+  const [fontsLoaded] = useFonts({
+    Nunito_800ExtraBold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.center}>
+        <LoadingView label="Cargando consola…" />
+      </View>
+    );
+  }
+
   return (
     <ThemeProvider>
       <StatusBar style="light" />
@@ -209,7 +227,6 @@ const styles = StyleSheet.create({
     width: 260,
     backgroundColor: colors.azulNexo,
     padding: 24,
-    justifyContent: 'space-between',
   },
   brand: { fontFamily: fonts.brand, fontSize: 24, color: colors.white },
   brandSub: {
@@ -218,7 +235,8 @@ const styles = StyleSheet.create({
     color: colors.white + 'B3',
     marginTop: 4,
   },
-  nav: { gap: 8 },
+  // Navegación pegada arriba, bajo la marca; el pie (organización/salir) al fondo.
+  nav: { gap: 8, marginTop: 32, flex: 1 },
   navItem: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
   navItemActive: { backgroundColor: colors.white + '1F' },
   navText: { fontFamily: fonts.uiRegular, fontSize: 15, color: colors.white + 'CC' },

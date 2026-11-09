@@ -132,7 +132,6 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
             <ActionButton
               icon="add"
               label="Nueva clase"
-              color={colors.turquesa}
               onPress={() =>
                 navigation.navigate('CreateSession', { defaultDate: toLocalDateStr() })
               }
@@ -140,32 +139,26 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
             <ActionButton
               icon="clipboard"
               label="Publicar programa"
-              color={colors.limaProgreso}
-              textColor={colors.azulNexo}
               onPress={() => navigation.navigate('PublishProgram')}
             />
             <ActionButton
               icon="notifications"
               label="Enviar notificación"
-              color={colors.azulNexo}
               onPress={() => navigation.navigate('SendNotification')}
             />
             <ActionButton
               icon="cash"
               label="Pagos"
-              color={colors.mentaActiva}
               onPress={() => navigation.navigate('Payments')}
             />
             <ActionButton
               icon="color-palette"
-              label="Crear tipo de clase"
-              color="#8B5CF6"
+              label="Tipos de clase"
               onPress={() => navigation.navigate('GymContent', { form: 'classType' })}
             />
             <ActionButton
               icon="business"
-              label="Crear sedes/espacios"
-              color="#F59E0B"
+              label="Sedes y espacios"
               onPress={() => navigation.navigate('GymContent', { form: 'spaces' })}
             />
           </View>
@@ -250,26 +243,28 @@ function MetricCard({
 function ActionButton({
   icon,
   label,
-  color,
-  textColor = colors.azulNexo,
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  color: string;
-  textColor?: string;
   onPress: () => void;
 }) {
+  // Un solo estilo para todas: el color no comunicaba nada y el ícono en fila
+  // cortaba los textos largos en pantallas angostas.
   return (
     <TouchableOpacity
       accessibilityRole="button"
-      style={[styles.actionBtn, { backgroundColor: color + '15' }]}
+      style={styles.actionBtn}
       onPress={onPress}
       activeOpacity={0.7}
       accessibilityLabel={label}
     >
-      <Ionicons name={icon} size={20} color={color} />
-      <Text style={[styles.actionLabel, { color: textColor }]}>{label}</Text>
+      <View style={styles.actionIcon}>
+        <Ionicons name={icon} size={20} color={colors.textAccent} />
+      </View>
+      <Text style={styles.actionLabel} numberOfLines={2}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -384,17 +379,28 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
     minWidth: '45%',
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-    paddingVertical: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     borderRadius: 12,
     borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: colors.white,
+  },
+  actionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.textAccent + '14',
   },
   actionLabel: {
     fontFamily: fonts.uiSemiBold,
     fontSize: 13,
+    color: colors.azulNexo,
+    textAlign: 'center',
   },
   activityList: { gap: 12 },
   activityItem: {

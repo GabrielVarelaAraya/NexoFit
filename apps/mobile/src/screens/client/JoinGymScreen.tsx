@@ -113,7 +113,7 @@ export function JoinGymScreen({ navigation }: Props) {
       <TextInput
         style={styles.searchInput}
         placeholder="Buscar por nombre…"
-        placeholderTextColor={colors.textSecondary}
+        placeholderTextColor={colors.textPlaceholder}
         value={search}
         onChangeText={setSearch}
         autoCapitalize="none"

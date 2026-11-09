@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,6 +16,7 @@ import {
   fetchProfessionalDirectory,
   formatGymDate,
   formatGymTime,
+  splitAppointments,
   type AppointmentTone,
 } from '../../utils/appointments';
 
@@ -42,17 +43,11 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  // Próximas primero (más cercana arriba), después las pasadas (más reciente arriba).
-  const sortedAppointments = useMemo(() => {
-    const now = Date.now();
-    return [...appointments].sort((a, b) => {
-      const aPast = new Date(a.ends_at).getTime() < now;
-      const bPast = new Date(b.ends_at).getTime() < now;
-      if (aPast !== bPast) return aPast ? 1 : -1;
-      const diff = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
-      return aPast ? -diff : diff;
-    });
-  }, [appointments]);
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  // Próximas: confirmadas por venir (la más cercana arriba). Anteriores: pasadas
+  // o canceladas (la más reciente arriba), para no mezclar canceladas con activas.
+  const { upcoming, past } = useMemo(() => splitAppointments(appointments), [appointments]);
+  const visibleAppointments = tab === 'upcoming' ? upcoming : past;
 
   // `silent`: refresco en vivo, sin spinner ni parpadeo de la lista.
   const fetchAppointments = useCallback(
@@ -183,8 +178,33 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
           <Button title="Reintentar" variant="ghost" onPress={() => void fetchAppointments()} />
         </View>
       )}
+      {appointments.length > 0 && (
+        <View style={styles.segment} accessibilityRole="tablist">
+          {(
+            [
+              ['upcoming', 'Próximas', upcoming.length],
+              ['past', 'Anteriores', past.length],
+            ] as const
+          ).map(([value, label, count]) => {
+            const active = tab === value;
+            return (
+              <TouchableOpacity
+                key={value}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                style={[styles.segmentItem, active && styles.segmentItemActive]}
+                onPress={() => setTab(value)}
+              >
+                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                  {label} ({count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
       <FlatList
-        data={sortedAppointments}
+        data={visibleAppointments}
         keyExtractor={(a) => a.id}
         renderItem={renderAppointment}
         contentContainerStyle={styles.list}
@@ -194,7 +214,16 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
         ListEmptyComponent={
           loading ? (
             <LoadingView label="Cargando tus citas…" style={styles.center} />
-          ) : !error ? (
+          ) : error ? null : appointments.length > 0 ? (
+            <View style={styles.center}>
+              <Text style={styles.emptyHint}>
+                {tab === 'upcoming'
+                  ? 'No tienes citas próximas.'
+                  : 'Aún no tienes citas anteriores.'}
+              </Text>
+              {tab === 'upcoming' && <Button title="Reservar una cita" onPress={goBook} />}
+            </View>
+          ) : (
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>Sin citas</Text>
               <Text style={styles.emptyHint}>
@@ -202,7 +231,7 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
               </Text>
               <Button title="Reservar una cita" onPress={goBook} />
             </View>
-          ) : null
+          )
         }
       />
     </View>
@@ -212,6 +241,20 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
   list: { padding: 16, gap: 12, paddingBottom: 24 },
+  segment: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  segmentItem: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 9 },
+  segmentItemActive: { backgroundColor: colors.textAccent },
+  segmentText: { fontFamily: fonts.uiSemiBold, fontSize: 13, color: colors.textSecondary },
+  segmentTextActive: { color: colors.white },
   center: {
     flex: 1,
     alignItems: 'center',

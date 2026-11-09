@@ -105,7 +105,7 @@ export function CreateGymScreen({ navigation }: Props) {
           value={name}
           onChangeText={setName}
           placeholder="Ej: CrossFit Heredia"
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.textPlaceholder}
           autoCapitalize="words"
           maxLength={80}
         />

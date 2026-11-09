@@ -76,7 +76,12 @@ export function Field({ label, ...inputProps }: { label: string } & TextInputPro
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput style={styles.input} placeholderTextColor="#9CA3AF" {...inputProps} />
+      <TextInput
+        style={styles.input}
+        placeholderTextColor={colors.textPlaceholder}
+        accessibilityLabel={label}
+        {...inputProps}
+      />
     </View>
   );
 }

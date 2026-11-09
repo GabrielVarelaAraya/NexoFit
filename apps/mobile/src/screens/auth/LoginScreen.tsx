@@ -21,6 +21,7 @@ export function LoginScreen({ navigation }: Props) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    if (loading) return;
     if (!email.trim() || !password.trim()) {
       setErrorMessage('Por favor ingresa tu correo y contraseña.');
       return;
@@ -57,6 +58,8 @@ export function LoginScreen({ navigation }: Props) {
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
+          returnKeyType="next"
+          onSubmitEditing={() => void handleLogin()}
         />
 
         <Input
@@ -66,6 +69,8 @@ export function LoginScreen({ navigation }: Props) {
           onChangeText={setPassword}
           secureTextEntry
           autoComplete="password"
+          returnKeyType="go"
+          onSubmitEditing={() => void handleLogin()}
         />
 
         <TouchableOpacity

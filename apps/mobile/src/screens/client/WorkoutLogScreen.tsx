@@ -292,7 +292,7 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
                       value={set.reps}
                       onChangeText={(v) => updateSet(ex.key, set.key, 'reps', v)}
                       placeholder="10"
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={colors.textPlaceholder}
                       keyboardType="decimal-pad"
                     />
                     <TextInput
@@ -300,7 +300,7 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
                       value={set.weight}
                       onChangeText={(v) => updateSet(ex.key, set.key, 'weight', v)}
                       placeholder="40"
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={colors.textPlaceholder}
                       keyboardType="decimal-pad"
                     />
                     <TouchableOpacity

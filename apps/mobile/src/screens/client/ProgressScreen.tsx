@@ -148,8 +148,8 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
 
   const handleDeleteMeasurement = (id: string) => {
     confirmAction({
-      title: 'Eliminar',
-      message: '¿Estás seguro de eliminar esta medición?',
+      title: 'Eliminar medición',
+      message: 'Se borrarán todas las medidas de ese día. Esta acción no se puede deshacer.',
       confirmLabel: 'Eliminar',
       onConfirm: async () => {
         const result = await deleteMeasurement(id);
@@ -401,7 +401,7 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
                 placeholder="AAAA-MM-DD"
                 keyboardType="numbers-and-punctuation"
                 maxLength={10}
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textPlaceholder}
                 autoCorrect={false}
               />
 
@@ -418,7 +418,7 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
                       setMetricInputs((prev) => ({ ...prev, [def.name]: value }))
                     }
                     keyboardType="decimal-pad"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textPlaceholder}
                   />
                 </View>
               ))}
@@ -563,13 +563,11 @@ function HistoryItem({
   onDelete: (id: string) => void;
 }) {
   const date = new Date(measurement.measured_at);
+  const dateLabel = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+  // La fila es informativa; borrar es una acción explícita (ícono de papelera),
+  // no un toque en cualquier parte de la fila.
   return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      style={styles.historyItem}
-      onPress={() => onDelete(measurement.id)}
-      accessibilityLabel="Eliminar medición"
-    >
+    <View style={styles.historyItem}>
       <View style={styles.historyDate}>
         <Text style={styles.historyDay}>{date.getDate()}</Text>
         <Text style={styles.historyMonth}>
@@ -584,8 +582,16 @@ function HistoryItem({
           </Text>
         ))}
       </View>
-      <Text style={styles.historyDelete}>Tocar para eliminar</Text>
-    </TouchableOpacity>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={`Eliminar medición del ${dateLabel}`}
+        style={styles.historyDelete}
+        onPress={() => onDelete(measurement.id)}
+        hitSlop={8}
+      >
+        <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -750,12 +756,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.azulNexo,
   },
+  // Ícono neutro (no rojo en cada fila); el aviso destructivo vive en la confirmación.
   historyDelete: {
-    fontFamily: fonts.uiRegular,
-    fontSize: 11,
-    // Pista neutra (antes rojo, que gritaba "peligro" en cada fila); el
-    // aviso destructivo vive en el diálogo de confirmación.
-    color: colors.textSecondary,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   noHistory: {
     textAlign: 'center',

@@ -171,7 +171,7 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
             ) : (
-              <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase() ?? '?'}</Text>
+              <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase() || '?'}</Text>
             )}
           </View>
           <Text style={styles.name}>{displayName}</Text>
@@ -197,14 +197,6 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
           {membership?.role !== 'professional' && (
             <ActionRow icon="card" label="Mis pagos y plan" onPress={openPayments} />
           )}
-          {membership?.role === 'member' && (
-            <ActionRow
-              icon="exit-outline"
-              label="Salir del gimnasio"
-              destructive
-              onPress={confirmLeaveGym}
-            />
-          )}
           <ActionRow
             icon="help-circle"
             label="Ayuda y soporte"
@@ -229,6 +221,26 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
 
         {/* Sign Out */}
         <Button title="Cerrar sesión" variant="danger" fullWidth onPress={handleSignOut} />
+
+        {/* Baja del gimnasio: separada de las opciones de cuenta para no tocarla
+            por accidente; la confirmación explica qué pasa con los datos. */}
+        {membership?.role === 'member' && (
+          <View style={styles.leaveSection}>
+            <Text style={styles.leaveTitle}>Membresía</Text>
+            <Text style={styles.leaveText}>
+              Si ya no entrenas en {membership.organization_name ?? 'este gimnasio'}, puedes darte
+              de baja. Tu cuenta de NexoFit se conserva.
+            </Text>
+            <Button
+              title={leavingGym ? 'Saliendo…' : 'Salir del gimnasio'}
+              variant="ghost"
+              fullWidth
+              loading={leavingGym}
+              disabled={leavingGym}
+              onPress={confirmLeaveGym}
+            />
+          </View>
+        )}
       </ScrollView>
 
       {/* Edit profile modal */}
@@ -255,7 +267,7 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
                 value={nameInput}
                 onChangeText={setNameInput}
                 placeholder="Tu nombre"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textPlaceholder}
                 autoCapitalize="words"
                 maxLength={60}
               />
@@ -486,6 +498,15 @@ const rowStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
   content: { padding: 16, gap: 16, paddingBottom: 40 },
+  leaveSection: {
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    gap: 8,
+  },
+  leaveTitle: { fontFamily: fonts.uiSemiBold, fontSize: 14, color: colors.azulNexo },
+  leaveText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textSecondary },
   profileHeader: {
     alignItems: 'center',
     gap: 12,

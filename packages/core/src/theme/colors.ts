@@ -11,6 +11,8 @@ export const colors = {
   textSuccess: '#2F6B1A',
   textError: '#B91C1C',
   textWarning: '#92400E',
+  // Placeholders: claramente más tenues que un valor escrito.
+  textPlaceholder: '#94A3B8',
 };
 
 export const brandProportions = {
