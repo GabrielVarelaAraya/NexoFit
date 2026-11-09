@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { getSupabase, type Database } from '@nexofit/core';
+import { getSupabase } from '@nexofit/core';
 import { holdLoading } from '../utils/loading';
 import { friendlyError } from '../utils/errors';
 import type { ExerciseLibraryItem, PersonalRecordItem, WorkoutLogItem } from '../types/screens';
@@ -66,6 +66,8 @@ export function useWorkouts(profileId: string): UseWorkoutsResult {
           .from('workout_logs')
           .select(LOG_SELECT)
           .eq('profile_id', profileId)
+          // Solo guardados completos: un log a medias (in_progress/cancelled) no cuenta.
+          .eq('status', 'completed')
           .order('started_at', { ascending: false })
           .limit(30),
         supabase
@@ -160,67 +162,155 @@ export interface SaveWorkoutInput {
   exercises: WorkoutExerciseInput[];
 }
 
+type Client = ReturnType<typeof getSupabase>;
+
+/** Filas de workout_exercises (planas) para un log recién creado. */
+export function buildExerciseRows(workoutLogId: string, exercises: WorkoutExerciseInput[]) {
+  return exercises.map((ex, index) => ({
+    workout_log_id: workoutLogId,
+    exercise_library_id: ex.exerciseLibraryId,
+    custom_name: ex.exerciseLibraryId ? null : (ex.customName ?? null),
+    order_index: index,
+  }));
+}
+
 /**
- * Guarda el entrenamiento completo (log + ejercicios + series) en una sola
- * inserción anidada: PostgREST la ejecuta en una transacción, así que no
- * quedan logs vacíos a medias si algo falla.
+ * Filas de exercise_sets (planas). `idByOrder` relaciona el order_index de cada
+ * ejercicio con el id que devolvió la base de datos al insertarlo.
  */
-export async function saveWorkout(
+export function buildSetRows(
+  idByOrder: ReadonlyMap<number, string>,
+  exercises: WorkoutExerciseInput[]
+) {
+  return exercises.flatMap((ex, index) => {
+    const workoutExerciseId = idByOrder.get(index);
+    if (!workoutExerciseId) return [];
+    return ex.sets.map((set, setIndex) => ({
+      workout_exercise_id: workoutExerciseId,
+      set_number: setIndex + 1,
+      reps: set.reps,
+      weight_kg: set.weightKg,
+      completed: true,
+    }));
+  });
+}
+
+/**
+ * Guarda el entrenamiento completo (log + ejercicios + series).
+ *
+ * PostgREST NO admite inserciones anidadas (mandar `workout_exercises` dentro
+ * del insert de `workout_logs` falla con «Could not find the 'workout_exercises'
+ * column»), así que se hace en pasos planos. Como `workout_logs` no tiene
+ * política de DELETE para deshacer un guardado a medias, el estado del log
+ * hace de marca de commit: nace `in_progress`, y solo pasa a `completed` cuando
+ * ejercicios y series ya están guardados. Si algo falla en medio queda
+ * `cancelled` y el historial (que solo muestra `completed`) no lo ve.
+ */
+export async function saveWorkoutWithClient(
+  supabase: Client,
   input: SaveWorkoutInput
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = getSupabase();
-
-  // Construir el payload aparte: el insert acepta la relación anidada
-  // workout_exercises (y exercise_sets dentro) aunque no esté en el tipo
-  // Insert de workout_logs (el literal no es fresh al pasarse como variable).
-  const payload = {
-    organization_id: input.organizationId,
-    profile_id: input.profileId,
-    session_id: input.sessionId ?? null,
-    workout_program_id: input.workoutProgramId ?? null,
-    status: 'completed',
-    started_at: input.startedAt,
-    completed_at: new Date().toISOString(),
-    notes: input.notes?.trim() ? input.notes.trim() : null,
-    workout_exercises: input.exercises.map((ex, index) => ({
-      exercise_library_id: ex.exerciseLibraryId,
-      custom_name: ex.exerciseLibraryId ? null : (ex.customName ?? null),
-      order_index: index,
-      exercise_sets: ex.sets.map((set, setIndex) => ({
-        set_number: setIndex + 1,
-        reps: set.reps,
-        weight_kg: set.weightKg,
-        completed: true,
-      })),
-    })),
-  };
-
-  // Cast: el tipo Insert solo conoce columnas planas, pero PostgREST acepta
-  // la relación anidada workout_exercises (con exercise_sets dentro) y la
-  // ejecuta en una transacción — así no queda un log vacío a medias si algo
-  // falla entre medio.
-  const { data, error } = await supabase
+  const { data: log, error: logError } = await supabase
     .from('workout_logs')
-    .insert(payload as Database['public']['Tables']['workout_logs']['Insert'])
+    .insert({
+      organization_id: input.organizationId,
+      profile_id: input.profileId,
+      session_id: input.sessionId ?? null,
+      workout_program_id: input.workoutProgramId ?? null,
+      status: 'in_progress',
+      started_at: input.startedAt,
+      notes: input.notes?.trim() ? input.notes.trim() : null,
+    })
     .select('id')
     .single();
 
-  if (error) {
+  if (logError || !log) {
     // Detalle crudo solo en consola; la pantalla muestra su propio copy.
-    console.warn('save workout log failed', error.message);
+    console.warn('save workout log failed', logError?.message);
     return { success: false };
   }
+  const logId = (log as { id: string }).id;
+
+  const abandon = async (step: string, message?: string) => {
+    console.warn(`save workout ${step} failed`, message);
+    // Mejor esfuerzo: el log ya no cuenta, pero no se puede borrar (sin DELETE en RLS).
+    await supabase.from('workout_logs').update({ status: 'cancelled' }).eq('id', logId);
+    return { success: false } as const;
+  };
+
+  const exerciseRows = buildExerciseRows(logId, input.exercises);
+  const idByOrder = new Map<number, string>();
+  if (exerciseRows.length > 0) {
+    const { data: inserted, error: exercisesError } = await supabase
+      .from('workout_exercises')
+      .insert(exerciseRows)
+      .select('id, order_index');
+    if (exercisesError || !inserted) return abandon('exercises', exercisesError?.message);
+    for (const row of inserted) idByOrder.set(row.order_index, row.id);
+  }
+
+  const setRows = buildSetRows(idByOrder, input.exercises);
+  if (setRows.length > 0) {
+    const { error: setsError } = await supabase.from('exercise_sets').insert(setRows);
+    if (setsError) return abandon('sets', setsError.message);
+  }
+
+  // Todo guardado: ahora sí el entrenamiento cuenta.
+  const { error: completeError } = await supabase
+    .from('workout_logs')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', logId);
+  if (completeError) return abandon('complete', completeError.message);
 
   // Récords personales: mejor esfuerzo (best-effort). Un fallo aquí no
   // debe echar para atrás un entrenamiento ya guardado.
-  const logId = (data as { id: string }).id;
-  await syncPersonalRecords(input, logId);
+  await syncPersonalRecords(supabase, input, logId);
 
   return { success: true };
 }
 
+/**
+ * Borra un entrenamiento registrado (sus ejercicios y series caen en cascada).
+ * Si la base aún no tiene la política de DELETE (migración 000009) PostgREST
+ * responde sin error pero sin borrar nada; en ese caso se marca `cancelled`,
+ * que lo oculta del historial.
+ */
+export async function deleteWorkoutWithClient(
+  supabase: Client,
+  logId: string
+): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await supabase.from('workout_logs').delete().eq('id', logId).select('id');
+  if (!error && data && data.length > 0) return { success: true };
+  if (error) console.warn('delete workout failed', error.message);
+
+  const { data: hidden, error: hideError } = await supabase
+    .from('workout_logs')
+    .update({ status: 'cancelled' })
+    .eq('id', logId)
+    .select('id');
+  if (hideError || !hidden || hidden.length === 0) {
+    console.warn('hide workout failed', hideError?.message);
+    return { success: false };
+  }
+  return { success: true };
+}
+
+export function deleteWorkout(logId: string): Promise<{ success: boolean; error?: string }> {
+  return deleteWorkoutWithClient(getSupabase(), logId);
+}
+
+export function saveWorkout(
+  input: SaveWorkoutInput
+): Promise<{ success: boolean; error?: string }> {
+  return saveWorkoutWithClient(getSupabase(), input);
+}
+
 /** Compara el máximo peso de cada ejercicio con tus récords y guarda los nuevos. */
-async function syncPersonalRecords(input: SaveWorkoutInput, workoutLogId: string): Promise<void> {
+async function syncPersonalRecords(
+  supabase: Client,
+  input: SaveWorkoutInput,
+  workoutLogId: string
+): Promise<void> {
   try {
     const candidates = input.exercises
       .filter((ex) => ex.exerciseLibraryId && ex.sets.length > 0)
@@ -232,7 +322,6 @@ async function syncPersonalRecords(input: SaveWorkoutInput, workoutLogId: string
 
     if (candidates.length === 0) return;
 
-    const supabase = getSupabase();
     const { data: existing } = await supabase
       .from('personal_records')
       .select('exercise_library_id, value_numeric')

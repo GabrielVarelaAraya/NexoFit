@@ -27,7 +27,8 @@ import { METRIC_DIRECTION, formatDelta, metricSeries, seriesTrend } from '../../
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, Button, FadeIn, Skeleton, SkeletonScreen } from '../../components/ui';
 import { useBodyMetrics, type MeasurementWithValues } from '../../hooks/useProgress';
-import { useWorkouts } from '../../hooks/useWorkout';
+import { deleteWorkout, useWorkouts } from '../../hooks/useWorkout';
+import { copyExercisesFromLog } from '../../utils/workoutCopy';
 import { toLocalDateStr } from '../../utils/date';
 import { confirmAction, notify } from '../../utils/alerts';
 import type { NavigationProp, WorkoutLogItem } from '../../types/screens';
@@ -121,6 +122,33 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
     const delta = current - previous;
     if (delta === 0) return '0';
     return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`;
+  };
+
+  const handleCopyWorkout = (log: WorkoutLogItem) => {
+    const copyFrom = copyExercisesFromLog(log);
+    if (copyFrom.length === 0) {
+      notify('Este entrenamiento no tiene series para copiar.', 'No se pudo copiar');
+      return;
+    }
+    navigation.navigate('WorkoutLog', { copyFrom });
+  };
+
+  const handleDeleteWorkout = (log: WorkoutLogItem) => {
+    confirmAction({
+      title: 'Eliminar entrenamiento',
+      message: `Se borrará el entrenamiento del ${formatWeekdayDate(new Date(log.started_at))} con sus ejercicios y series. No se puede deshacer.`,
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        const result = await deleteWorkout(log.id);
+        if (!result.success) {
+          notify(result.error ?? 'No se pudo eliminar el entrenamiento.', 'Error');
+          return;
+        }
+        setExpandedLogId(null);
+        await refreshWorkouts();
+        notify('Entrenamiento eliminado.', 'Listo');
+      },
+    });
   };
 
   const handleAddMeasurement = async () => {
@@ -329,6 +357,8 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
                       log={log}
                       expanded={expandedLogId === log.id}
                       onToggle={() => setExpandedLogId((prev) => (prev === log.id ? null : log.id))}
+                      onCopy={() => handleCopyWorkout(log)}
+                      onDelete={() => handleDeleteWorkout(log)}
                     />
                   ))}
                 </View>
@@ -439,10 +469,14 @@ function WorkoutLogRow({
   log,
   expanded,
   onToggle,
+  onCopy,
+  onDelete,
 }: {
   log: WorkoutLogItem;
   expanded: boolean;
   onToggle: () => void;
+  onCopy: () => void;
+  onDelete: () => void;
 }) {
   const exercises = [...(log.workout_exercises ?? [])].sort(
     (a, b) => a.order_index - b.order_index
@@ -493,6 +527,28 @@ function WorkoutLogRow({
               </View>
             );
           })}
+          <View style={styles.workoutActions}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Copiar este entrenamiento"
+              style={styles.workoutAction}
+              onPress={onCopy}
+              hitSlop={8}
+            >
+              <Ionicons name="copy-outline" size={16} color={colors.textAccent} />
+              <Text style={styles.workoutActionText}>Copiar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Eliminar este entrenamiento"
+              style={styles.workoutAction}
+              onPress={onDelete}
+              hitSlop={8}
+            >
+              <Ionicons name="trash-outline" size={16} color={colors.textError} />
+              <Text style={[styles.workoutActionText, styles.workoutActionDanger]}>Eliminar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </TouchableOpacity>
@@ -913,6 +969,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 17,
   },
+  workoutActions: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  workoutAction: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  workoutActionText: { fontFamily: fonts.uiSemiBold, fontSize: 13, color: colors.textAccent },
+  workoutActionDanger: { color: colors.textError },
   // Modal styles
   modalOverlay: {
     flex: 1,

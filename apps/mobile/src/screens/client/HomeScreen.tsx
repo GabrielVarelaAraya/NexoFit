@@ -143,7 +143,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
           // Skeleton con la forma de Inicio: accesos rápidos y tarjetas de clases.
           <SkeletonScreen label="Cargando tu actividad" style={styles.section}>
             <View style={styles.shortcuts}>
-              {[0, 1, 2].map((i) => (
+              {[0, 1, 2, 3].map((i) => (
                 <View key={i} style={styles.shortcut}>
                   <Skeleton width={22} height={22} radius={6} />
                   <Skeleton width="70%" height={12} />
@@ -190,6 +190,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
                     { icon: 'barbell-outline', label: 'Reservar clase', to: 'Clases' },
                     { icon: 'calendar-outline', label: 'Reservar cita', to: 'BookAppointment' },
                     { icon: 'trending-up-outline', label: 'Mi progreso', to: 'Progreso' },
+                    { icon: 'fitness-outline', label: 'Registrar entrenamiento', to: 'WorkoutLog' },
                   ] as const
                 ).map((item) => (
                   <TouchableOpacity
@@ -393,11 +394,13 @@ const styles = StyleSheet.create({
   nextEyebrow: { ...textStyles.caption, color: colors.white + 'B3' },
   nextTitle: { ...textStyles.title, color: colors.white },
   nextMeta: { ...textStyles.body, color: colors.white + 'E6' },
-  shortcuts: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  // Cuadrícula de 2×2: con 4 accesos en una fila los textos largos no caben.
+  shortcuts: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
   skeletonTitle: { marginTop: 24, marginBottom: 12 },
   skeletonCard: { gap: 8, marginBottom: 12 },
   shortcut: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '47%',
     alignItems: 'center',
     gap: 6,
     paddingVertical: 12,

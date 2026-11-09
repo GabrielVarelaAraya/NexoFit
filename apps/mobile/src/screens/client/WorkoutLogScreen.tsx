@@ -4,9 +4,7 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  Alert,
   Modal,
-  Platform,
   TouchableOpacity,
   FlatList,
   TextInput,
@@ -19,7 +17,8 @@ import { Header, Button, Card, Input, LoadingView } from '../../components/ui';
 import { fetchExerciseLibrary, saveWorkout, type WorkoutSetInput } from '../../hooks/useWorkout';
 import { holdLoading } from '../../utils/loading';
 import { toLocalDateStr } from '../../utils/date';
-import { notify } from '../../utils/alerts';
+import { notify, showMessage } from '../../utils/alerts';
+import { parseReps, parseWeight } from '../../utils/workoutInput';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 import type { ExerciseLibraryItem } from '../../types/screens';
@@ -41,12 +40,6 @@ interface ExerciseDraft {
   sets: SetDraft[];
 }
 
-// Aceptar coma decimal (teclado es-ES): "40,5" → 40.5
-function parseNumber(raw: string): number | null {
-  const n = parseFloat(raw.replace(',', '.'));
-  return Number.isNaN(n) || n < 0 ? null : n;
-}
-
 export function WorkoutLogScreen({ route, navigation }: Props) {
   const { user, membership } = useAuth();
   const orgId = membership?.organization_id ?? '';
@@ -54,7 +47,18 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
 
   const [date, setDate] = useState(toLocalDateStr());
   const [notes, setNotes] = useState('');
-  const [exercises, setExercises] = useState<ExerciseDraft[]>([]);
+  // Contador local para keys estables de ejercicios y series (solo estado).
+  const nextKey = useRef(1);
+  // «Copiar» desde Progreso llega con los ejercicios del entrenamiento original.
+  const [exercises, setExercises] = useState<ExerciseDraft[]>(() =>
+    (route.params?.copyFrom ?? []).map((ex) => ({
+      key: nextKey.current++,
+      libraryId: ex.libraryId,
+      name: ex.name,
+      sets: ex.sets.map((s) => ({ key: nextKey.current++, reps: s.reps, weight: s.weight })),
+    }))
+  );
+  const copied = (route.params?.copyFrom?.length ?? 0) > 0;
   const [saving, setSaving] = useState(false);
 
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -62,9 +66,6 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
   const [library, setLibrary] = useState<ExerciseLibraryItem[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
-
-  // Contador local para keys estables de ejercicios y series (solo estado).
-  const nextKey = useRef(1);
 
   const openPicker = async () => {
     setPickerVisible(true);
@@ -155,8 +156,8 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
         customName: ex.libraryId ? null : ex.name,
         sets: ex.sets
           .map((s): WorkoutSetInput => ({
-            reps: parseNumber(s.reps),
-            weightKg: parseNumber(s.weight),
+            reps: parseReps(s.reps),
+            weightKg: parseWeight(s.weight),
           }))
           .filter((s): s is WorkoutSetInput => s.reps != null || s.weightKg != null),
       }))
@@ -183,14 +184,13 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
     setSaving(false);
 
     if (result.success) {
-      if (Platform.OS === 'web') {
-        notify('Tu registro ya aparece en Progreso.', 'Entrenamiento guardado');
-        navigation.goBack();
-      } else {
-        Alert.alert('Entrenamiento guardado', 'Tu registro ya aparece en Progreso.', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
-      }
+      showMessage({
+        title: 'Entrenamiento guardado',
+        message: 'Tu registro ya aparece en Progreso.',
+        tone: 'success',
+        buttonLabel: 'Listo',
+        onClose: () => navigation.goBack(),
+      });
     } else {
       notify(result.error ?? 'No se pudo guardar el entrenamiento.', 'Error');
     }
@@ -254,6 +254,12 @@ export function WorkoutLogScreen({ route, navigation }: Props) {
               <Text style={styles.addChipText}>+ Añadir</Text>
             </TouchableOpacity>
           </View>
+
+          {copied && exercises.length > 0 ? (
+            <Text style={styles.emptyHint}>
+              Copiado de un entrenamiento anterior: ajusta las cargas y guarda.
+            </Text>
+          ) : null}
 
           {exercises.length === 0 ? (
             <Text style={styles.emptyHint}>

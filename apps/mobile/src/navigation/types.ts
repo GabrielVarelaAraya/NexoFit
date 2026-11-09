@@ -1,5 +1,6 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { SessionWithType } from '../types/screens';
+import type { CopiedExercise } from '../utils/workoutCopy';
 
 // Auth Stack
 export type AuthStackParamList = {
@@ -56,7 +57,7 @@ export type MainStackParamList = {
   MyBookings: undefined;
   JoinGym: undefined;
   CreateGym: undefined;
-  WorkoutLog: { sessionId?: string; programId?: string };
+  WorkoutLog: { sessionId?: string; programId?: string; copyFrom?: CopiedExercise[] };
   CreateSession: { defaultDate?: string } | undefined;
   SessionRoster: {
     sessionId: string;
