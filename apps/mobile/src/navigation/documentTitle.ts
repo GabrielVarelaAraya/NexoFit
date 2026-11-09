@@ -5,7 +5,7 @@
 const APP_NAME = 'NexoFit';
 
 const ROUTE_TITLES: Record<string, string> = {
-  RoleSelection: 'Bienvenida',
+  Welcome: 'Bienvenida',
   Login: 'Iniciar sesión',
   SignUp: 'Crear cuenta',
   ForgotPassword: 'Recuperar acceso',

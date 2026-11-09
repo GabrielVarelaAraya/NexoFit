@@ -113,7 +113,10 @@ Cada lote se puede revisar y commitear por separado.
    - T4: `DialogHost`, `Badge`, `SegmentedControl`, `EmptyState`. Faltan `ListItem`, `StatCard` y `Sheet`.
    - T10: `formatDate*` en `@nexofit/core`, usado en móvil; falta la consola web y las notificaciones SQL.
    - T11: títulos «Pantalla · NexoFit»; justo después de iniciar sesión muestra solo «NexoFit».
-3. **Lote 3 – Onboarding:** A1–A4.
+3. **Lote 3 – Onboarding:** A1–A4. ✅ Hecho (8 nov 2026): pantalla de bienvenida con marca
+   («Iniciar sesión» / «Crear cuenta»), el tipo de uso se pregunta solo en el registro,
+   requisitos de contraseña en vivo y «Volver» en login y registro. El login ahora dice
+   «Hola de nuevo» (antes «Bienvenida de vuelta», con género asumido).
 4. **Lote 4 – Contenido de valor para el miembro:** M2, M6, M11, M13, P2.
 5. **Lote 5 – Consola web:** W4 (rutas), W5, W6, W7, W8, W10, W11, luego W3 (paridad).
 6. **Lote 6 – Staff móvil:** S2–S6, P3.

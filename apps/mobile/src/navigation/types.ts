@@ -3,7 +3,7 @@ import type { SessionWithType } from '../types/screens';
 
 // Auth Stack
 export type AuthStackParamList = {
-  RoleSelection: undefined;
+  Welcome: undefined;
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;

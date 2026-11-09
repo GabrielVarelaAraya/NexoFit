@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button, ErrorBanner, Input } from '../../components/ui';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
+import { AuthBackButton } from './AuthBackButton';
 
 interface Props {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -45,7 +46,12 @@ export function LoginScreen({ navigation }: Props) {
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[styles.title, { color: theme.azulNexo }]}>Bienvenida de vuelta</Text>
+      <AuthBackButton
+        onPress={() =>
+          navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Welcome')
+        }
+      />
+      <Text style={[styles.title, { color: theme.azulNexo }]}>Hola de nuevo</Text>
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Ingresa para continuar.</Text>
 
       <View style={styles.form}>

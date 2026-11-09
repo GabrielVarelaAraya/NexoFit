@@ -6,7 +6,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import type { RootStackParamList, AuthStackParamList, MainStackParamList } from './types';
 
 // Auth screens
-import { RoleSelectionScreen } from '../screens/auth/RoleSelectionScreen';
+import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignUpScreen } from '../screens/auth/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -49,7 +49,7 @@ function AuthNavigator() {
         contentStyle: { backgroundColor: theme.crema },
       }}
     >
-      <AuthStack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+      <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="SignUp" component={SignUpScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
