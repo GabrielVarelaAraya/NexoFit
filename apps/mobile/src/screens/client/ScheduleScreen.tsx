@@ -85,7 +85,7 @@ export function ScheduleScreen({ navigation }: Props) {
               ? `¡Casi lleno! · ${spotsLeft} ${spotsLeft === 1 ? 'cupo' : 'cupos'}`
               : `${spotsLeft} cupos`
         }
-        badgeColor={isFull ? '#EF4444' : isNearlyFull ? '#F59E0B' : colors.turquesa}
+        badgeColor={isFull ? colors.danger : isNearlyFull ? colors.warning : colors.turquesa}
       >
         {coachName && <Text style={styles.coach}>Coach: {coachName}</Text>}
         <Button
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surfaceSubtle,
   },
   dateItemActive: { backgroundColor: colors.textAccent },
   dateDay: {
@@ -244,10 +244,10 @@ const styles = StyleSheet.create({
   errorBox: {
     margin: 16,
     padding: 12,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.dangerBg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.dangerBorder,
   },
   errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },
 });

@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
     color: colors.crema,
   },
   exerciseBlock: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 12,
     padding: 12,
     gap: 8,
@@ -482,13 +482,13 @@ const styles = StyleSheet.create({
   setTextInput: {
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: colors.borderStrong,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
     fontFamily: fonts.uiRegular,
     fontSize: 14,
-    color: '#111827',
+    color: colors.textPrimary,
   },
   setRemoveSpace: { width: 16 },
   addSetButton: { alignSelf: 'flex-start' },
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
   libraryItem: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.surfaceSubtle,
     gap: 2,
   },
   libraryName: {

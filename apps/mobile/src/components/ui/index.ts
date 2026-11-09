@@ -5,3 +5,8 @@ export { Input } from './Input';
 export { Header } from './Header';
 export { ErrorBoundary } from './ErrorBoundary';
 export { ErrorBanner } from './ErrorBanner';
+export { DialogHost } from './DialogHost';
+export { Badge } from './Badge';
+export { SegmentedControl } from './SegmentedControl';
+export type { Segment } from './SegmentedControl';
+export { EmptyState } from './EmptyState';

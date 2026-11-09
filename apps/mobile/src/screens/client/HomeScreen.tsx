@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts } from '@nexofit/core';
+import { colors, fonts, formatTime, formatWeekdayDate as formatDate } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookings, useSchedule, useRecommendations } from '../../hooks/useBooking';
 import { useSettings } from '../../hooks/useProgress';
@@ -9,16 +9,6 @@ import { greeting } from '../../utils/greeting';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { getSignupIntent } from '../../utils/signupIntent';
 import type { BookingWithSession, SessionWithType, NavigationProp } from '../../types/screens';
-
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-}
 
 export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
   const { user, membership } = useAuth();
@@ -240,7 +230,7 @@ function BookingCard({ booking, index }: { booking: BookingWithSession; index: n
       title={classType?.name ?? 'Clase'}
       subtitle={`${formatDate(session?.starts_at ?? '')} · ${formatTime(session?.starts_at ?? '')} – ${formatTime(session?.ends_at ?? '')}`}
       badge={isWaitlisted ? `Lista #${booking.position ?? ''}` : 'Confirmada'}
-      badgeColor={isWaitlisted ? '#F59E0B' : colors.turquesa}
+      badgeColor={isWaitlisted ? colors.warning : colors.turquesa}
       chevron
     />
   );
@@ -266,7 +256,7 @@ function SessionCard({ session }: { session: SessionWithType }) {
             ? `¡Casi lleno! · ${spotsLeft} ${spotsLeft === 1 ? 'cupo' : 'cupos'}`
             : `${spotsLeft} cupos`
       }
-      badgeColor={isFull ? '#EF4444' : isNearlyFull ? '#F59E0B' : colors.turquesa}
+      badgeColor={isFull ? colors.danger : isNearlyFull ? colors.warning : colors.turquesa}
       chevron
     >
       {coachName && <Text style={styles.coach}>Coach: {coachName}</Text>}

@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     backgroundColor: colors.white,
   },
   sessionRowActive: {
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: colors.borderStrong,
   },
   radioSelected: {
     borderColor: colors.turquesa,

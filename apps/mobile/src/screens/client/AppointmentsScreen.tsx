@@ -1,9 +1,16 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, fonts, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { Header, Card, Button, LoadingView } from '../../components/ui';
+import {
+  Header,
+  Card,
+  Button,
+  LoadingView,
+  EmptyState,
+  SegmentedControl,
+} from '../../components/ui';
 import { holdLoading } from '../../utils/loading';
 import { friendlyError } from '../../utils/errors';
 import { confirmAction, notify } from '../../utils/alerts';
@@ -31,9 +38,9 @@ interface Appointment {
 
 const TONE_COLORS: Record<AppointmentTone, string> = {
   upcoming: colors.turquesa,
-  done: '#9CA3AF',
-  cancelled: '#EF4444',
-  warning: '#F59E0B',
+  done: colors.textMuted,
+  cancelled: colors.danger,
+  warning: colors.warning,
 };
 
 export function AppointmentsScreen({ navigation }: { navigation: NavigationProp }) {
@@ -179,29 +186,15 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
         </View>
       )}
       {appointments.length > 0 && (
-        <View style={styles.segment} accessibilityRole="tablist">
-          {(
-            [
-              ['upcoming', 'Próximas', upcoming.length],
-              ['past', 'Anteriores', past.length],
-            ] as const
-          ).map(([value, label, count]) => {
-            const active = tab === value;
-            return (
-              <TouchableOpacity
-                key={value}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                style={[styles.segmentItem, active && styles.segmentItemActive]}
-                onPress={() => setTab(value)}
-              >
-                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                  {label} ({count})
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <SegmentedControl
+          style={styles.segment}
+          value={tab}
+          onChange={setTab}
+          segments={[
+            { value: 'upcoming', label: `Próximas (${upcoming.length})` },
+            { value: 'past', label: `Anteriores (${past.length})` },
+          ]}
+        />
       )}
       <FlatList
         data={visibleAppointments}
@@ -215,22 +208,23 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
           loading ? (
             <LoadingView label="Cargando tus citas…" style={styles.center} />
           ) : error ? null : appointments.length > 0 ? (
-            <View style={styles.center}>
-              <Text style={styles.emptyHint}>
-                {tab === 'upcoming'
-                  ? 'No tienes citas próximas.'
-                  : 'Aún no tienes citas anteriores.'}
-              </Text>
-              {tab === 'upcoming' && <Button title="Reservar una cita" onPress={goBook} />}
-            </View>
+            tab === 'upcoming' ? (
+              <EmptyState
+                title="No tienes citas próximas"
+                actionLabel="Reservar una cita"
+                onAction={goBook}
+              />
+            ) : (
+              <EmptyState title="Aún no tienes citas anteriores" />
+            )
           ) : (
-            <View style={styles.center}>
-              <Text style={styles.emptyTitle}>Sin citas</Text>
-              <Text style={styles.emptyHint}>
-                Reserva una sesión 1-a-1 con un profesional de tu gimnasio y aparecerá aquí.
-              </Text>
-              <Button title="Reservar una cita" onPress={goBook} />
-            </View>
+            <EmptyState
+              icon="calendar-outline"
+              title="Sin citas"
+              message="Reserva una sesión 1-a-1 con un profesional de tu gimnasio y aparecerá aquí."
+              actionLabel="Reservar una cita"
+              onAction={goBook}
+            />
           )
         }
       />
@@ -241,20 +235,7 @@ export function AppointmentsScreen({ navigation }: { navigation: NavigationProp 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
   list: { padding: 16, gap: 12, paddingBottom: 24 },
-  segment: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 4,
-    borderRadius: 12,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  segmentItem: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 9 },
-  segmentItemActive: { backgroundColor: colors.textAccent },
-  segmentText: { fontFamily: fonts.uiSemiBold, fontSize: 13, color: colors.textSecondary },
-  segmentTextActive: { color: colors.white },
+  segment: { marginHorizontal: 16, marginTop: 12 },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -262,17 +243,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingTop: 80,
     paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontFamily: fonts.uiSemiBold,
-    fontSize: 18,
-    color: colors.azulNexo,
-  },
-  emptyHint: {
-    fontFamily: fonts.uiRegular,
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
   professional: {
     fontFamily: fonts.uiRegular,
@@ -283,10 +253,10 @@ const styles = StyleSheet.create({
   errorBox: {
     margin: 16,
     padding: 12,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.dangerBg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.dangerBorder,
     gap: 8,
   },
   errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },

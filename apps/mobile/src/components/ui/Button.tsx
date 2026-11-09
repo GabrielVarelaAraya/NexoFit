@@ -84,8 +84,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   disabled: {
-    backgroundColor: '#E5E7EB',
-    borderColor: '#D1D5DB',
+    backgroundColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   text: {
     fontFamily: fonts.uiSemiBold,

@@ -12,7 +12,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts } from '@nexofit/core';
+import {
+  colors,
+  fonts,
+  formatDate,
+  formatDayMonth,
+  formatMonthShort,
+  formatWeekdayDate,
+} from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { useBodyMetrics, type MeasurementWithValues } from '../../hooks/useProgress';
@@ -242,9 +249,7 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
             </View>
             <Text style={styles.sectionSubtitle}>
               Última actualización:{' '}
-              {measurements[0]?.measured_at
-                ? new Date(measurements[0].measured_at).toLocaleDateString('es-ES')
-                : 'Sin datos'}
+              {measurements[0]?.measured_at ? formatDate(measurements[0].measured_at) : 'Sin datos'}
             </Text>
 
             {loading ? (
@@ -294,12 +299,7 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
                     <Text style={styles.recordValue}>
                       {Number(record.value_numeric)} {record.unit}
                     </Text>
-                    <Text style={styles.recordDate}>
-                      {new Date(record.achieved_at).toLocaleDateString('es-ES', {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </Text>
+                    <Text style={styles.recordDate}>{formatDayMonth(record.achieved_at)}</Text>
                   </View>
                 ))}
               </View>
@@ -465,13 +465,7 @@ function WorkoutLogRow({
     >
       <View style={styles.workoutItemHeader}>
         <View style={styles.workoutItemInfo}>
-          <Text style={styles.workoutItemDate}>
-            {date.toLocaleDateString('es-ES', {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-            })}
-          </Text>
+          <Text style={styles.workoutItemDate}>{formatWeekdayDate(date)}</Text>
           <Text style={styles.workoutItemMeta}>
             {exercises.length} ejercicio{exercises.length === 1 ? '' : 's'} · {totalSets} serie
             {totalSets === 1 ? '' : 's'}
@@ -563,16 +557,14 @@ function HistoryItem({
   onDelete: (id: string) => void;
 }) {
   const date = new Date(measurement.measured_at);
-  const dateLabel = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+  const dateLabel = formatDate(date);
   // La fila es informativa; borrar es una acción explícita (ícono de papelera),
   // no un toque en cualquier parte de la fila.
   return (
     <View style={styles.historyItem}>
       <View style={styles.historyDate}>
         <Text style={styles.historyDay}>{date.getDate()}</Text>
-        <Text style={styles.historyMonth}>
-          {date.toLocaleDateString('es-ES', { month: 'short' })}
-        </Text>
+        <Text style={styles.historyMonth}>{formatMonthShort(date)}</Text>
       </View>
       <View style={styles.historyMetrics}>
         {measurement.measurement_values.slice(0, 3).map((mv) => (
@@ -602,10 +594,10 @@ const styles = StyleSheet.create({
     margin: 16,
     marginBottom: 0,
     padding: 12,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.dangerBg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.dangerBorder,
     gap: 8,
   },
   errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },
@@ -683,7 +675,7 @@ const styles = StyleSheet.create({
   metricItem: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 12,
     padding: 16,
     gap: 4,
@@ -726,7 +718,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.surfaceSubtle,
     gap: 12,
   },
   historyDate: {
@@ -774,7 +766,7 @@ const styles = StyleSheet.create({
   recordRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -806,7 +798,7 @@ const styles = StyleSheet.create({
   // Historial de entrenamientos
   workoutItem: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.surfaceSubtle,
     paddingVertical: 10,
     gap: 6,
   },
@@ -837,7 +829,7 @@ const styles = StyleSheet.create({
   workoutDetail: {
     gap: 8,
     marginTop: 4,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
     padding: 10,
   },

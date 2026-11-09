@@ -4,6 +4,7 @@ import { NotificationsProvider } from '../contexts/NotificationsContext';
 import { useRealtimeBookings } from '../hooks/useRealtimeBookings';
 import { ThemeProvider } from '@nexofit/core';
 import { RootNavigator } from '../navigation/RootNavigator';
+import { documentTitleFor } from '../navigation/documentTitle';
 import { setSupabaseConfig } from '@nexofit/core';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
@@ -11,7 +12,7 @@ import { authStorage } from '../utils/authStorage';
 import { useFonts } from 'expo-font';
 import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import { Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
-import { ErrorBoundary, LoadingView } from '../components/ui';
+import { DialogHost, ErrorBoundary, LoadingView } from '../components/ui';
 
 // Configure Supabase with Expo environment variables
 const supabaseUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -58,9 +59,14 @@ export default function App() {
         <NotificationsProvider>
           <RealtimeBridge />
           <ThemeProvider>
-            <NavigationContainer>
+            <NavigationContainer
+              documentTitle={{
+                formatter: (options, route) => documentTitleFor(route?.name, options?.title),
+              }}
+            >
               <RootNavigator />
             </NavigationContainer>
+            <DialogHost />
           </ThemeProvider>
         </NotificationsProvider>
       </AuthProvider>

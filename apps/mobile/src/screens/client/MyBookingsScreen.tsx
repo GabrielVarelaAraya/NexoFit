@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { View, Text, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '@nexofit/core';
+import { colors, fonts, formatTime, formatWeekdayDate as formatDate } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookings, cancelBooking, cancelWaitlistEntry } from '../../hooks/useBooking';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
@@ -24,23 +24,6 @@ export function MyBookingsScreen({ navigation }: Props) {
       refresh();
     }, [refresh])
   );
-
-  const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('es-ES', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
 
   const handleCancel = (item: BookingWithSession) => {
     const isWaitlisted = item.status === 'waitlist';
@@ -93,7 +76,7 @@ export function MyBookingsScreen({ navigation }: Props) {
         title={classType?.name ?? 'Clase'}
         subtitle={`${formatDate(session?.starts_at ?? '')} · ${formatTime(session?.starts_at ?? '')} – ${formatTime(session?.ends_at ?? '')}`}
         badge={badge}
-        badgeColor={isWaitlisted ? '#F59E0B' : colors.turquesa}
+        badgeColor={isWaitlisted ? colors.warning : colors.turquesa}
       >
         {!isPast && (
           <Button
@@ -150,10 +133,10 @@ const styles = StyleSheet.create({
     margin: 16,
     marginBottom: 0,
     padding: 12,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.dangerBg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: colors.dangerBorder,
     gap: 8,
   },
   errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },

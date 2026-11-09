@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, type ViewProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '@nexofit/core';
+import { Badge } from './Badge';
 
 interface CardProps extends ViewProps {
   title?: string;
@@ -30,11 +31,7 @@ export function Card({
             {title && <Text style={styles.title}>{title}</Text>}
             {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
           </View>
-          {badge && (
-            <View style={[styles.badge, { backgroundColor: badgeColor + '20' }]}>
-              <Text style={[styles.badgeText, { color: colors.azulNexo }]}>{badge}</Text>
-            </View>
-          )}
+          {badge && <Badge label={badge} color={badgeColor} style={styles.badge} />}
           {chevron && (
             <Ionicons
               name="chevron-forward"
@@ -52,11 +49,11 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
   },
   header: {
     flexDirection: 'row',
@@ -78,16 +75,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginLeft: 8,
-  },
-  badgeText: {
-    fontFamily: fonts.uiSemiBold,
-    fontSize: 12,
-  },
+  badge: { marginLeft: 8 },
   chevron: {
     marginLeft: 4,
     // Alineado con la línea del título (el header usa alignItems flex-start).

@@ -15,10 +15,72 @@ vi.mock('react-native', () => ({
 }));
 
 import { confirmAction, notify } from './alerts';
+import { setDialogListener, toneForTitle, type DialogRequest } from './dialogStore';
 
 beforeEach(() => {
   mockAlert.mockReset();
   mockOS.value = 'ios';
+});
+
+describe('with an in-app dialog host on web', () => {
+  let received: DialogRequest[];
+  let unregister: () => void;
+
+  beforeEach(() => {
+    received = [];
+    unregister = setDialogListener((request) => received.push(request));
+    mockOS.value = 'web';
+    vi.stubGlobal('window', { alert: vi.fn(), confirm: vi.fn() });
+  });
+
+  afterEach(() => unregister());
+
+  it('shows notify as a toast instead of window.alert', () => {
+    notify('No pudimos guardar.', 'No se pudo guardar');
+
+    expect(received).toEqual([
+      { kind: 'toast', title: 'No se pudo guardar', message: 'No pudimos guardar.', tone: 'error' },
+    ]);
+    expect(window.alert).not.toHaveBeenCalled();
+  });
+
+  it('routes confirmAction to the host with defaults', () => {
+    const onConfirm = vi.fn();
+    confirmAction({ title: 'Borrar', message: '¿Seguro?', confirmLabel: 'Borrar', onConfirm });
+
+    expect(received[0]).toMatchObject({
+      kind: 'confirm',
+      cancelLabel: 'Cancelar',
+      destructive: true,
+    });
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('still uses the native dialog on native platforms', () => {
+    mockOS.value = 'ios';
+    notify('Hola', 'Aviso');
+    expect(received).toHaveLength(0);
+    expect(mockAlert).toHaveBeenCalled();
+  });
+});
+
+describe('toneForTitle', () => {
+  it('maps error-like titles to error', () => {
+    expect(toneForTitle('Error')).toBe('error');
+    expect(toneForTitle('No se pudo cancelar')).toBe('error');
+    expect(toneForTitle('Sin conexión')).toBe('error');
+  });
+
+  it('maps success-like titles to success', () => {
+    expect(toneForTitle('Listo')).toBe('success');
+    expect(toneForTitle('Cita reservada')).toBe('success');
+  });
+
+  it('defaults to info', () => {
+    expect(toneForTitle()).toBe('info');
+    expect(toneForTitle('Ayuda y soporte')).toBe('info');
+  });
 });
 
 afterEach(() => {

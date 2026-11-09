@@ -13,7 +13,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts, type RoleType } from '@nexofit/core';
+import { colors, fonts, formatDate, type RoleType } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOrgMembers, type OrgMember } from '../../hooks/useAdmin';
 import { Header, Card, Button } from '../../components/ui';
@@ -27,7 +27,7 @@ const roleLabels: Record<string, string> = {
 };
 
 const roleColors: Record<string, string> = {
-  admin: '#EF4444',
+  admin: colors.danger,
   coach: '#8B5CF6',
   professional: '#06B6D4',
   member: colors.turquesa,
@@ -62,11 +62,6 @@ export function ClientsScreen() {
     const matchesRole = filterRole === 'all' || m.role === filterRole;
     return matchesSearch && matchesRole;
   });
-
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
 
   const applyRole = async (member: OrgMember, role: RoleType) => {
     setChangingId(member.membershipId);
@@ -348,7 +343,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: colors.surfaceSubtle,
   },
   joinedDate: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },
   roleSelector: {
@@ -395,8 +390,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
-    backgroundColor: '#F9FAFB',
+    borderColor: colors.surfaceSubtle,
+    backgroundColor: colors.surfaceMuted,
   },
   roleDot: {
     width: 32,

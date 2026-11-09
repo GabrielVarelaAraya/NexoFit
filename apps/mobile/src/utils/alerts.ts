@@ -1,11 +1,14 @@
 import { Alert, Platform } from 'react-native';
+import { showDialog, toneForTitle } from './dialogStore';
 
 /**
- * Aviso simple (éxito/error). En web RN-Web ignora Alert.alert, así que
- * usamos window.alert; en nativo se mantiene el diálogo nativo.
+ * Aviso simple (éxito/error). En web se muestra como toast de la app
+ * (<DialogHost />); sin host, cae a window.alert porque RN-Web ignora
+ * Alert.alert. En nativo se mantiene el diálogo nativo.
  */
 export function notify(message: string, title?: string): void {
   if (Platform.OS === 'web') {
+    if (showDialog({ kind: 'toast', title, message, tone: toneForTitle(title) })) return;
     window.alert(title ? `${title}\n\n${message}` : message);
     return;
   }
@@ -18,14 +21,14 @@ export interface ConfirmOptions {
   /** Etiqueta del botón de confirmación. */
   confirmLabel: string;
   cancelLabel?: string;
-  /** Botón en estilo destructivo (rojo en iOS). Por defecto sí. */
+  /** Botón en estilo destructivo (rojo). Por defecto sí. */
   destructive?: boolean;
   onConfirm: () => void | Promise<void>;
 }
 
 /**
- * Confirmación de dos botones. En web usa window.confirm (Alert.alert es
- * no-op en RN-Web); en nativo, el diálogo nativo.
+ * Confirmación de dos botones. En web usa el diálogo de la app (o
+ * window.confirm si no hay host); en nativo, el diálogo nativo.
  */
 export function confirmAction(options: ConfirmOptions): void {
   const {
@@ -38,6 +41,16 @@ export function confirmAction(options: ConfirmOptions): void {
   } = options;
 
   if (Platform.OS === 'web') {
+    const shown = showDialog({
+      kind: 'confirm',
+      title,
+      message,
+      confirmLabel,
+      cancelLabel,
+      destructive,
+      onConfirm,
+    });
+    if (shown) return;
     if (window.confirm(`${title}\n\n${message}`)) {
       void onConfirm();
     }

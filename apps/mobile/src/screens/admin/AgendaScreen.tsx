@@ -105,7 +105,7 @@ export function AgendaScreen({ navigation }: { navigation: NavigationProp }) {
             <View
               style={[
                 styles.occupancyBar,
-                { width: `${pct}%`, backgroundColor: pct >= 90 ? '#EF4444' : colors.turquesa },
+                { width: `${pct}%`, backgroundColor: pct >= 90 ? colors.danger : colors.turquesa },
               ]}
             />
           </View>
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surfaceSubtle,
   },
   dateItemActive: { backgroundColor: colors.textAccent },
   dateDay: {
@@ -257,12 +257,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: colors.surfaceSubtle,
   },
   occupancy: {
     flex: 1,
     height: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surfaceSubtle,
     borderRadius: 3,
     overflow: 'hidden',
   },

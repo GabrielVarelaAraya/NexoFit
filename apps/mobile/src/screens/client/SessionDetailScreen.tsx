@@ -253,7 +253,7 @@ const infoStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.surfaceSubtle,
   },
   label: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.textSecondary },
   value: {
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   programContent: {
     fontFamily: fonts.uiRegular,
     fontSize: 14,
-    color: '#374151',
+    color: colors.textBody,
     lineHeight: 21,
   },
   logWorkoutButton: { marginTop: 4 },
@@ -308,5 +308,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.azulNexo,
   },
-  notes: { fontFamily: fonts.uiRegular, fontSize: 14, color: '#374151' },
+  notes: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.textBody },
 });

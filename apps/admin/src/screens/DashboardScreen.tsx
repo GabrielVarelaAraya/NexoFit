@@ -92,7 +92,7 @@ export function DashboardScreen({ organizationId }: { organizationId: string }) 
 }
 
 const ACTIVITY_COLORS: Record<ActivityItem['kind'], string> = {
-  booked: '#10B981',
+  booked: colors.success,
   cancelled: colors.textError,
   joined: colors.turquesa,
 };

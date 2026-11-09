@@ -271,8 +271,8 @@ function ActionButton({
 
 // Colores semánticos para el feed de actividad.
 const ACTIVITY_ICON_COLORS: Partial<Record<keyof typeof Ionicons.glyphMap, string>> = {
-  'checkmark-circle': '#10B981',
-  'close-circle': colors.textError ?? '#EF4444',
+  'checkmark-circle': colors.success,
+  'close-circle': colors.textError ?? colors.danger,
   person: colors.azulNexo,
 };
 
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     backgroundColor: colors.white,
   },
   actionIcon: {

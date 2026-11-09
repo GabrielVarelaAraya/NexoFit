@@ -16,9 +16,9 @@ const CLASS_COLORS = [
   '#0B9B91', // turquesa
   '#3B82F6', // azul
   '#8B5CF6', // violeta
-  '#F59E0B', // ámbar
-  '#EF4444', // rojo
-  '#10B981', // verde
+  colors.warning, // ámbar
+  colors.danger, // rojo
+  colors.success, // verde
   '#EC4899', // rosa
   '#6B7280', // gris
 ];
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
     backgroundColor: colors.white,
-    borderColor: '#D1D5DB',
+    borderColor: colors.borderStrong,
   },
   chipActive: { backgroundColor: colors.azulNexo, borderColor: colors.azulNexo },
   chipText: {
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.surfaceSubtle,
     gap: 10,
   },
   rowInfo: { flex: 1, gap: 2 },

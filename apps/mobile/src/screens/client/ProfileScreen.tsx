@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, getSupabase } from '@nexofit/core';
+import { colors, fonts, formatDateTime, getSupabase } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../hooks/useProgress';
 import { friendlyError } from '../../utils/errors';
@@ -323,13 +323,7 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
                       </Text>
                     </View>
                     <Text style={styles.notifBody}>{n.body}</Text>
-                    <Text style={styles.notifDate}>
-                      {new Date(n.created_at).toLocaleDateString('es-ES', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </Text>
+                    <Text style={styles.notifDate}>{formatDateTime(n.created_at)}</Text>
                   </View>
                 ))}
               </ScrollView>
@@ -470,7 +464,7 @@ const rowStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.surfaceSubtle,
   },
   label: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.textSecondary },
   value: {
@@ -483,7 +477,7 @@ const rowStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.surfaceSubtle,
     gap: 12,
   },
   actionLabel: {
@@ -502,7 +496,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: colors.border,
     gap: 8,
   },
   leaveTitle: { fontFamily: fonts.uiSemiBold, fontSize: 14, color: colors.azulNexo },
@@ -581,7 +575,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontFamily: fonts.uiRegular,
@@ -601,7 +595,7 @@ const styles = StyleSheet.create({
   },
   notifItem: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.surfaceSubtle,
     paddingVertical: 10,
     gap: 4,
   },
@@ -627,7 +621,7 @@ const styles = StyleSheet.create({
   notifBody: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#374151',
+    color: colors.textBody,
   },
   notifDate: {
     fontFamily: fonts.uiRegular,
@@ -667,6 +661,6 @@ const styles = StyleSheet.create({
   planBoxMeta: {
     fontFamily: fonts.uiRegular,
     fontSize: 13,
-    color: '#374151',
+    color: colors.textBody,
   },
 });

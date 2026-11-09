@@ -35,7 +35,7 @@ export function ClientTabNavigator() {
           height: 56 + insets.bottom,
           // Mismo color que el fondo de las pantallas (crema), no blanco.
           backgroundColor: theme.crema,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: colors.border,
         },
       }}
     >

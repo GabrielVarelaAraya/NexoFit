@@ -106,7 +106,13 @@ Cada lote se puede revisar y commitear por separado.
 
 1. **Lote 1 – Arreglos rápidos (P0/P1, S):** T1, T7, T8, M1, M7, M9, M12, S1, W2, P1. ✅ Hecho
    (8 nov 2026). W2 quedó en "pegada arriba"; íconos y grupos del menú pasan al Lote 5.
-2. **Lote 2 – Base del sistema de diseño:** T4 (componentes), T5 (Toast/ConfirmDialog), T2/T3 (tokens), T9, T10, T11.
+2. **Lote 2 – Base del sistema de diseño:** T4 (componentes), T5 (Toast/ConfirmDialog), T2/T3 (tokens), T9, T10, T11. ✅ Hecho
+   (8 nov 2026), con pendientes:
+   - T2: tokens semánticos en `colors.ts`; de 122 hex sueltos quedan 28 (colores de categoría/marca).
+   - T3: escala `textStyles` creada; se usa en los componentes nuevos, falta migrar pantallas.
+   - T4: `DialogHost`, `Badge`, `SegmentedControl`, `EmptyState`. Faltan `ListItem`, `StatCard` y `Sheet`.
+   - T10: `formatDate*` en `@nexofit/core`, usado en móvil; falta la consola web y las notificaciones SQL.
+   - T11: títulos «Pantalla · NexoFit»; justo después de iniciar sesión muestra solo «NexoFit».
 3. **Lote 3 – Onboarding:** A1–A4.
 4. **Lote 4 – Contenido de valor para el miembro:** M2, M6, M11, M13, P2.
 5. **Lote 5 – Consola web:** W4 (rutas), W5, W6, W7, W8, W10, W11, luego W3 (paridad).

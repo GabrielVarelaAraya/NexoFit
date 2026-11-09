@@ -27,7 +27,7 @@ export function ProfessionalTabNavigator() {
           paddingBottom: Math.max(insets.bottom, 4),
           height: 56 + insets.bottom,
           backgroundColor: theme.crema,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: colors.border,
         },
       }}
     >

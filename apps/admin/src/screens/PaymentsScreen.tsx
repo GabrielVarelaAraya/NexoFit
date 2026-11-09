@@ -5,7 +5,7 @@ import { usePayments, type PaymentItem } from '../hooks/useAdminData';
 import { METHOD_LABELS, STATUS_LABELS, formatMoney, formatShortDate } from '../utils/format';
 
 const STATUS_COLORS: Record<string, string> = {
-  paid: '#10B981',
+  paid: colors.success,
   pending: '#F5A623',
   refunded: colors.textSecondary,
 };
@@ -96,14 +96,14 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   table: { gap: 12 },
   sectionTitle: { fontFamily: fonts.uiSemiBold, fontSize: 16, color: colors.azulNexo },
-  headerTableRow: { borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  headerTableRow: { borderBottomWidth: 1, borderBottomColor: colors.border },
   headerText: { fontFamily: fonts.uiSemiBold, fontSize: 12, color: colors.textSecondary },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.surfaceSubtle,
     gap: 12,
   },
   cellText: { fontFamily: fonts.uiRegular, fontSize: 14, color: colors.azulNexo },

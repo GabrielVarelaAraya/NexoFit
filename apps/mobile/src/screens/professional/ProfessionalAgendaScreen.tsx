@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { getSupabase } from '@nexofit/core';
-import { Button, Card } from '../../components/ui';
+import { Button, Card, SegmentedControl } from '../../components/ui';
+import { formatGymDate, formatGymTime, splitAppointments } from '../../utils/appointments';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfessional } from '../../hooks/useProfessional';
 import { useRealtimeAppointments } from '../../hooks/useRealtimeAppointments';
@@ -20,16 +21,13 @@ export function ProfessionalAgendaScreen() {
   useRealtimeAppointments('professional_id', workspace?.professional.id, () => {
     void refresh(true);
   });
-  const [history, setHistory] = useState(false);
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const history = tab === 'past';
   const [pending, setPending] = useState<string | null>(null);
   const now = Date.now();
-  const appointments =
-    workspace?.appointments.filter((appointment) => {
-      const upcoming =
-        appointment.status === 'confirmed' && new Date(appointment.ends_at).getTime() >= now;
-      return history ? !upcoming : upcoming;
-    }) ?? [];
-  if (history) appointments.reverse();
+  // Misma regla que la vista del miembro: próximas = confirmadas por venir.
+  const split = splitAppointments(workspace?.appointments ?? []);
+  const appointments = history ? split.past : split.upcoming;
 
   const update = async (appointment: Appointment, status: 'cancelled' | 'attended' | 'no_show') => {
     if (!workspace || !membership || pending) return;
@@ -61,19 +59,14 @@ export function ProfessionalAgendaScreen() {
   return (
     <ProfessionalLayout title="Mi agenda" loading={loading} error={error} refresh={refresh}>
       <Text style={styles.text}>{membership?.organization_name} · Tus citas asignadas</Text>
-      <View style={styles.row}>
-        {[false, true].map((value) => (
-          <TouchableOpacity
-            accessibilityRole="button"
-            key={String(value)}
-            accessibilityState={{ selected: history === value }}
-            style={[styles.chip, history === value && styles.chipActive]}
-            onPress={() => setHistory(value)}
-          >
-            <Text style={styles.chipText}>{value ? 'Historial' : 'Próximas'}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <SegmentedControl
+        value={tab}
+        onChange={setTab}
+        segments={[
+          { value: 'upcoming', label: `Próximas (${split.upcoming.length})` },
+          { value: 'past', label: `Historial (${split.past.length})` },
+        ]}
+      />
       {!appointments.length && (
         <Card>
           <Text style={styles.text}>
@@ -89,24 +82,11 @@ export function ProfessionalAgendaScreen() {
           <Text style={styles.text}>
             {appointment.services?.name || 'Consulta'} · {APPOINTMENT_STATUS[appointment.status]}
           </Text>
+          {/* Mismo formato y hora del gimnasio que ve el miembro en Citas. */}
           <Text style={styles.text}>
-            {new Date(appointment.starts_at).toLocaleDateString('es-CR', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-          </Text>
-          <Text style={styles.text}>
-            {new Date(appointment.starts_at).toLocaleTimeString('es-CR', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-            {' – '}
-            {new Date(appointment.ends_at).toLocaleTimeString('es-CR', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {formatGymDate(new Date(appointment.starts_at))} ·{' '}
+            {formatGymTime(new Date(appointment.starts_at))} –{' '}
+            {formatGymTime(new Date(appointment.ends_at))}
           </Text>
           {appointment.patient?.phone && (
             <Text style={styles.text}>Teléfono: {appointment.patient.phone}</Text>
