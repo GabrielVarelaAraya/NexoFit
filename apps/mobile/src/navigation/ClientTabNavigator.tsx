@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, useTheme } from '@nexofit/core';
 import { useUnreadNotifications } from '../contexts/NotificationsContext';
 import { badgeValue } from './tabBadge';
+import { swipeScreenLayout } from './SwipeTabsLayout';
 import type { ClientTabParamList } from './types';
 
 // Screens
@@ -22,8 +23,11 @@ export function ClientTabNavigator() {
 
   return (
     <Tab.Navigator
+      // Deslizar a izquierda/derecha cambia de pestaña; el cambio se anima.
+      screenLayout={swipeScreenLayout}
       screenOptions={{
         headerShown: false,
+        animation: 'shift',
         tabBarActiveTintColor: theme.textAccent,
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarLabelStyle: {

@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@nexofit/core';
+import { swipeScreenLayout } from './SwipeTabsLayout';
 import type { AdminTabParamList } from './types';
 
 // Screens
@@ -18,8 +19,11 @@ export function AdminTabNavigator() {
 
   return (
     <Tab.Navigator
+      // Deslizar a izquierda/derecha cambia de pestaña; el cambio se anima.
+      screenLayout={swipeScreenLayout}
       screenOptions={{
         headerShown: false,
+        animation: 'shift',
         tabBarActiveTintColor: theme.textAccent,
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarLabelStyle: {
