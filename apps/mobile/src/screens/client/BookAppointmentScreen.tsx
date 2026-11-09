@@ -9,6 +9,10 @@ import {
   BOOKING_HORIZON_DAYS,
   addDaysStr,
   bookAppointment,
+  bookingStepNumber,
+  missingStepHint,
+  specialtyLabel,
+  type BookingStep,
   fetchBusySlots,
   fetchProfessionalDirectory,
   fetchProfessionalOffer,
@@ -64,6 +68,7 @@ export function BookAppointmentScreen({ navigation }: { navigation: NavigationPr
   const [directoryError, setDirectoryError] = useState<string | null>(null);
 
   const [professionalId, setProfessionalId] = useState<string | null>(null);
+  const step = (name: BookingStep) => bookingStepNumber(name, directory.length > 1);
   const [offer, setOffer] = useState<ProfessionalOffer | null>(null);
   const [busy, setBusy] = useState<BusyRange[]>([]);
   const [offerLoading, setOfferLoading] = useState(false);
@@ -212,12 +217,12 @@ export function BookAppointmentScreen({ navigation }: { navigation: NavigationPr
         ) : (
           <>
             {directory.length > 1 && (
-              <Section title="1. Profesional">
+              <Section title={`${step('professional')}. Profesional`}>
                 {directory.map((item) => (
                   <Option
                     key={item.professionalId}
                     title={item.fullName ?? 'Profesional'}
-                    subtitle={item.specialization}
+                    subtitle={specialtyLabel(item.specialization)}
                     selected={item.professionalId === professionalId}
                     onPress={() => void selectProfessional(item.professionalId)}
                   />
@@ -225,10 +230,27 @@ export function BookAppointmentScreen({ navigation }: { navigation: NavigationPr
               </Section>
             )}
 
+            {/* Con un solo profesional no hay paso de elección, pero sí queda
+                claro con quién es la cita. */}
             {directory.length === 1 && professional && (
               <View style={styles.proBanner}>
-                <Text style={styles.optionTitle}>{professional.fullName ?? 'Profesional'}</Text>
-                <Text style={styles.optionSubtitle}>{professional.specialization}</Text>
+                <View style={styles.proAvatar}>
+                  <Text style={styles.proAvatarText}>
+                    {(professional.fullName ?? 'P').trim().charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.proInfo}>
+                  <Text style={styles.proEyebrow}>Tu cita será con</Text>
+                  <Text style={styles.optionTitle}>{professional.fullName ?? 'Profesional'}</Text>
+                  <Text style={styles.optionSubtitle}>
+                    {specialtyLabel(professional.specialization)}
+                  </Text>
+                  {professional.bio ? (
+                    <Text style={styles.proBio} numberOfLines={2}>
+                      {professional.bio}
+                    </Text>
+                  ) : null}
+                </View>
               </View>
             )}
 
@@ -258,7 +280,7 @@ export function BookAppointmentScreen({ navigation }: { navigation: NavigationPr
 
             {offer && !noServices && !noAvailability && (
               <>
-                <Section title={directory.length > 1 ? '2. Servicio' : '1. Servicio'}>
+                <Section title={`${step('service')}. Servicio`}>
                   {offer.services.map((item) => (
                     <Option
                       key={item.id}
@@ -274,7 +296,7 @@ export function BookAppointmentScreen({ navigation }: { navigation: NavigationPr
                 </Section>
 
                 {service && (
-                  <Section title="Día">
+                  <Section title={`${step('day')}. Día`}>
                     {firstDateWithSlots === null ? (
                       <Text style={styles.hint}>
                         No hay horarios libres en los próximos {BOOKING_HORIZON_DAYS} días.
@@ -322,7 +344,7 @@ export function BookAppointmentScreen({ navigation }: { navigation: NavigationPr
                 )}
 
                 {service && activeDate && (
-                  <Section title="Hora">
+                  <Section title={`${step('time')}. Hora`}>
                     <View style={styles.slotGrid}>
                       {slots.map((slot) => {
                         const iso = slot.start.toISOString();
@@ -360,7 +382,13 @@ export function BookAppointmentScreen({ navigation }: { navigation: NavigationPr
             {professional?.fullName ? ` · ${professional.fullName}` : ''}
           </Text>
         ) : (
-          <Text style={styles.summary}>Elige profesional, servicio, día y hora.</Text>
+          <Text style={styles.summary}>
+            {missingStepHint({
+              needsProfessional: directory.length > 1 && !professionalId,
+              hasService: Boolean(service),
+              hasSlot: Boolean(activeSlot),
+            })}
+          </Text>
         )}
         <Button
           title="Confirmar cita"
@@ -402,12 +430,27 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   proBanner: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
   },
+  proAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.textAccent,
+  },
+  proAvatarText: { fontFamily: fonts.uiSemiBold, fontSize: 20, color: colors.white },
+  proInfo: { flex: 1, gap: 2 },
+  proEyebrow: { fontFamily: fonts.uiRegular, fontSize: 12, color: colors.textSecondary },
+  proBio: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textSecondary, marginTop: 4 },
   dayRow: { flexDirection: 'row', gap: 8 },
   day: {
     width: 64,

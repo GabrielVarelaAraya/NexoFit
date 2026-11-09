@@ -19,7 +19,10 @@ import {
   formatDayMonth,
   formatMonthShort,
   formatWeekdayDate,
+  textStyles,
 } from '@nexofit/core';
+import { Sparkline } from '../../components/ui';
+import { METRIC_DIRECTION, formatDelta, metricSeries, seriesTrend } from '../../utils/progress';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { useBodyMetrics, type MeasurementWithValues } from '../../hooks/useProgress';
@@ -104,8 +107,6 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
   const initialLoading =
     (loading && measurements.length === 0 && !error) ||
     (workoutsLoading && logs.length === 0 && records.length === 0 && !workoutsError);
-
-  const findLatest = (name: string) => latestMetrics.find((m) => m.name === name)?.value;
 
   const findTrend = (name: string) => {
     const current = latestMetrics.find((m) => m.name === name)?.value;
@@ -203,35 +204,26 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
         <LoadingView label="Cargando tu progreso…" />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Latest values */}
-          <View style={styles.statsGrid}>
-            <StatCard
-              title="Peso"
-              value={findLatest('Peso') != null ? String(findLatest('Peso')) : '—'}
-              subtitle="kg"
-              color={colors.turquesa}
-            />
-            <StatCard
-              title="Grasa corporal"
-              value={
-                findLatest('Grasa corporal') != null ? String(findLatest('Grasa corporal')) : '—'
-              }
-              subtitle="%"
-              color={colors.mentaActiva}
-            />
-            <StatCard
-              title="Cintura"
-              value={findLatest('Cintura') != null ? String(findLatest('Cintura')) : '—'}
-              subtitle="cm"
-              color={colors.azulNexo}
-            />
-            <StatCard
-              title="Registros"
-              value={String(measurements.length)}
-              subtitle="Medidas totales"
-              color={colors.turquesa}
-            />
-          </View>
+          {/* Evolución: tendencia de las medidas clave (antes 4 tarjetas que
+              repetían los valores de «Medidas corporales»). */}
+          {measurements.length > 0 && (
+            <Card style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Evolución</Text>
+              <Text style={styles.sectionSubtitle}>
+                {measurements.length === 1
+                  ? 'Registra otra medición para ver tu tendencia.'
+                  : `Últimas ${Math.min(measurements.length, 8)} mediciones`}
+              </Text>
+              {TREND_METRICS.map((name) => (
+                <TrendRow
+                  key={name}
+                  name={name}
+                  unit={METRIC_DEFINITIONS.find((m) => m.name === name)?.unit ?? ''}
+                  series={metricSeries(measurements, name)}
+                />
+              ))}
+            </Card>
+          )}
 
           {/* Body Metrics */}
           <Card style={styles.sectionCard}>
@@ -274,14 +266,6 @@ export function ProgressScreen({ navigation }: { navigation: NavigationProp }) {
                 </Text>
               </View>
             )}
-
-            <Button
-              title="Añadir medidas"
-              variant="ghost"
-              fullWidth
-              style={styles.addButton}
-              onPress={openModal}
-            />
           </Card>
 
           {/* Personal Records */}
@@ -504,22 +488,36 @@ function WorkoutLogRow({
   );
 }
 
-function StatCard({
-  title,
-  value,
-  subtitle,
-  color,
-}: {
-  title: string;
-  value: string;
-  subtitle: string;
-  color: string;
-}) {
+const TREND_METRICS = ['Peso', 'Grasa corporal', 'Masa muscular'] as const;
+
+const TONE_COLORS = {
+  good: colors.textSuccess,
+  bad: colors.textError,
+  neutral: colors.textSecondary,
+} as const;
+
+function TrendRow({ name, unit, series }: { name: string; unit: string; series: number[] }) {
+  if (series.length === 0) return null;
+  const current = series[series.length - 1];
+  const trend = seriesTrend(series, METRIC_DIRECTION[name] ?? 'neutral');
+  const toneColor = trend ? TONE_COLORS[trend.tone] : colors.textSecondary;
+
   return (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <Text style={[styles.statValue, { color: colors.azulNexo }]}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-      <Text style={styles.statSubtitle}>{subtitle}</Text>
+    <View style={styles.trendRow}>
+      <View style={styles.trendInfo}>
+        <Text style={styles.trendLabel}>{name}</Text>
+        <Text style={styles.trendValue}>
+          {current} <Text style={styles.trendUnit}>{unit}</Text>
+        </Text>
+        <Text style={[styles.trendDelta, { color: toneColor }]}>
+          {trend ? `${formatDelta(trend.delta)} ${unit} en el periodo` : 'Sin comparativa'}
+        </Text>
+      </View>
+      <Sparkline
+        values={series}
+        color={trend?.tone === 'bad' ? colors.textError : colors.textAccent}
+        accessibilityLabel={`${name}: ${series.join(', ')} ${unit}`}
+      />
     </View>
   );
 }
@@ -601,42 +599,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   errorText: { fontFamily: fonts.uiRegular, fontSize: 13, color: colors.textError },
-  statsGrid: {
+  trendRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceSubtle,
   },
-  statCard: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statValue: {
-    fontFamily: fonts.brand,
-    fontSize: 28,
-    color: colors.azulNexo,
-    marginBottom: 4,
-  },
-  statTitle: {
-    fontFamily: fonts.uiSemiBold,
-    fontSize: 13,
-    color: colors.azulNexo,
-    marginBottom: 2,
-  },
-  statSubtitle: {
-    fontFamily: fonts.uiRegular,
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
+  trendInfo: { flex: 1, gap: 2 },
+  trendLabel: { ...textStyles.caption, color: colors.textSecondary },
+  trendValue: { fontFamily: fonts.brand, fontSize: 22, lineHeight: 28, color: colors.azulNexo },
+  trendUnit: { ...textStyles.body, color: colors.textSecondary },
+  trendDelta: { ...textStyles.label },
   sectionCard: { gap: 12 },
   sectionHeader: {
     flexDirection: 'row',

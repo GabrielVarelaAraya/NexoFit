@@ -29,6 +29,48 @@ export function parseClockTime(value: string): number | null {
   return hours * 60 + minutes;
 }
 
+export type SetupStep = 'profile' | 'services' | 'availability';
+
+export interface SetupItem {
+  step: SetupStep;
+  label: string;
+  done: boolean;
+  /** Pestaña del profesional donde se resuelve. */
+  tab: 'PerfilProfesional' | 'Servicios' | 'Disponibilidad';
+}
+
+/**
+ * Lo que necesita un profesional para recibir reservas: los miembros ven su
+ * especialidad, eligen un servicio y solo pueden reservar en sus horarios.
+ */
+export function professionalSetup(workspace: {
+  professional: { specialization: string | null };
+  services: readonly unknown[];
+  availability: readonly unknown[];
+}): SetupItem[] {
+  const specialty = workspace.professional.specialization?.trim() ?? '';
+  return [
+    {
+      step: 'profile',
+      label: 'Escribe tu especialidad',
+      done: specialty.length > 0 && !/^por definir$/i.test(specialty),
+      tab: 'PerfilProfesional',
+    },
+    {
+      step: 'services',
+      label: 'Crea al menos un servicio',
+      done: workspace.services.length > 0,
+      tab: 'Servicios',
+    },
+    {
+      step: 'availability',
+      label: 'Define tus horarios',
+      done: workspace.availability.length > 0,
+      tab: 'Disponibilidad',
+    },
+  ];
+}
+
 export function availabilityError(
   day: number,
   start: string,

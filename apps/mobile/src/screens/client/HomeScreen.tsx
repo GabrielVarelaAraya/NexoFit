@@ -1,11 +1,21 @@
 import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, fonts, formatTime, formatWeekdayDate as formatDate } from '@nexofit/core';
+import {
+  colors,
+  fonts,
+  formatTime,
+  formatWeekdayDate as formatDate,
+  textStyles,
+} from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBookings, useSchedule, useRecommendations } from '../../hooks/useBooking';
 import { useSettings } from '../../hooks/useProgress';
 import { greeting } from '../../utils/greeting';
+import { stillAhead } from '../../utils/schedule';
+import { formatGymDate, formatGymTime } from '../../utils/appointments';
+import { useNextAppointment } from '../../hooks/useNextAppointment';
+import { Ionicons } from '@expo/vector-icons';
 import { Header, Card, Button, LoadingView } from '../../components/ui';
 import { getSignupIntent } from '../../utils/signupIntent';
 import type { BookingWithSession, SessionWithType, NavigationProp } from '../../types/screens';
@@ -30,6 +40,7 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
     refresh: refreshRecommendations,
   } = useRecommendations(orgId, user?.id ?? '');
   const { profile } = useSettings(user?.id ?? '');
+  const { next: nextAppointment, refresh: refreshNextAppointment } = useNextAppointment(user?.id);
   const [refreshing, setRefreshing] = useState(false);
 
   const loading = bookingsLoading || sessionsLoading;
@@ -39,15 +50,18 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
       refreshBookings();
       refreshSessions();
       refreshRecommendations();
-    }, [refreshBookings, refreshSessions, refreshRecommendations])
+      void refreshNextAppointment();
+    }, [refreshBookings, refreshSessions, refreshRecommendations, refreshNextAppointment])
   );
 
   const upcomingBookings = (bookings as BookingWithSession[])
     .filter((b) => b.sessions && new Date(b.sessions.starts_at) > new Date())
     .slice(0, 3);
+  // Por la tarde «Clases de hoy» mostraba clases de la mañana ya terminadas.
+  const todayAhead = stillAhead(todaySessions);
 
   const isEmpty =
-    upcomingBookings.length === 0 && todaySessions.length === 0 && recommended.length === 0;
+    upcomingBookings.length === 0 && todayAhead.length === 0 && recommended.length === 0;
 
   if (!orgId) {
     // «Registrar mi gimnasio» es solo del rol de gimnasio (selección de rol
@@ -108,7 +122,12 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
             refreshing={refreshing}
             onRefresh={async () => {
               setRefreshing(true);
-              await Promise.all([refreshBookings(), refreshSessions(), refreshRecommendations()]);
+              await Promise.all([
+                refreshBookings(),
+                refreshSessions(),
+                refreshRecommendations(),
+                refreshNextAppointment(),
+              ]);
               setRefreshing(false);
             }}
             colors={[colors.turquesa]}
@@ -120,6 +139,52 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
           <LoadingView label="Cargando tu actividad…" style={styles.emptyState} />
         ) : (
           <>
+            {/* Resumen: próxima cita y accesos directos a lo que más se hace. */}
+            <View style={styles.section}>
+              {nextAppointment && (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={`Tu próxima cita: ${nextAppointment.serviceName}, ${formatGymDate(new Date(nextAppointment.startsAt))} a las ${formatGymTime(new Date(nextAppointment.startsAt))}`}
+                  style={styles.nextCard}
+                  onPress={() => navigation.navigate('Citas')}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.nextIcon}>
+                    <Ionicons name="calendar" size={22} color={colors.limaProgreso} />
+                  </View>
+                  <View style={styles.nextBody}>
+                    <Text style={styles.nextEyebrow}>Tu próxima cita</Text>
+                    <Text style={styles.nextTitle}>{nextAppointment.serviceName}</Text>
+                    <Text style={styles.nextMeta}>
+                      {formatGymDate(new Date(nextAppointment.startsAt))} ·{' '}
+                      {formatGymTime(new Date(nextAppointment.startsAt))}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.white} />
+                </TouchableOpacity>
+              )}
+              <View style={styles.shortcuts}>
+                {(
+                  [
+                    { icon: 'barbell-outline', label: 'Reservar clase', to: 'Clases' },
+                    { icon: 'calendar-outline', label: 'Reservar cita', to: 'BookAppointment' },
+                    { icon: 'trending-up-outline', label: 'Mi progreso', to: 'Progreso' },
+                  ] as const
+                ).map((item) => (
+                  <TouchableOpacity
+                    key={item.to}
+                    accessibilityRole="button"
+                    style={styles.shortcut}
+                    onPress={() => navigation.navigate(item.to)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name={item.icon} size={22} color={colors.textAccent} />
+                    <Text style={styles.shortcutText}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             {/* Upcoming Bookings */}
             {upcomingBookings.length > 0 && (
               <View style={styles.section}>
@@ -151,13 +216,13 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
             )}
 
             {/* Today's Sessions */}
-            {todaySessions.length > 0 && (
+            {todayAhead.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Clases de hoy</Text>
                 </View>
                 <View style={styles.sessionsList}>
-                  {todaySessions.map((session) => (
+                  {todayAhead.map((session) => (
                     <TouchableOpacity
                       accessibilityRole="button"
                       key={session.id}
@@ -285,6 +350,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textAccent,
   },
+  nextCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: colors.azulNexo,
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  nextIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white + '1A',
+  },
+  nextBody: { flex: 1, gap: 2 },
+  nextEyebrow: { ...textStyles.caption, color: colors.white + 'B3' },
+  nextTitle: { ...textStyles.title, color: colors.white },
+  nextMeta: { ...textStyles.body, color: colors.white + 'E6' },
+  shortcuts: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  shortcut: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shortcutText: { ...textStyles.label, color: colors.azulNexo, textAlign: 'center' },
   bookingsList: { gap: 12 },
   sessionsList: { gap: 12 },
   cardWithMargin: { marginTop: 0 },

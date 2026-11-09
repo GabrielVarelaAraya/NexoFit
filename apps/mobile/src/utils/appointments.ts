@@ -227,6 +227,42 @@ export function splitAppointments<T extends { status: string; starts_at: string;
   return { upcoming, past };
 }
 
+// ------------------------------------------------------------
+// Flujo de reserva (pantalla BookAppointment)
+// ------------------------------------------------------------
+
+export type BookingStep = 'professional' | 'service' | 'day' | 'time';
+
+/**
+ * Número de cada paso. Con un solo profesional no hay paso de elección y la
+ * numeración arranca en «Servicio» (antes Día/Hora iban sin número).
+ */
+export function bookingStepNumber(step: BookingStep, manyProfessionals: boolean): number {
+  const order: BookingStep[] = manyProfessionals
+    ? ['professional', 'service', 'day', 'time']
+    : ['service', 'day', 'time'];
+  return order.indexOf(step) + 1;
+}
+
+/** Qué le falta elegir al miembro, para el pie de la pantalla. */
+export function missingStepHint(state: {
+  needsProfessional: boolean;
+  hasService: boolean;
+  hasSlot: boolean;
+}): string {
+  if (state.needsProfessional) return 'Elige un profesional para continuar.';
+  if (!state.hasService) return 'Elige un servicio para ver los horarios.';
+  if (!state.hasSlot) return 'Elige el día y la hora de tu cita.';
+  return '';
+}
+
+/** La especialidad vacía o de relleno («Por definir») se muestra genérica. */
+export function specialtyLabel(specialization?: string | null): string {
+  const value = specialization?.trim();
+  if (!value || /^por definir$/i.test(value)) return 'Profesional del gimnasio';
+  return value;
+}
+
 /** El miembro solo puede cancelar citas confirmadas que aún no empiezan. */
 export function canCancelAppointment(
   status: string,
@@ -302,6 +338,38 @@ export async function cancelAppointment(
   }
 
   return cancelResult(data);
+}
+
+export interface NextAppointment {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  serviceName: string;
+}
+
+/** La próxima cita confirmada (o en curso) del miembro, o null si no tiene. */
+export async function fetchNextAppointment(
+  client: Client,
+  profileId: string,
+  now: Date = new Date()
+): Promise<NextAppointment | null> {
+  const { data, error } = await client
+    .from('appointments')
+    .select('id, starts_at, ends_at, services ( name )')
+    .eq('profile_id', profileId)
+    .eq('status', 'confirmed')
+    .gte('ends_at', now.toISOString())
+    .order('starts_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: data.id,
+    startsAt: data.starts_at,
+    endsAt: data.ends_at,
+    serviceName: data.services?.name ?? 'Cita',
+  };
 }
 
 /** Profesionales de los gimnasios de la persona usuaria (con nombre). */

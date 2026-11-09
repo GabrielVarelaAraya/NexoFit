@@ -10,3 +10,4 @@ export { Badge } from './Badge';
 export { SegmentedControl } from './SegmentedControl';
 export type { Segment } from './SegmentedControl';
 export { EmptyState } from './EmptyState';
+export { Sparkline } from './Sparkline';

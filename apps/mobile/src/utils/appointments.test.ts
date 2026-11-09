@@ -12,8 +12,34 @@ import {
   gymDayOfWeek,
   gymSlotsForDate,
   splitAppointments,
+  bookingStepNumber,
+  missingStepHint,
+  specialtyLabel,
   type AvailabilityBlock,
 } from './appointments';
+
+describe('booking flow helpers', () => {
+  it('numbers steps with and without the professional step', () => {
+    expect(bookingStepNumber('professional', true)).toBe(1);
+    expect(bookingStepNumber('time', true)).toBe(4);
+    expect(bookingStepNumber('service', false)).toBe(1);
+    expect(bookingStepNumber('time', false)).toBe(3);
+  });
+
+  it('says what is missing, in order', () => {
+    const base = { needsProfessional: false, hasService: true, hasSlot: true };
+    expect(missingStepHint({ ...base, needsProfessional: true })).toMatch(/profesional/);
+    expect(missingStepHint({ ...base, hasService: false })).toMatch(/servicio/);
+    expect(missingStepHint({ ...base, hasSlot: false })).toMatch(/día y la hora/);
+    expect(missingStepHint(base)).toBe('');
+  });
+
+  it('replaces empty or placeholder specialties', () => {
+    expect(specialtyLabel('Nutrición')).toBe('Nutrición');
+    expect(specialtyLabel('Por definir')).toBe('Profesional del gimnasio');
+    expect(specialtyLabel(null)).toBe('Profesional del gimnasio');
+  });
+});
 
 describe('splitAppointments', () => {
   const now = new Date('2026-11-10T00:00:00Z');

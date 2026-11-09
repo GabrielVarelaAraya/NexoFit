@@ -117,7 +117,17 @@ Cada lote se puede revisar y commitear por separado.
    («Iniciar sesión» / «Crear cuenta»), el tipo de uso se pregunta solo en el registro,
    requisitos de contraseña en vivo y «Volver» en login y registro. El login ahora dice
    «Hola de nuevo» (antes «Bienvenida de vuelta», con género asumido).
-4. **Lote 4 – Contenido de valor para el miembro:** M2, M6, M11, M13, P2.
+4. **Lote 4 – Contenido de valor para el miembro:** M2, M6, M11, M13, P2. ✅ Hecho (8 nov 2026):
+   - M2: Inicio con tarjeta «Tu próxima cita», accesos rápidos y sin clases de hoy ya terminadas.
+     No muestra estado de membresía (eso vive en «Mis pagos y plan»).
+   - M6/M8: card «Evolución» (peso, grasa, masa muscular) con mini-gráfico y cambio en el
+     periodo; se quitaron las 4 tarjetas duplicadas y el botón «Añadir medidas» repetido.
+   - M11: «Tu cita será con…» (inicial, especialidad, bio), pasos numerados siempre y pie que
+     dice qué falta elegir.
+   - M13: sin plan, dice que se activa en recepción; con plan, avisa si vence en ≤ 7 días.
+   - P2: lista «Completa tu perfil para recibir reservas» en la agenda del profesional.
+   - Sin verificar en vivo: tarjeta de próxima cita, banner del profesional en Reservar y la
+     lista del profesional (no hay profesional ni citas de prueba en la base).
 5. **Lote 5 – Consola web:** W4 (rutas), W5, W6, W7, W8, W10, W11, luego W3 (paridad).
 6. **Lote 6 – Staff móvil:** S2–S6, P3.
 7. **Transversal continuo:** T6 (accesibilidad) y T12 en cada pantalla que se toque.

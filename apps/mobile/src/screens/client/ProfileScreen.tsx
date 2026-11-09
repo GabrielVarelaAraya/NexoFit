@@ -28,6 +28,7 @@ import {
 } from '../../hooks/usePayments';
 import { useNotifications } from '../../hooks/useNotifications';
 import { countUnread } from '../../utils/notifications';
+import { daysLeftLabel, planStatus } from '../../utils/membershipPlan';
 import { Header, Button, Card } from '../../components/ui';
 
 export function ProfileScreen({ professionalDetails }: { professionalDetails?: React.ReactNode }) {
@@ -370,20 +371,40 @@ export function ProfileScreen({ professionalDetails }: { professionalDetails?: R
             ) : (
               <>
                 {currentPlan ? (
-                  <View style={styles.planBox}>
-                    <Text style={styles.planBoxLabel}>Plan vigente</Text>
-                    <Text style={styles.planBoxName}>{currentPlan.planName}</Text>
+                  (() => {
+                    const status = planStatus(currentPlan.validUntil);
+                    return (
+                      <View style={[styles.planBox, status.expiringSoon && styles.planBoxWarning]}>
+                        <Text style={styles.planBoxLabel}>Plan vigente</Text>
+                        <Text style={styles.planBoxName}>{currentPlan.planName}</Text>
+                        <Text style={styles.planBoxMeta}>
+                          Válido hasta el {formatShortDate(currentPlan.validUntil)}
+                        </Text>
+                        {status.expiringSoon && (
+                          <Text style={styles.planWarning}>
+                            {daysLeftLabel(status.daysLeft)}. Renuévalo en recepción para no perder
+                            tus reservas.
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })()
+                ) : (
+                  // Los planes se cobran en el gimnasio: decir dónde activarlo en vez
+                  // de «consulta las membresías» sin ningún camino.
+                  <View style={[styles.planBox, styles.planBoxWarning]}>
+                    <Text style={styles.planBoxLabel}>Sin plan activo</Text>
                     <Text style={styles.planBoxMeta}>
-                      Válido hasta el {formatShortDate(currentPlan.validUntil)}
+                      Para activar un plan, pásate por recepción de{' '}
+                      {membership?.organization_name ?? 'tu gimnasio'}. Cuando registren el pago,
+                      aparecerá aquí.
                     </Text>
                   </View>
-                ) : (
-                  <Text style={styles.notifEmpty}>
-                    Aún no tienes un plan activo. Consulta las membresías disponibles en tu
-                    gimnasio.
-                  </Text>
                 )}
 
+                {myPayments.length > 0 && (
+                  <Text style={styles.payHistoryTitle}>Historial de pagos</Text>
+                )}
                 {myPayments.length > 0 && (
                   <ScrollView style={styles.notifList} showsVerticalScrollIndicator={false}>
                     {myPayments.map((p) => (
@@ -662,5 +683,22 @@ const styles = StyleSheet.create({
     fontFamily: fonts.uiRegular,
     fontSize: 13,
     color: colors.textBody,
+  },
+  planBoxWarning: {
+    backgroundColor: colors.warningBg,
+    borderWidth: 1,
+    borderColor: colors.warning + '55',
+  },
+  planWarning: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 13,
+    color: colors.textWarning,
+    marginTop: 4,
+  },
+  payHistoryTitle: {
+    fontFamily: fonts.uiSemiBold,
+    fontSize: 14,
+    color: colors.azulNexo,
+    marginTop: 4,
   },
 });

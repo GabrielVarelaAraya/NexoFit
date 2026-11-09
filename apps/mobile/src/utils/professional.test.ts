@@ -4,8 +4,39 @@ import {
   appointmentActionError,
   availabilityError,
   parseClockTime,
+  professionalSetup,
   serviceError,
 } from './professional';
+
+describe('professionalSetup', () => {
+  const ready = {
+    professional: { specialization: 'Nutrición' },
+    services: [{}],
+    availability: [{}],
+  };
+
+  it('is complete with specialty, a service and availability', () => {
+    expect(professionalSetup(ready).every((item) => item.done)).toBe(true);
+  });
+
+  it('flags a missing or placeholder specialty', () => {
+    const blank = professionalSetup({ ...ready, professional: { specialization: '  ' } });
+    const placeholder = professionalSetup({
+      ...ready,
+      professional: { specialization: 'Por definir' },
+    });
+    expect(blank[0]).toMatchObject({ step: 'profile', done: false, tab: 'PerfilProfesional' });
+    expect(placeholder[0].done).toBe(false);
+  });
+
+  it('flags missing services and availability', () => {
+    const items = professionalSetup({ ...ready, services: [], availability: [] });
+    expect(items.filter((item) => !item.done).map((item) => item.tab)).toEqual([
+      'Servicios',
+      'Disponibilidad',
+    ]);
+  });
+});
 
 describe('professional access and scheduling', () => {
   it.each([
