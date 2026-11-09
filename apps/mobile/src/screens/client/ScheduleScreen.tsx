@@ -194,7 +194,8 @@ export function ScheduleScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.crema },
-  dateBar: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 12, gap: 8 },
+  // paddingTop: separa la tira de días del header (antes iba pegada, con 0).
+  dateBar: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 8 },
   dateBarScroll: { flexGrow: 0, flexShrink: 0 },
   dateItem: {
     width: 52,

@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Modal,
   ScrollView,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  type DimensionValue,
   type TextInputProps,
   type TextStyle,
   type ViewStyle,
@@ -147,6 +149,96 @@ export function EmptyState({ title, subtitle }: { title: string; subtitle?: stri
 
 export function ErrorText({ children }: { children: ReactNode }) {
   return <Text style={styles.error}>{children}</Text>;
+}
+
+/**
+ * Bloque gris pulsante que reserva el lugar del contenido mientras carga
+ * (mejor que un spinner: la página no «salta» cuando llegan los datos).
+ * Con «reducir movimiento» del sistema queda estático.
+ */
+export function Skeleton({
+  width = '100%',
+  height = 14,
+  radius = 8,
+  style,
+}: {
+  width?: DimensionValue;
+  height?: number;
+  radius?: number;
+  style?: ViewStyle;
+}) {
+  const opacity = useRef(new Animated.Value(0.55)).current;
+  useEffect(() => {
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: false }),
+        Animated.timing(opacity, { toValue: 0.55, duration: 700, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return (
+    <Animated.View
+      style={[styles.skeleton, { width, height, borderRadius: radius, opacity }, style]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    />
+  );
+}
+
+/** Anuncia la carga una vez a lectores de pantalla y agrupa los bloques. */
+export function SkeletonScreen({
+  label,
+  children,
+  style,
+}: {
+  label: string;
+  children: ReactNode;
+  style?: ViewStyle;
+}) {
+  return (
+    <View
+      style={style}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+      accessibilityState={{ busy: true }}
+    >
+      {children}
+    </View>
+  );
+}
+
+/** Tabla en carga: título, filtros y filas (Miembros, Pagos). */
+export function TableSkeleton({ label, rows = 6 }: { label: string; rows?: number }) {
+  return (
+    <SkeletonScreen label={label} style={styles.skeletonPage}>
+      <View style={styles.skeletonHeader}>
+        <Skeleton width={160} height={28} />
+        <Skeleton width={240} height={36} radius={10} />
+      </View>
+      <View style={styles.chips}>
+        {[90, 110, 120, 110].map((w, i) => (
+          <Skeleton key={i} width={w} height={30} radius={999} />
+        ))}
+      </View>
+      <Card style={styles.skeletonTable}>
+        {Array.from({ length: rows }, (_, i) => (
+          <View key={i} style={styles.skeletonRow}>
+            <Skeleton width="30%" height={14} />
+            <Skeleton width="18%" height={14} />
+            <Skeleton width="16%" height={14} />
+            <Skeleton width={90} height={22} radius={999} />
+          </View>
+        ))}
+      </Card>
+    </SkeletonScreen>
+  );
 }
 
 /** Menos de 768 px: tablas → tarjetas apiladas, paneles a pantalla completa. */
@@ -316,6 +408,25 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
   },
   buttonDanger: { backgroundColor: colors.textError },
+  skeleton: { backgroundColor: colors.border },
+  skeletonPage: { gap: 16 },
+  skeletonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  skeletonTable: { gap: 0, padding: 8 },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceSubtle,
+  },
   buttonDisabled: { opacity: 0.5 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {

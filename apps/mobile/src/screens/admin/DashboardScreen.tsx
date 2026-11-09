@@ -12,7 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '@nexofit/core';
 import { useAuth } from '../../contexts/AuthContext';
-import { Header, Card, LoadingView } from '../../components/ui';
+import { Header, Card, Skeleton, SkeletonScreen } from '../../components/ui';
 import { useDashboard, type ActivityItem, type UpcomingClass } from '../../hooks/useAdmin';
 import { formatMoney } from '../../hooks/usePayments';
 import { toLocalDateStr } from '../../utils/date';
@@ -49,7 +49,8 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
     );
   }
 
-  // Transición inicial: sin datos aún, spinner a pantalla completa.
+  // Transición inicial: sin datos aún, un skeleton con la forma del dashboard
+  // (antes un spinner a pantalla completa: la página «saltaba» al llegar los datos).
   const initialLoading = loading && stats === null;
 
   if (initialLoading) {
@@ -59,7 +60,7 @@ export function DashboardScreen({ navigation }: { navigation: NavigationProp }) 
           title="Dashboard"
           subtitle={membership?.role === 'admin' ? 'Administrador' : 'Entrenador'}
         />
-        <LoadingView label="Cargando métricas…" />
+        <DashboardSkeleton />
       </SafeAreaView>
     );
   }
@@ -271,6 +272,51 @@ function MetricCard({
     </TouchableOpacity>
   );
 }
+
+/** Misma estructura que el dashboard real: 4 KPIs, acciones y actividad. */
+function DashboardSkeleton() {
+  return (
+    <SkeletonScreen label="Cargando métricas" style={styles.content}>
+      <View style={styles.metricsGrid}>
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={styles.metricCard}>
+            <Skeleton width={24} height={24} radius={6} />
+            <Skeleton width="50%" height={26} />
+            <Skeleton width="70%" height={12} />
+          </View>
+        ))}
+      </View>
+      <Card style={styles.sectionCard}>
+        <Skeleton width="40%" height={16} />
+        <View style={styles.actionsGrid}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <View key={i} style={styles.actionBtn}>
+              <Skeleton width={36} height={36} radius={18} />
+              <Skeleton width="70%" height={12} />
+            </View>
+          ))}
+        </View>
+      </Card>
+      <Card style={styles.sectionCard}>
+        <Skeleton width="45%" height={16} />
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={skeletonStyles.row}>
+            <Skeleton width={22} height={22} radius={11} />
+            <View style={skeletonStyles.rowText}>
+              <Skeleton width="80%" height={13} />
+              <Skeleton width="30%" height={11} />
+            </View>
+          </View>
+        ))}
+      </Card>
+    </SkeletonScreen>
+  );
+}
+
+const skeletonStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  rowText: { flex: 1, gap: 6 },
+});
 
 function ActionButton({
   icon,

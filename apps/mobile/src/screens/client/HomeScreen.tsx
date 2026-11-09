@@ -16,7 +16,7 @@ import { stillAhead } from '../../utils/schedule';
 import { formatGymDate, formatGymTime } from '../../utils/appointments';
 import { useNextAppointment } from '../../hooks/useNextAppointment';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Card, Button, LoadingView } from '../../components/ui';
+import { Header, Card, Button, Skeleton, SkeletonScreen } from '../../components/ui';
 import { getSignupIntent } from '../../utils/signupIntent';
 import type { BookingWithSession, SessionWithType, NavigationProp } from '../../types/screens';
 
@@ -109,7 +109,9 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
     <View style={styles.container}>
       <Header
         title="Inicio"
-        subtitle={user ? greeting(profile?.full_name, user.email) : 'Bienvenido'}
+        // Sin perfil aún, solo «Hola»: antes mostraba la parte del correo y
+        // cambiaba al nombre un instante después (parpadeo).
+        subtitle={user && profile ? greeting(profile.full_name, user.email) : 'Hola'}
       />
 
       <ScrollView
@@ -136,7 +138,24 @@ export function HomeScreen({ navigation }: { navigation: NavigationProp }) {
         showsVerticalScrollIndicator={false}
       >
         {loading && isEmpty ? (
-          <LoadingView label="Cargando tu actividad…" style={styles.emptyState} />
+          // Skeleton con la forma de Inicio: accesos rápidos y tarjetas de clases.
+          <SkeletonScreen label="Cargando tu actividad" style={styles.section}>
+            <View style={styles.shortcuts}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={styles.shortcut}>
+                  <Skeleton width={22} height={22} radius={6} />
+                  <Skeleton width="70%" height={12} />
+                </View>
+              ))}
+            </View>
+            <Skeleton width="45%" height={18} style={styles.skeletonTitle} />
+            {[0, 1, 2].map((i) => (
+              <Card key={i} style={styles.skeletonCard}>
+                <Skeleton width="55%" height={16} />
+                <Skeleton width="80%" height={12} />
+              </Card>
+            ))}
+          </SkeletonScreen>
         ) : (
           <>
             {/* Resumen: próxima cita y accesos directos a lo que más se hace. */}
@@ -373,6 +392,8 @@ const styles = StyleSheet.create({
   nextTitle: { ...textStyles.title, color: colors.white },
   nextMeta: { ...textStyles.body, color: colors.white + 'E6' },
   shortcuts: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  skeletonTitle: { marginTop: 24, marginBottom: 12 },
+  skeletonCard: { gap: 8, marginBottom: 12 },
   shortcut: {
     flex: 1,
     alignItems: 'center',

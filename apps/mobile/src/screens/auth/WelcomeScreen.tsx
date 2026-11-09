@@ -87,11 +87,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 300,
   },
-  highlights: { marginTop: 24, gap: 12, alignSelf: 'stretch', maxWidth: 360, width: '100%' },
+  // Bloque centrado (antes alignSelf: 'stretch' + maxWidth lo pegaba a la
+  // izquierda en pantallas anchas) y contenido centrado como el resto del hero.
+  highlights: { marginTop: 24, gap: 12, alignSelf: 'center', maxWidth: 360, width: '100%' },
   highlight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    gap: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -99,6 +102,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  highlightText: { ...textStyles.body, color: colors.azulNexo, flex: 1 },
+  highlightText: { ...textStyles.body, color: colors.azulNexo, textAlign: 'center' },
   actions: { gap: 12, width: '100%', maxWidth: 480, alignSelf: 'center' },
 });

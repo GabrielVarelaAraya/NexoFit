@@ -9,9 +9,9 @@ import {
   ErrorText,
   Field,
   FilterChips,
-  LoadingView,
   SidePanel,
   StatCard,
+  TableSkeleton,
   useNarrow,
 } from '../components/ui';
 import { useOrgMembers, usePayments, type PaymentItem } from '../hooks/useAdminData';
@@ -115,7 +115,9 @@ export function PaymentsScreen({ organizationId, navigate, params, currentUserId
     URL.revokeObjectURL(url);
   };
 
-  if (data.loading && data.payments.length === 0) return <LoadingView label="Cargando pagos…" />;
+  if (data.loading && data.payments.length === 0) {
+    return <TableSkeleton label="Cargando pagos" />;
+  }
 
   return (
     <View style={styles.container}>

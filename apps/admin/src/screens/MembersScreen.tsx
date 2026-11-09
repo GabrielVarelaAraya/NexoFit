@@ -10,6 +10,7 @@ import {
   FilterChips,
   LoadingView,
   SidePanel,
+  TableSkeleton,
   useNarrow,
 } from '../components/ui';
 import { useMemberDetail, useOrgMembers, type OrgMember } from '../hooks/useAdminData';
@@ -74,7 +75,7 @@ export function MembersScreen({ organizationId, navigate, params, currentUserId 
     if (!result.success) setRoleError(result.error ?? 'No se pudo cambiar el rol.');
   };
 
-  if (loading) return <LoadingView label="Cargando miembros…" />;
+  if (loading) return <TableSkeleton label="Cargando miembros" />;
 
   return (
     <View style={styles.container}>

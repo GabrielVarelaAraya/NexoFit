@@ -1,6 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, fonts, formatWeekdayDate } from '@nexofit/core';
-import { Card, EmptyState, ErrorText, LoadingView, StatCard } from '../components/ui';
+import { Card, EmptyState, ErrorText, Skeleton, SkeletonScreen, StatCard } from '../components/ui';
 import { useDashboard, type ActivityItem, type UpcomingClass } from '../hooks/useAdminData';
 import type { ScreenProps } from '../app/router';
 import { dayLabel } from '../utils/date';
@@ -13,7 +13,7 @@ export function DashboardScreen({ organizationId, navigate }: ScreenProps) {
     useDashboard(organizationId);
 
   if (loading && stats === null) {
-    return <LoadingView label="Cargando métricas…" />;
+    return <DashboardSkeleton />;
   }
 
   const s = stats ?? {
@@ -131,6 +131,43 @@ export function DashboardScreen({ organizationId, navigate }: ScreenProps) {
   );
 }
 
+/** Misma forma que el dashboard: 5 KPIs y las columnas de actividad y clases. */
+function DashboardSkeleton() {
+  return (
+    <SkeletonScreen label="Cargando métricas" style={styles.container}>
+      <View style={styles.headerRow}>
+        <Skeleton width={180} height={30} />
+        <Skeleton width={150} height={30} radius={999} />
+      </View>
+      <View style={styles.statsRow}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Card key={i} style={styles.skeletonStat}>
+            <Skeleton width="60%" height={12} />
+            <Skeleton width="45%" height={28} />
+            <Skeleton width="70%" height={11} />
+          </Card>
+        ))}
+      </View>
+      <View style={styles.columns}>
+        {[0, 1].map((col) => (
+          <Card key={col} style={styles.column}>
+            <Skeleton width="40%" height={16} />
+            {[0, 1, 2, 3, 4].map((i) => (
+              <View key={i} style={styles.activityRow}>
+                <Skeleton width={10} height={10} radius={5} />
+                <View style={styles.activityBody}>
+                  <Skeleton width="75%" height={13} />
+                  <Skeleton width="25%" height={11} />
+                </View>
+              </View>
+            ))}
+          </Card>
+        ))}
+      </View>
+    </SkeletonScreen>
+  );
+}
+
 const ACTIVITY_COLORS: Record<ActivityItem['kind'], string> = {
   booked: colors.success,
   cancelled: colors.textError,
@@ -189,6 +226,7 @@ const styles = StyleSheet.create({
   },
   refreshText: { fontFamily: fonts.uiSemiBold, fontSize: 13, color: colors.textAccent },
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  skeletonStat: { flex: 1, minWidth: 180, gap: 10 },
   columns: { flexDirection: 'row', gap: 20, flexWrap: 'wrap' },
   column: { flex: 1, minWidth: 300, gap: 16 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

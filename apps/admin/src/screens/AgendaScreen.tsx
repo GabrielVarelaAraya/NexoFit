@@ -9,7 +9,8 @@ import {
   EmptyState,
   ErrorText,
   FilterChips,
-  LoadingView,
+  Skeleton,
+  SkeletonScreen,
 } from '../components/ui';
 import { useAgenda, type AgendaAppointment, type AgendaClass } from '../hooks/useAdminData';
 import type { ScreenProps } from '../app/router';
@@ -115,7 +116,16 @@ export function AgendaScreen({ organizationId, navigate, params }: ScreenProps) 
       {cancelError && <ErrorText>{cancelError}</ErrorText>}
 
       {agenda.loading ? (
-        <LoadingView label="Cargando agenda…" />
+        <SkeletonScreen label="Cargando agenda" style={styles.list}>
+          {[0, 1, 2].map((i) => (
+            <Card key={i} style={styles.card}>
+              <Skeleton width="20%" height={14} />
+              <Skeleton width="35%" height={16} />
+              <Skeleton width="55%" height={12} />
+              <Skeleton height={6} radius={3} />
+            </Card>
+          ))}
+        </SkeletonScreen>
       ) : tab === 'clases' ? (
         agenda.classes.length === 0 ? (
           <Card>
