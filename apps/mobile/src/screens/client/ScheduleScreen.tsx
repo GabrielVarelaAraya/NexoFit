@@ -64,14 +64,19 @@ export function ScheduleScreen({ navigation }: Props) {
     const isBooked = myStatus === 'confirmed' || myStatus === 'attended';
     const isWaiting = myStatus === 'waitlist';
 
+    // Una clase que ya terminó no se puede reservar ni pedir lista de espera.
+    const isFinished = new Date(item.ends_at).getTime() <= Date.now();
+
     const buttonTitle = isBooked
       ? 'Ya reservada'
-      : isWaiting
-        ? 'En lista de espera'
-        : isFull
-          ? 'Lista de espera'
-          : 'Reservar';
-    const buttonVariant = isBooked || isWaiting || isFull ? 'ghost' : 'primary';
+      : isFinished
+        ? 'Finalizada'
+        : isWaiting
+          ? 'En lista de espera'
+          : isFull
+            ? 'Lista de espera'
+            : 'Reservar';
+    const buttonVariant = isBooked || isWaiting || isFull || isFinished ? 'ghost' : 'primary';
 
     return (
       <Card
@@ -79,19 +84,31 @@ export function ScheduleScreen({ navigation }: Props) {
         title={item.class_types?.name ?? 'Clase'}
         subtitle={`${formatTime(item.starts_at)} – ${formatTime(item.ends_at)}  ·  ${item.spaces?.venues?.name ?? ''} · ${item.spaces?.name ?? ''}`}
         badge={
-          isFull
-            ? 'Completo'
-            : isNearlyFull
-              ? `¡Casi lleno! · ${spotsLeft} ${spotsLeft === 1 ? 'cupo' : 'cupos'}`
-              : `${spotsLeft} cupos`
+          isFinished
+            ? 'Finalizada'
+            : isFull
+              ? 'Completo'
+              : isNearlyFull
+                ? `¡Casi lleno! · ${spotsLeft} ${spotsLeft === 1 ? 'cupo' : 'cupos'}`
+                : `${spotsLeft} cupos`
         }
-        badgeColor={isFull ? colors.danger : isNearlyFull ? colors.warning : colors.turquesa}
+        badgeColor={
+          isFinished
+            ? colors.textMuted
+            : isFull
+              ? colors.danger
+              : isNearlyFull
+                ? colors.warning
+                : colors.turquesa
+        }
       >
         {coachName && <Text style={styles.coach}>Coach: {coachName}</Text>}
         <Button
           title={buttonTitle}
           variant={buttonVariant}
           fullWidth
+          // Finalizada: sin acción (pero «Ya reservada» sigue abriendo el detalle).
+          disabled={isFinished && !isBooked}
           onPress={() =>
             navigation.navigate('SessionDetail', {
               sessionId: item.id,
