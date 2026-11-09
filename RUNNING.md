@@ -39,11 +39,12 @@ packages/db/migrations/000005_professional_access.sql
 packages/db/migrations/000006_realtime.sql
 packages/db/migrations/000007_appointment_booking.sql
 packages/db/migrations/000008_appointment_security.sql
+packages/db/migrations/000009_workout_delete.sql
 ```
 
 Wait for each to complete before running the next. You should see "Success" after each.
 
-> **Idempotent:** the eight files can be re-run on an existing project.
+> **Idempotent:** the nine files can be re-run on an existing project.
 >
 > **Existing projects:** if you already applied `000001`, `000002` and `000003`,
 > run **`000004_check_email_exists.sql`** to enable the email check before registration.
@@ -62,6 +63,12 @@ Wait for each to complete before running the next. You should see "Success" afte
 | `000006`  | Publishes `bookings` and `notifications` to Supabase Realtime (live badge and class spots)                                                     |
 | `000007`  | Adds `book_appointment` (member booking of 1-on-1 slots) and service ownership for professionals                                               |
 | `000008`  | Appointment security: no direct member writes, immutable appointment columns, `cancel_appointment`, `get_busy_slots`, `list_org_professionals` |
+| `000009`  | `DELETE` policy on `workout_logs` so members can delete their own workouts (exercises and sets cascade; personal records are kept)             |
+
+> **Workout deletion:** run **`000009_workout_delete.sql`** to enable real
+> deletes. Without it the app still works: **Delete** only hides the workout
+> (status `cancelled`). `000003` recreates every policy, so re-run `000009`
+> (and `000005`, `000007`, `000008`) after re-running it.
 
 > **Professional workspace:** if `000001` through `000004` are already applied,
 > run **`000005_professional_access.sql`**. It creates missing professional
@@ -169,7 +176,9 @@ You'll see a QR code in the terminal.
 | **iOS Simulator** (Mac only) | Press `i`                           |
 | **Android Emulator**         | Press `a` (requires Android Studio) |
 
-> For web, the app runs at `http://localhost:8081`.
+> For web, the app runs at `http://localhost:8081`. On a phone you can swipe
+> left/right to change tab; loading shows skeletons, and alerts, confirmations
+> and success messages use NexoFit's own dialogs and toasts.
 
 ### Admin web console
 
@@ -177,7 +186,8 @@ You'll see a QR code in the terminal.
 pnpm --filter @nexofit/admin start
 ```
 
-Opens the **admin dashboard** at `http://localhost:8081` (Expo Web,
+Opens the **admin dashboard** at `http://localhost:8081` (Expo Web; if the
+mobile app already uses that port, Expo offers another one, e.g. `8082`;
 landscape). Log in with a Supabase account that has an **admin**
 membership — any other account sees an "access not available" message
 with a sign-out button. The console shows the same real, RLS-scoped
@@ -282,10 +292,13 @@ to the _Find a gym_ screen automatically.
    client tabs return and professional management permissions are revoked.
    Existing professional records and appointment history remain stored.
 
-Client appointment creation is still pending. The professional agenda displays
-appointments already present in `appointments`, such as SQL test data. The
-single-user seed below is for the client/admin demo; use separate accounts and
-assign the correct professional membership when testing the professional flow.
+Members book 1-on-1 appointments from the **Citas** tab (**Reservar**): pick a
+professional, a service, a day and a free slot. The list only shows accounts
+whose membership role is `professional` (not admins), so a gym with no
+professionals shows "Sin profesionales". The professional agenda displays those
+appointments. The single-user seed below is for the client/admin demo; use
+separate accounts and assign the correct professional membership when testing
+the professional flow, or load the [demo data](#demo-data-fill-the-app) below.
 
 ### Session persistence
 
@@ -510,6 +523,35 @@ LIMIT 1
 ON CONFLICT (id) DO NOTHING;
 ```
 
+### Demo data (fill the app)
+
+To show the app full (for a demo or screenshots), run
+`packages/db/seed/demo_data.sql` in the Supabase **SQL Editor** after the
+migrations. It is idempotent: running it again does not duplicate anything.
+
+1. Open the file and set `v_member_email` (top of the `DO` block) to the
+   account you will demo with. The script uses that account's gym.
+2. Run it. It creates, for that gym:
+   - 5 class types and ~10 days of classes (past and upcoming) with bookings,
+     attendance and published programs;
+   - 3 demo professionals and 6 demo members (no password, so they cannot log
+     in; emails `demo.N@nexofit-demo.test`), each professional with specialty,
+     3 services and weekly availability;
+   - 1-on-1 appointments: upcoming for every member, plus a past (attended) and
+     a cancelled one for your account;
+   - for your account: an exercise library, 5 workouts with personal records,
+     6 weeks of body measurements and 3 notifications.
+3. Reload the app: **Home**, **Clases**, **Citas**, **Progreso** and the
+   notifications are populated.
+
+To remove it, run `packages/db/seed/demo_cleanup.sql`. It deletes only demo
+data (marked `[demo]` / `Demo` / `@nexofit-demo.test`) and keeps venues, spaces,
+the coach and any real professional's specialty and availability. The
+"New appointment" notifications generated by demo appointments are not marked,
+so they stay.
+
+The script is covered by `packages/db/src/demoSeed.test.ts` (PGlite).
+
 ### Book a session
 
 1. **Home** tab → "Today's classes" should show the session seeded at now +2h
@@ -562,12 +604,17 @@ A single profile can't queue behind itself — a confirmed booking returns
 
 1. Run the seed above — steps 9–10 add an exercise library and a coach
    program for today's session.
-2. **Progress** tab → **+ Workout** → _+ Add_ → pick "Squat"
-   → enter repetitions and weight for each set → **Save workout**.
+2. **Progress** tab → **+ Workout** (or the **Log workout** shortcut on Home)
+   → _+ Add_ → pick "Squat" → enter repetitions and weight for each set
+   (decimal commas such as `8,5` are accepted) → **Save workout**.
 3. The log appears under **My workouts** (tap it to expand the sets)
    and, if you beat your best weight, a new row appears under
-   **Personal records**.
-4. From **Classes → Class details**, you can also tap
+   **Personal records**. A save that fails halfway never shows up in the
+   history.
+4. Expand a workout to **Copy** it (opens the form pre-filled with the same
+   exercises, sets, reps and weights, dated today) or **Delete** it (asks for
+   confirmation; needs migration `000009` to delete for real).
+5. From **Classes → Class details**, you can also tap
    **Log workout**: the log remains linked to that session and its program.
    If the coach has published a program, you will see the
    **Session workout** card.

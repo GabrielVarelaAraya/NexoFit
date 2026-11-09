@@ -19,9 +19,12 @@ NexoFit is a mobile-first platform that lets fitness businesses manage their ope
 - Book sessions with instant confirmation
 - Join waitlists when classes are full
 - Cancel bookings (auto-promotes waitlist)
-- Track workouts and progress
+- Track workouts and progress: log workouts, copy a past workout into a new
+  one, and delete registered workouts
 - Book, view and cancel 1-on-1 appointments with professionals
 - Unread notification badge with live updates and one-tap mark-as-read
+- Polished UX: skeleton loading, smooth transitions, swipe between tabs and
+  branded dialogs/toasts (no plain system alerts)
 
 ### For Admins & Coaches
 
@@ -53,7 +56,9 @@ NexoFit/
 │
 ├── packages/
 │   ├── core/            # Shared: theme, types, Supabase client
-│   └── db/              # SQL migrations, RLS policies, seed data
+│   └── db/              # SQL migrations, RLS policies, demo seed (seed/)
+│
+└── docs/                # UX audit and recommendations
 ```
 
 **Multi-tenancy** is enforced at the database level via PostgreSQL Row Level Security (RLS). Every query is scoped to the user's organization — no data leaks between tenants.
@@ -87,7 +92,7 @@ NexoFit/
 
 ## Database Schema
 
-29 tables across 8 idempotent SQL files (run in order via the Supabase SQL Editor):
+29 tables across 9 idempotent SQL files (run in order via the Supabase SQL Editor):
 
 - **Organizations** — multi-tenant root
 - **Venues & Spaces** — locations with capacity
@@ -97,6 +102,7 @@ NexoFit/
 - **Bookings & Waitlist** — atomic capacity enforcement, waitlist positions, attendance
 - **Workout Programs** — per-session workout content
 - **Workout Tracking** — logs, exercises, sets, personal records, templates
+  (members can delete their own logs since migration `000009`)
 - **Body Metrics** — measurements over time
 - **Appointments & Services** — 1-on-1 with professionals
 - **Availability** — professional schedules
@@ -121,6 +127,7 @@ cp .env.example .env
 # Edit .env with your Supabase URL + anon key
 
 # 4. Run migrations in Supabase SQL Editor (see RUNNING.md)
+#    Optional: packages/db/seed/demo_data.sql fills the app with demo data
 
 # 5. Start
 pnpm --filter @nexofit/mobile start
