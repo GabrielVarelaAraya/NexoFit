@@ -11,6 +11,7 @@ export { themePresets } from './theme/themes';
 export type { ThemePreset, ThemeStyle } from './theme/themes';
 
 export * from './format/dates';
+export { useHasLoaded, shouldShowSkeleton } from './hooks/useHasLoaded';
 
 export { getSupabase, setSupabaseConfig } from './supabase/client';
 export type { SupabaseConfig } from './supabase/client';
